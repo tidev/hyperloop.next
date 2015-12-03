@@ -1,0 +1,14 @@
+.DS_Store
+build/
+node_modules
+android/plugins/hyperloop/metabase/hyperloop/
+*.zip
+android/libs/
+android/documentation/
+android/assets/
+android/example/
+android/LICENSE
+dist/
+xcuserdata
+project.xcworkspace
+*.tgz

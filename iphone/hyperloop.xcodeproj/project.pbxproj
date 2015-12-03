@@ -1,0 +1,471 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		24033C3B1BBA29D700EE4875 /* TestUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 24033C3A1BBA29D700EE4875 /* TestUtils.m */; settings = {ASSET_TAGS = (); }; };
+		2452612D1BE5A1C700FF03D6 /* TestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2452612C1BE5A1C700FF03D6 /* TestView.swift */; settings = {ASSET_TAGS = (); }; };
+		2452612F1BE5A25100FF03D6 /* TestSwift.m in Sources */ = {isa = PBXBuildFile; fileRef = 2452612E1BE5A25100FF03D6 /* TestSwift.m */; settings = {ASSET_TAGS = (); }; };
+		2461FDA01BB0C286006D4D9E /* libhyperloop.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2461FD871BB08963006D4D9E /* libhyperloop.a */; settings = {ASSET_TAGS = (); ATTRIBUTES = (Required, ); }; };
+		2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDAB1BB0C3F2006D4D9E /* class.m */; };
+		2461FDB31BB1DF01006D4D9E /* TestDispatch.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDB21BB1DF01006D4D9E /* TestDispatch.m */; settings = {ASSET_TAGS = (); }; };
+		2461FDBC1BB21348006D4D9E /* TestExtend.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDBB1BB21348006D4D9E /* TestExtend.m */; settings = {ASSET_TAGS = (); }; };
+		247077751BB304E100150B9F /* HyperloopModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077721BB304E100150B9F /* HyperloopModule.m */; };
+		247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077741BB304E100150B9F /* HyperloopModuleAssets.m */; settings = {ASSET_TAGS = (); }; };
+		2470777A1BB3424200150B9F /* TitaniumMocks.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077791BB3424200150B9F /* TitaniumMocks.m */; settings = {ASSET_TAGS = (); }; };
+		2470779B1BB3A70300150B9F /* utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077991BB3A70300150B9F /* utils.m */; };
+		247077A51BB4494600150B9F /* TestPointers.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077A41BB4494600150B9F /* TestPointers.m */; settings = {ASSET_TAGS = (); }; };
+		247077AD1BB87FAE00150B9F /* pointer.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077AB1BB87FAE00150B9F /* pointer.m */; };
+		24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */; };
+		24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */; settings = {ASSET_TAGS = (); }; };
+		24B0355E1BC7237900F3D9E5 /* TestJS.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0355C1BC7233000F3D9E5 /* TestJS.m */; };
+		24B035601BC726E000F3D9E5 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2461FDA11BB0C286006D4D9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2461FD7F1BB08963006D4D9E /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 2461FD861BB08963006D4D9E;
+			remoteInfo = hyperloop;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		2461FD851BB08963006D4D9E /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "include/$(PRODUCT_NAME)";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		24033C3A1BBA29D700EE4875 /* TestUtils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestUtils.m; sourceTree = "<group>"; };
+		2452612B1BE5A1C600FF03D6 /* Tests-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Tests-Bridging-Header.h"; sourceTree = "<group>"; };
+		2452612C1BE5A1C700FF03D6 /* TestView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = TestView.swift; sourceTree = "<group>"; };
+		2452612E1BE5A25100FF03D6 /* TestSwift.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestSwift.m; sourceTree = "<group>"; };
+		2461FD871BB08963006D4D9E /* libhyperloop.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libhyperloop.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		2461FD9B1BB0C286006D4D9E /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2461FD9F1BB0C286006D4D9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		2461FDAA1BB0C3F2006D4D9E /* class.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = class.h; path = src/class.h; sourceTree = "<group>"; };
+		2461FDAB1BB0C3F2006D4D9E /* class.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = class.m; path = src/class.m; sourceTree = "<group>"; };
+		2461FDB21BB1DF01006D4D9E /* TestDispatch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestDispatch.m; sourceTree = "<group>"; };
+		2461FDBB1BB21348006D4D9E /* TestExtend.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestExtend.m; sourceTree = "<group>"; };
+		247077711BB304E100150B9F /* HyperloopModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopModule.h; path = titanium/HyperloopModule.h; sourceTree = "<group>"; };
+		247077721BB304E100150B9F /* HyperloopModule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopModule.m; path = titanium/HyperloopModule.m; sourceTree = "<group>"; };
+		247077731BB304E100150B9F /* HyperloopModuleAssets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopModuleAssets.h; path = titanium/HyperloopModuleAssets.h; sourceTree = "<group>"; };
+		247077741BB304E100150B9F /* HyperloopModuleAssets.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopModuleAssets.m; path = titanium/HyperloopModuleAssets.m; sourceTree = "<group>"; };
+		247077771BB3057C00150B9F /* titanium.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = titanium.xcconfig; sourceTree = "<group>"; };
+		247077781BB3424200150B9F /* TitaniumMocks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TitaniumMocks.h; sourceTree = "<group>"; };
+		247077791BB3424200150B9F /* TitaniumMocks.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TitaniumMocks.m; sourceTree = "<group>"; };
+		247077981BB3A5D900150B9F /* define.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = define.h; path = src/define.h; sourceTree = "<group>"; };
+		247077991BB3A70300150B9F /* utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = utils.m; path = src/utils.m; sourceTree = "<group>"; };
+		2470779A1BB3A70300150B9F /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = utils.h; path = src/utils.h; sourceTree = "<group>"; };
+		247077A41BB4494600150B9F /* TestPointers.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestPointers.m; sourceTree = "<group>"; };
+		247077AB1BB87FAE00150B9F /* pointer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = pointer.m; path = src/pointer.m; sourceTree = "<group>"; };
+		247077AC1BB87FAE00150B9F /* pointer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = pointer.h; path = src/pointer.h; sourceTree = "<group>"; };
+		24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopView.m; path = titanium/HyperloopView.m; sourceTree = "<group>"; };
+		24B0352B1BC47F2900F3D9E5 /* HyperloopView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopView.h; path = titanium/HyperloopView.h; sourceTree = "<group>"; };
+		24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopViewProxy.m; path = titanium/HyperloopViewProxy.m; sourceTree = "<group>"; };
+		24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopViewProxy.h; path = titanium/HyperloopViewProxy.h; sourceTree = "<group>"; };
+		24B0355C1BC7233000F3D9E5 /* TestJS.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestJS.m; sourceTree = "<group>"; };
+		24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2461FD841BB08963006D4D9E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2461FD981BB0C286006D4D9E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24B035601BC726E000F3D9E5 /* JavaScriptCore.framework in Frameworks */,
+				2461FDA01BB0C286006D4D9E /* libhyperloop.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2461FD7E1BB08963006D4D9E = {
+			isa = PBXGroup;
+			children = (
+				247077771BB3057C00150B9F /* titanium.xcconfig */,
+				247077701BB304CF00150B9F /* Titanium */,
+				2461FDA61BB0C3D9006D4D9E /* Source */,
+				2461FD9C1BB0C286006D4D9E /* tests */,
+				2461FD881BB08963006D4D9E /* Products */,
+				24B035611BC81B0900F3D9E5 /* Frameworks */,
+			);
+			sourceTree = "<group>";
+		};
+		2461FD881BB08963006D4D9E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				2461FD871BB08963006D4D9E /* libhyperloop.a */,
+				2461FD9B1BB0C286006D4D9E /* Tests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		2461FD9C1BB0C286006D4D9E /* tests */ = {
+			isa = PBXGroup;
+			children = (
+				24B0355C1BC7233000F3D9E5 /* TestJS.m */,
+				2452612C1BE5A1C700FF03D6 /* TestView.swift */,
+				24033C3A1BBA29D700EE4875 /* TestUtils.m */,
+				247077781BB3424200150B9F /* TitaniumMocks.h */,
+				247077791BB3424200150B9F /* TitaniumMocks.m */,
+				247077A41BB4494600150B9F /* TestPointers.m */,
+				2461FDBB1BB21348006D4D9E /* TestExtend.m */,
+				2461FDB21BB1DF01006D4D9E /* TestDispatch.m */,
+				2461FD9F1BB0C286006D4D9E /* Info.plist */,
+				2452612B1BE5A1C600FF03D6 /* Tests-Bridging-Header.h */,
+				2452612E1BE5A25100FF03D6 /* TestSwift.m */,
+			);
+			path = tests;
+			sourceTree = "<group>";
+		};
+		2461FDA61BB0C3D9006D4D9E /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				247077AB1BB87FAE00150B9F /* pointer.m */,
+				247077AC1BB87FAE00150B9F /* pointer.h */,
+				247077991BB3A70300150B9F /* utils.m */,
+				2470779A1BB3A70300150B9F /* utils.h */,
+				247077981BB3A5D900150B9F /* define.h */,
+				2461FDAA1BB0C3F2006D4D9E /* class.h */,
+				2461FDAB1BB0C3F2006D4D9E /* class.m */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		247077701BB304CF00150B9F /* Titanium */ = {
+			isa = PBXGroup;
+			children = (
+				24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */,
+				24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */,
+				24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */,
+				24B0352B1BC47F2900F3D9E5 /* HyperloopView.h */,
+				247077731BB304E100150B9F /* HyperloopModuleAssets.h */,
+				247077711BB304E100150B9F /* HyperloopModule.h */,
+				247077721BB304E100150B9F /* HyperloopModule.m */,
+				247077741BB304E100150B9F /* HyperloopModuleAssets.m */,
+			);
+			name = Titanium;
+			sourceTree = "<group>";
+		};
+		24B035611BC81B0900F3D9E5 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		2461FD861BB08963006D4D9E /* hyperloop */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2461FD901BB08963006D4D9E /* Build configuration list for PBXNativeTarget "hyperloop" */;
+			buildPhases = (
+				2461FD831BB08963006D4D9E /* Sources */,
+				2461FD841BB08963006D4D9E /* Frameworks */,
+				2461FD851BB08963006D4D9E /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = hyperloop;
+			productName = hyperloop;
+			productReference = 2461FD871BB08963006D4D9E /* libhyperloop.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+		2461FD9A1BB0C286006D4D9E /* Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2461FDA31BB0C286006D4D9E /* Build configuration list for PBXNativeTarget "Tests" */;
+			buildPhases = (
+				2461FD971BB0C286006D4D9E /* Sources */,
+				2461FD981BB0C286006D4D9E /* Frameworks */,
+				2461FD991BB0C286006D4D9E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2461FDA21BB0C286006D4D9E /* PBXTargetDependency */,
+			);
+			name = Tests;
+			productName = Tests;
+			productReference = 2461FD9B1BB0C286006D4D9E /* Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		2461FD7F1BB08963006D4D9E /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 0700;
+				LastUpgradeCheck = 0700;
+				ORGANIZATIONNAME = "Jeff Haynie";
+				TargetAttributes = {
+					2461FD861BB08963006D4D9E = {
+						CreatedOnToolsVersion = 7.0;
+					};
+					2461FD9A1BB0C286006D4D9E = {
+						CreatedOnToolsVersion = 7.0;
+					};
+				};
+			};
+			buildConfigurationList = 2461FD821BB08963006D4D9E /* Build configuration list for PBXProject "hyperloop" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 2461FD7E1BB08963006D4D9E;
+			productRefGroup = 2461FD881BB08963006D4D9E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				2461FD861BB08963006D4D9E /* hyperloop */,
+				2461FD9A1BB0C286006D4D9E /* Tests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2461FD991BB0C286006D4D9E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2461FD831BB08963006D4D9E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				247077AD1BB87FAE00150B9F /* pointer.m in Sources */,
+				247077751BB304E100150B9F /* HyperloopModule.m in Sources */,
+				24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */,
+				247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */,
+				24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */,
+				2470779B1BB3A70300150B9F /* utils.m in Sources */,
+				2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2461FD971BB0C286006D4D9E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				24B0355E1BC7237900F3D9E5 /* TestJS.m in Sources */,
+				2470777A1BB3424200150B9F /* TitaniumMocks.m in Sources */,
+				2461FDB31BB1DF01006D4D9E /* TestDispatch.m in Sources */,
+				2452612F1BE5A25100FF03D6 /* TestSwift.m in Sources */,
+				2461FDBC1BB21348006D4D9E /* TestExtend.m in Sources */,
+				2452612D1BE5A1C700FF03D6 /* TestView.swift in Sources */,
+				247077A51BB4494600150B9F /* TestPointers.m in Sources */,
+				24033C3B1BBA29D700EE4875 /* TestUtils.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		2461FDA21BB0C286006D4D9E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 2461FD861BB08963006D4D9E /* hyperloop */;
+			targetProxy = 2461FDA11BB0C286006D4D9E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		2461FD8E1BB08963006D4D9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 247077771BB3057C00150B9F /* titanium.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.1;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		2461FD8F1BB08963006D4D9E /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 247077771BB3057C00150B9F /* titanium.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 7.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		2461FD911BB08963006D4D9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					"USE_JSCORE_FRAMEWORK=1",
+				);
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		2461FD921BB08963006D4D9E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		2461FDA41BB0C286006D4D9E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+					"USE_JSCORE_FRAMEWORK=1",
+				);
+				INFOPLIST_FILE = tests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.appcelerator.hyperloop.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "tests/Tests-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		2461FDA51BB0C286006D4D9E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				INFOPLIST_FILE = tests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = com.appcelerator.hyperloop.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OBJC_BRIDGING_HEADER = "tests/Tests-Bridging-Header.h";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2461FD821BB08963006D4D9E /* Build configuration list for PBXProject "hyperloop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2461FD8E1BB08963006D4D9E /* Debug */,
+				2461FD8F1BB08963006D4D9E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2461FD901BB08963006D4D9E /* Build configuration list for PBXNativeTarget "hyperloop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2461FD911BB08963006D4D9E /* Debug */,
+				2461FD921BB08963006D4D9E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		2461FDA31BB0C286006D4D9E /* Build configuration list for PBXNativeTarget "Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2461FDA41BB0C286006D4D9E /* Debug */,
+				2461FDA51BB0C286006D4D9E /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 2461FD7F1BB08963006D4D9E /* Project object */;
+}
