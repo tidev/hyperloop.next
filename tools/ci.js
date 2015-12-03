@@ -308,6 +308,8 @@ function build(callback) {
 		androidSDKPath,
 		androidNDKPath;
 	async.series([
+		// FIXME Do we need the SDK at all?
+		// TODO we need to check/set ANDROID_NDK/ANDROID_SDK env vars!
 		// TODO Remove old SDKs we've installed before to avoid littering HDD with tons of SDKs
 		// Run in series with getting sdk install dir
 		installSDK,

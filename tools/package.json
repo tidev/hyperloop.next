@@ -25,9 +25,10 @@
 		},
 		{
 			"name": "Dawson Toth"
-		},
+		}
 	],
-	"license": "LicenseRef-LICENSE",
+	"license": "UNLICENSED",
+	"private": true,
 	"dependencies": {
 		"findit": "^2.0.0"
 	},

@@ -24,33 +24,39 @@
 		</condition>
 	</fail>
 
-	<!-- Copy documentation subdirectories -->
-	<mkdir dir="${basedir}/documentation"/>
-	<copy todir="${basedir}/documentation">
-		<fileset dir="${basedir}/../documentation"/>
-	</copy>
+	<target name="pre.compile">
+		<!-- Make a dummy empty assets folder or build will break -->
+		<mkdir dir="${basedir}/assets"/>
+	</target>
 
-	<!-- Copy example subdirectories -->
-	<mkdir dir="${basedir}/example"/>
-	<copy todir="${basedir}/example">
-		<fileset dir="${basedir}/../example"/>
-	</copy>
+	<target name="pre.dist">
+		<!-- Copy documentation subdirectories -->
+		<mkdir dir="${basedir}/documentation"/>
+		<copy todir="${basedir}/documentation">
+			<fileset dir="${basedir}/../documentation"/>
+		</copy>
 
-	<!-- Copy assets subdirectories -->
-	<mkdir dir="${basedir}/assets"/>
-	<copy todir="${basedir}/assets">
-		<fileset dir="${basedir}/../assets"/>
-	</copy>
+		<!-- Copy example subdirectories -->
+		<mkdir dir="${basedir}/example"/>
+		<copy todir="${basedir}/example">
+			<fileset dir="${basedir}/../example"/>
+		</copy>
 
-	<!-- Copy license -->
-	<copy todir="${basedir}" file="${basedir}/../LICENSE"/>
+		<!-- Copy license -->
+		<copy todir="${basedir}" file="${basedir}/../LICENSE.md"/>
 
-	<target name="cleancopy" description="Delete old copies">
+		<!-- Copy common CLI hook -->
+		<copy todir="${basedir}/plugins/hyperloop/hooks" file="${basedir}/../plugins/hyperloop.js"/>
+	</target>
+
+	<target name="post.clean">
+		<delete dir="${basedir}/build"/>
 		<delete dir="${basedir}/documentation"/>
 		<delete dir="${basedir}/example"/>
-		<delete dir="${basedir}/assets"/>
-		<delete file="${basedir}/LICENSE"/>
+		<delete dir="${basedir}/libs"/>
+		<delete file="${basedir}/LICENSE.md"/>
 		<delete dir="${basedir}/plugins/hyperloop/node_modules"/>
+		<delete file="${basedir}/plugins/hyperloop/hooks/hyperloop.js"/>
 		<delete dir="${basedir}/plugins/hyperloop/hooks/android/metabase/hyperloop"/>
 	</target>
 

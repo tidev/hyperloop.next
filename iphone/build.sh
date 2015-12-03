@@ -35,11 +35,11 @@ node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.versi
 cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/hooks/hyperloop.js
 cp plugin/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
 cp plugin/filter.sh build/zip/plugins/hyperloop/hooks/ios
-cp LICENSE.md build/zip/plugins/hyperloop
-cp LICENSE.md build/zip/modules/iphone/hyperloop/$VERSION
+cp ../LICENSE.md build/zip/plugins/hyperloop
+cp ../LICENSE.md build/zip/modules/iphone/hyperloop/$VERSION
 
 # package the metabase into the .zip
-cd ../hyperloop-metabase
+cd ../../hyperloop-metabase
 ./build.sh >/dev/null
 npm pack >/dev/null 2>&1
 mkdir -p $CWD/build/npm
