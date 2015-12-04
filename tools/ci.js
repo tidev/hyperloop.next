@@ -17,8 +17,8 @@ var path = require('path'),
 	afs = appc.fs,
 	HOME = process.env.HOME || process.env.USERPROFILE || process.env.APPDATA,
 	titanium = path.join(__dirname, 'node_modules', 'titanium', 'bin', 'titanium'),
-	androidModuleDir = path.join(__dirname, 'android'),
-	iosModuleDir = path.join(__dirname, 'ios'),
+	androidModuleDir = path.join(__dirname, '..', 'android'),
+	iosModuleDir = path.join(__dirname, '..', 'iphone'),
 	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.0.1-macosx.zip',
 	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
@@ -159,7 +159,7 @@ function getSDKInstallDir(next) {
 			selectedSDK,
 			sdkPath;
 		if (error !== null) {
-		  next('Failed to get SDK install dir: ' + error);
+			next('Failed to get SDK install dir: ' + error);
 		}
 
 		out = JSON.parse(stdout);
@@ -177,12 +177,22 @@ function getAndroidPaths(next) {
 			androidSDKPath,
 			androidNDKPath
 		if (error !== null) {
-		  next('Failed to get ANDROID_HOME: ' + error);
+			next('Failed to get ANDROID NDK and SDK paths: ' + error);
 		}
 
 		out = JSON.parse(stdout);
+
 		androidSDKPath = out.android && out.android.sdk && out.android.sdk.path;
 		androidNDKPath = out.android && out.android.ndk && out.android.ndk.path;
+
+		// Fall back to env vars for these values
+		if (!androidNDKPath) {
+			androidNDKPath = process.env.ANDROID_NDK;
+		}
+		if (!androidSDKPath) {
+			androidSDKPath = process.env.ANDROID_SDK;
+		}
+
 		next(null, {sdk: androidSDKPath, ndk: androidNDKPath});
 	});
 }
@@ -196,8 +206,9 @@ function installAndroidSDK(next) {
 			var sdkHome = path.join(HOME, 'android-sdk-macosx');
 			exec('node "' + titanium + '" config android.sdkPath ' + sdkHome, function (error, stdout, stderr) {
 				if (error !== null) {
-					next('Failed to set ANDROID_HOME: ' + error);
+					return next('Failed to set android.sdkPath in CLI config: ' + error);
 				}
+				// TODO Set env var?
 				next(null, sdkHome);
 			});
 		});
@@ -234,6 +245,7 @@ function installAndroidNDK(next) {
 				if (error !== null) {
 					return next('Failed to set path to Android NDK in titanium CLI config: ' + error);
 				}
+				// TODO Set env var!
 				next(null, ndkHome);
 			});
 		});
@@ -259,60 +271,57 @@ function writeBuildProperties(tiSDKPath, androidSDKPath, androidNDKPath, next) {
 	fs.writeFile(buildProperties, content, next);
 }
 
-// TODO When we combine and do iOS and Android builds
-function writeTitaniumXcconfig(next) {
+function writeTitaniumXcconfig(tiSDKPath, next) {
+	console.log('Writing titanium.xcconfig for iOS');
 	// Write out properties file
-//	echo "TITANIUM_SDK = $TITANIUM_SDK" > $MODULE_ROOT/titanium.xcconfig
-//	echo "TITANIUM_BASE_SDK = \"\$(TITANIUM_SDK)/iphone/include\"" >> $MODULE_ROOT/titanium.xcconfig
-//	echo "TITANIUM_BASE_SDK2 = \"\$(TITANIUM_SDK)/iphone/include/TiCore\"" >> $MODULE_ROOT/titanium.xcconfig
-//	echo "TITANIUM_BASE_SDK3 = \"\$(TITANIUM_SDK)/iphone/include/ASI\"" >> $MODULE_ROOT/titanium.xcconfig
-//	echo "TITANIUM_BASE_SDK4 = \"\$(TITANIUM_SDK)/iphone/include/APSHTTPClient\"" >> $MODULE_ROOT/titanium.xcconfig
-//	echo "HEADER_SEARCH_PATHS= \$(TITANIUM_BASE_SDK) \$(TITANIUM_BASE_SDK2) \$(TITANIUM_BASE_SDK3) \$(TITANIUM_BASE_SDK4) \${PROJECT_DIR}/**" >> $MODULE_ROOT/titanium.xcconfig
+	var buildProperties = path.join(iosModuleDir, 'titanium.xcconfig'),
+		content = "";
+	// if it exists, wipe it
+	if (fs.existsSync(buildProperties)) {
+		fs.unlinkSync(buildProperties);
+	}
+	content += 'TITANIUM_SDK = ' + tiSDKPath + '\n';
+	content += 'TITANIUM_BASE_SDK = "$(TITANIUM_SDK)/iphone/include"\n';
+	content += 'TITANIUM_BASE_SDK2 = "$(TITANIUM_SDK)/iphone/include/TiCore"\n';
+	content += 'TITANIUM_BASE_SDK3 = "$(TITANIUM_SDK)/iphone/include/JavaScriptCore"\n';
+	content += 'HEADER_SEARCH_PATHS= $(TITANIUM_BASE_SDK) $(TITANIUM_BASE_SDK2) $(TITANIUM_BASE_SDK3)\n';
+	fs.writeFile(buildProperties, content, next);
 }
 
-function runAnt(next) {
-	console.log('Running Ant build');
-	exec('ant clean', {cwd: androidModuleDir}, function (error, stdout, stderr) {
-		var prc;
-		if (error !== null) {
-			return next('Failed to run ant clean: ' + error);
-		}
-		prc = spawn('ant', [], {cwd: androidModuleDir});
-		prc.stdout.on('data', function (data) {
-			console.log(data.toString().trim());
-		});
-		prc.stderr.on('data', function (data) {
-			console.error(data.toString().trim());
-		});
+function runBuildScript(next) {
+	console.log('Running build');
 
-		prc.on('close', function (code) {
-			if (code != 0) {
-				next("Failed to build Android module. Exit code: " + code);
-			} else {
-				next();
-			}
-		});
+	var prc = spawn('sh', ['-c', './build.sh'], { cwd: path.join(__dirname, '..') });
+	prc.stdout.on('data', function (data) {
+		console.log(data.toString().trim());
+	});
+	prc.stderr.on('data', function (data) {
+		console.error(data.toString().trim());
+	});
+	prc.on('close', function (code) {
+		if (code != 0) {
+			next("Failed to build. Exit code: " + code);
+		} else {
+			next();
+		}
 	});
 }
 
-// TODO Install python if it's not installed!
-
 /**
  * The whole shebang. Installs latest and greatest Titanium SDK from master,
- * Android SDK/NDK, sets up the android/build.properties to point at them, then
- * runs ant && ant clean.
- * TODO Do the iOS build once we combine the module and then combine the zips
+ * Android SDK/NDK, sets up the android/build.properties to point at them,
+ * iphone/titanium.xcconfig, then runs the build.sh file in the root of the repo
+ * If you already have dependencies installed, this is overkill. But useful for
+ * clean CI environments.
  */
 function build(callback) {
 	var tiSDKPath,
 		androidSDKPath,
 		androidNDKPath;
 	async.series([
-		// FIXME Do we need the SDK at all?
-		// TODO we need to check/set ANDROID_NDK/ANDROID_SDK env vars!
-		// TODO Remove old SDKs we've installed before to avoid littering HDD with tons of SDKs
-		// Run in series with getting sdk install dir
+		// Install latest Titaniun SDK from master
 		installSDK,
+		// Grab location it got installed
 		function (next) {
 			getSDKInstallDir(function (err, sdkPath) {
 				if (err) {
@@ -322,6 +331,10 @@ function build(callback) {
 				next();
 			});
 		},
+		// TODO Do we need to install xcode or something?
+		// TODO Install python if it's not installed?
+
+		// Grab the paths to Android NDK and SDK
 		function (next) {
 			console.log("Checking Android paths");
 			getAndroidPaths(function (err, result) {
@@ -330,12 +343,7 @@ function build(callback) {
 				next();
 			});
 		},
-		// Run in parallel with the SDK tasks above
-//		function (next) {
-//			console.log("Installing ANT");
-//			installAnt(next);
-//		},
-		// In parallel, install Android SDK and NDK
+		// In parallel, install Android SDK and NDK (and components) if necessary
 		function (cb) {
 			async.parallel([
 				// SDK
@@ -355,6 +363,7 @@ function build(callback) {
 							});
 						},
 						function (next) {
+							// TODO Is there any way we can just verify the components we want are already installed?
 							installAndroidSDKComponents(androidSDKPath, next);
 						}
 					], cb);
@@ -375,10 +384,16 @@ function build(callback) {
 				}
 			], cb);
 		},
+		// Point to the Titanium SDK, Android NDK and Android SDK we just installed for Android module build
 		function (next) {
 			writeBuildProperties(tiSDKPath, androidSDKPath, androidNDKPath, next);
 		},
-		runAnt
+		// Point to the Titanium SDK we just installed for iOS module build
+		function (next) {
+			writeTitaniumXcconfig(tiSDKPath, next);
+		},
+		runBuildScript
+		// TODO Remove the Titanium SDK we installed to avoid cluttering up HDD?
 	], callback);
 }
 
