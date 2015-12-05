@@ -1,35 +1,17 @@
-Hyperloop module
-===========================================
+Hyperloop Package
+=================
 
-## Requirements
+This repo contains source code for the Hyperloop&reg; product.
 
-* Titanium SDK 5.2.0 or greater
+# Building
 
-For iOS:
-*
+You must have the following on your machine to build it using `build.sh`, however, you can use `./tools/build.sh` to bootstrap your environment with the necessary build tools if you do not:
 
-For Android:
-* JDK 6+
-* Android SDK and NDK
-* Apache Ant
+- Titanium SDK 5.2.0 or later (from master)
+- Xcodebuild + iOS SDK 9.0
+- grunt
+- Ant
 
-## Installation
+# License
 
-To manually use Hyperloop (or to use the latest master version apart from Titanium SDK) you need to:
-
-* Clone this repo locally
-* Modify the `android/build.properties` to point to the latest Titanium SDK version and your Android SDK JARs
-* In the terminal, cd to repo's `android` directory
-* Run `ant` to buld the module
-* Move the `android/dist/hyperloop-X.X.X.zip` file that has just been created to the root of your Titanium project. It will be automatically unzipped when the project is built
-* Add the plugin and module to your tiapp.xml:
-```xml
-	<plugins>
-		<plugin>hyperloop</plugin>
-	</plugins>
-	<modules>
-		<module platform="android">hyperloop</module>
-		<module platform="iphone">hyperloop</module>
-	</modules>
-```
-* Do some cool stuff!
+This code is closed source and Confidential and Proprietary to Appcelerator, Inc. All Rights Reserved.  This code MUST not be modified, copied or otherwise redistributed without express written permission of Appcelerator. This file is licensed as part of the Appcelerator Platform and governed under the terms of the Appcelerator license agreement.  Your right to use this software terminates when you terminate your Appcelerator subscription.

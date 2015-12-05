@@ -2,7 +2,8 @@
 build/
 node_modules
 android/plugins/hyperloop/metabase/hyperloop/
-*.zip
+android/plugins/hyperloop/hooks/hyperloop.js
+android/LICENSE.md
 android/libs/
 android/documentation/
 android/assets/
@@ -12,3 +13,5 @@ dist/
 xcuserdata
 project.xcworkspace
 *.tgz
+*.zip
+npm-debug.log

@@ -1,32 +1,18 @@
 {
-	"name": "hyperloop",
-	"version": "0.5.5",
-	"description": "Access native Android and Java APIs from within Titanium.",
-	"scripts": {
-	},
-	"repository": {
-		"type": "git",
-		"url": "git@github.com:appcelerator/hyperloop-android-module.git"
-	},
-	"keywords": [
-		"appcelerator",
-		"titanium",
-		"hyperloop",
-		"android"
-	],
-	"author": "Chris Williams",
-	"contributors": [],
-	"license": "Apache-2.0",
-	"dependencies": {
-	    "async": "*",
-	    "chalk": "^1.1.1",
-	    "ejs": "*",
-	    "findit": "^2.0.0",
-	    "node-appc": "^0.2.33",
-	    "underscore": "*",
-	    "wrench": "*",
-	    "xmldom": "*"
-	  },
-	  "devDependencies": {
-	  }
+  "name": "hyperloop",
+  "version": "1.1.0",
+  "description": "Access native Android and Java APIs from within Titanium.",
+  "author": "Chris Williams",
+  "license": "Appcelerator Software Subscription",
+  "private": true,
+  "dependencies": {
+    "async": "^1.5.0",
+    "chalk": "^1.1.1",
+    "ejs": "^2.3.4",
+    "findit": "^2.0.0",
+    "node-appc": "^0.2.33",
+    "underscore": "^1.8.3",
+    "wrench": "^1.5.8",
+    "xmldom": "^0.1.19"
+  }
 }
