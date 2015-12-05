@@ -6,5 +6,4 @@ then
 	npm install
 fi
 cd $SCRIPT_PATH
-echo "current working directory $SCRIPT_PATH"
 node ./ci.js --no-progress-bars

@@ -3,7 +3,7 @@
  */
 var exec = require('child_process').exec,
 	path = require('path'),
-	titanium = path.join(__dirname, 'node_modules', 'titanium', 'bin', 'titanium');
+	titanium = path.join(__dirname, '..', 'node_modules', 'titanium', 'bin', 'titanium');
 
 exports.getActivePath = function (cb) {
 	exec('"' + titanium + '" sdk -o json', function (err, out) {

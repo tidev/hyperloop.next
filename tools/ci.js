@@ -16,7 +16,7 @@ var path = require('path'),
 	tiver = require('./tiver'),
 	afs = appc.fs,
 	HOME = process.env.HOME || process.env.USERPROFILE || process.env.APPDATA,
-	titanium = path.join(__dirname, 'node_modules', 'titanium', 'bin', 'titanium'),
+	titanium = path.join(__dirname, '..', 'node_modules', 'titanium', 'bin', 'titanium'),
 	androidModuleDir = path.join(__dirname, '..', 'android'),
 	iosModuleDir = path.join(__dirname, '..', 'iphone'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
@@ -133,12 +133,12 @@ function extract(filename, installLocation, keepFiles, callback) {
 // Install master branch Titanium SDK
 function installSDK(next) {
 	console.log('Checking for updated Ti SDK from master'.green);
-	var args = [titanium, 'sdk', 'install', '-b', 'master', '-d', '--no-banner'],
+	var args = ['sdk', 'install', '-b', 'master', '-d', '--no-banner'],
 		prc;
 	if (process.argv.indexOf('--no-progress-bars') != -1) {
 		args.push('--no-progress-bars');
 	}
-	prc = spawn(process.execPath, args, {stdio:'inherit'});
+	prc = spawn(titanium, args, {stdio:'inherit'});
 	prc.on('exit', function (code) {
 		if (code !== 0) {
 			next("Failed to install master SDK. Exit code: " + code);
@@ -151,7 +151,7 @@ function installSDK(next) {
 
 // Grab the Android home location
 function getAndroidPaths(next) {
-	exec(process.execPath + ' "' + titanium + '" info -o json -t android', function (error, stdout, stderr) {
+	exec('"' + titanium + '" info -o json -t android', function (error, stdout, stderr) {
 		if (error) {
 			return next('Failed to get ANDROID NDK and SDK paths: ' + error);
 		}
@@ -188,7 +188,7 @@ function installAndroidSDK(next) {
 	downloadURL(ANDROID_SDK_URL, function (filename) {
 		extract(filename, HOME, true, function() {
 			// Set the path to it in titanium config!
-			exec(process.execPath + '"' + titanium + '" config android.sdkPath ' + sdkHome, function (error, stdout, stderr) {
+			exec('"' + titanium + '" config android.sdkPath ' + sdkHome, function (error, stdout, stderr) {
 				if (error !== null) {
 					return next('Failed to set android.sdkPath in CLI config: ' + error);
 				}
@@ -233,7 +233,7 @@ function installAndroidNDK(next) {
 			if (error !== null) {
 				return next('Failed to sextract Android NDK: ' + error);
 			}
-			exec(process.execPath + ' "' + titanium + '" config android.ndkPath ' + ndkHome, function (error, stdout, stderr) {
+			exec('"' + titanium + '" config android.ndkPath ' + ndkHome, function (error, stdout, stderr) {
 				if (error !== null) {
 					return next('Failed to set path to Android NDK in titanium CLI config: ' + error);
 				}
