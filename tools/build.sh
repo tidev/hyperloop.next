@@ -1,9 +1,10 @@
-#!/bin/sh
-SCRIPT_PATH=$(dirname $0)
+#!/bin/bash
+SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ ! -d $SCRIPT_PATH/../node_modules ];
 then
 	cd $SCRIPT_PATH/../
 	npm install
 fi
 cd $SCRIPT_PATH
-node ci.js --no-progress-bars
+echo "current working directory $SCRIPT_PATH"
+node ./ci.js --no-progress-bars
