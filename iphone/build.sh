@@ -18,7 +18,7 @@ then
 	echo "Testing ..."
 	xcodebuild clean >/dev/null
 	xcodebuild -sdk iphonesimulator9.1 -destination 'platform=iOS Simulator,name=iPhone 6' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty
-	if [ ${PIPESTATUS[0]} -ne 0 ];
+	if [ $? -ne 0 ];
 	then
 		exit $?
 	fi
