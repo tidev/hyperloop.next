@@ -13,6 +13,8 @@ then
 	gem install xcpretty
 fi
 
+rm -rf build
+
 if [ "${CI}" = "1" ];
 then
 	echo "Testing ..."
@@ -26,7 +28,6 @@ fi
 
 echo "Building ..."
 
-rm -rf build
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 mkdir -p build/zip/plugins/hyperloop/hooks/ios
 mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
