@@ -260,6 +260,25 @@ function writeBuildProperties(tiSDKPath, androidSDKPath, androidNDKPath, next) {
 	fs.writeFile(buildProperties, content, next);
 }
 
+function writeTitaniumXcconfig(tiSDKPath, next) {
+	console.log('Writing titanium.xcconfig for iOS');
+	// Write out properties file
+	var buildProperties = path.join(iosModuleDir, 'titanium.xcconfig'),
+		content = "";
+
+	// if it exists, wipe it
+	if (fs.existsSync(buildProperties)) {
+		fs.unlinkSync(buildProperties);
+	}
+
+	content += 'TITANIUM_SDK = ' + tiSDKPath + '\n';
+	content += 'TITANIUM_BASE_SDK = "$(TITANIUM_SDK)/iphone/include"\n';
+	content += 'TITANIUM_BASE_SDK2 = "$(TITANIUM_SDK)/iphone/include/TiCore"\n';
+	content += 'TITANIUM_BASE_SDK3 = "$(TITANIUM_SDK)/iphone/include/JavaScriptCore"\n';
+	content += 'HEADER_SEARCH_PATHS= $(TITANIUM_BASE_SDK) $(TITANIUM_BASE_SDK2) $(TITANIUM_BASE_SDK3)\n';
+	fs.writeFile(buildProperties, content, next);
+}
+
 function runBuildScript(next) {
 	console.log('Running build'.green);
 
@@ -416,6 +435,10 @@ function build(callback) {
 		// Point to the Titanium SDK, Android NDK and Android SDK we just installed for Android module build
 		function (next) {
 			writeBuildProperties(tiSDKPath, androidSDKPath, androidNDKPath, next);
+		},
+		// Point to the Titanium SDK we just installed for iOS module build
+		function (next) {
+			writeTitaniumXcconfig(tiSDKPath, next);
 		},
 		writeAndroidManifest,
 		writeiOSManifest,
