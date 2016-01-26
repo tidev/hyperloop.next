@@ -571,7 +571,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 /**
  * Copies Hyperloop generated JavaScript files into the app's `Resources/hyperloop` directory.
  */
-HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles() {
+HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles(callback) {
 	// copy any native generated file references so that we can compile them
 	// as part of xcodebuild
 	var keys = Object.keys(this.references);
@@ -666,7 +666,7 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeProject(data) {
 	var nativeModules = Object.keys(this.nativeModules);
 	if (!nativeModules.length) {
-		return callback();
+		return;
 	}
 
 	var projectDir = this.builder.projectDir;
