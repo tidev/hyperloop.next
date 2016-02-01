@@ -134,7 +134,7 @@ var Activity = require('android.app.Activity'),
 This will create a new class in the Java runtime which will extend `android.view.View` which is equivalent to the following code (though please note that we do _not_ generate Java source, but instead generate Dalvik bytecode that gets loaded into the runtime as a class):
 
 ```java
-class View_proxy extend android.view.View {
+class MyView extends android.view.View {
 
 	protected void onDraw(Canvas canvas) {
 		// implementation here
