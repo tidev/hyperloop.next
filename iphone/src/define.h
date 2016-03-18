@@ -31,7 +31,8 @@
 
 #define RELEASE_AND_CHECK(s) { if (s) { s = nil; } }
 
-#if defined(DEBUG) && defined(TARGET_IPHONE_SIMULATOR)
+#if defined(DEBUG)
+#if TARGET_OS_SIMULATOR
 #define REMEMBER(p) { HyperloopTrackAddObject((__bridge void *)(p), [NSString stringWithFormat:@"%p (%@) (%s:%d)\n%@", p, [p class], __FILE__, __LINE__, [[NSThread callStackSymbols] componentsJoinedByString:@"\n"]]); }
 #define FORGET(p) HyperloopTrackRemoveObject((__bridge void *)(p))
 void HyperloopTrackAddObject (void * p, id description);
@@ -42,7 +43,7 @@ void HyperloopTrackDumpAll();
 #define REMEMBER(p)
 #define FORGET(p)
 #endif
-
+#endif
 
 #define ARCRetain(...) { void *retainedThing = (__bridge_retained void *)__VA_ARGS__; retainedThing = retainedThing; }
 
