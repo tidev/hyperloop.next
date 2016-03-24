@@ -50,8 +50,8 @@ You should extract the zip file at the root level of your Titanium (or Alloy) pr
 For iOS, you'll need to add the following two elements as children to the `ios` element:
 
 ```xml
+<property name="run-on-main-thread" type="bool">true</property>
 <ios>
-	<run-on-main-thread>true</run-on-main-thread>
 	<use-jscore-framework>true</use-jscore-framework>
 </ios>
 ```

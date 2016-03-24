@@ -136,12 +136,11 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		process.exit(1);
 	}
 
-	// check for the run-on-main-thread configuration
-	if (!this.builder.tiapp.ios['run-on-main-thread']) {
+	if (!(this.builder.tiapp.properties && this.builder.tiapp.properties.hasOwnProperty('run-on-main-thread') && this.builder.tiapp.properties['run-on-main-thread'].value))) {
 		this.logger.error('You cannot use the Hyperloop compiler without configuring iOS to use main thread execution.');
-		this.logger.error('Add the following to your tiapp.xml <ios> section:');
+		this.logger.error('Add the following to your tiapp.xml <ti:app> section:');
 		this.logger.error('');
-		this.logger.error('	<run-on-main-thread>true</run-on-main-thread>\n');
+		this.logger.error('	<property name="run-on-main-thread" type="bool">true</property>');
 		process.exit(1);
 	}
 
