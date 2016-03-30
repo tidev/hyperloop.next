@@ -12,7 +12,7 @@ exports.init = init;
 // set this to enforce a ios-min-version
 var IOS_MIN = '7.0';
 // set this to enforce a minimum Titanium SDK
-var TI_MIN = '5.2.0';
+var TI_MIN = '5.4.0';
 // set the iOS SDK minium
 var IOS_SDK_MIN = '9.0';
 
@@ -136,7 +136,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		process.exit(1);
 	}
 
-	if (!(this.builder.tiapp.properties && this.builder.tiapp.properties.hasOwnProperty('run-on-main-thread') && this.builder.tiapp.properties['run-on-main-thread'].value))) {
+	if (!(this.builder.tiapp.properties && this.builder.tiapp.properties.hasOwnProperty('run-on-main-thread') && this.builder.tiapp.properties['run-on-main-thread'].value)) {
 		this.logger.error('You cannot use the Hyperloop compiler without configuring iOS to use main thread execution.');
 		this.logger.error('Add the following to your tiapp.xml <ti:app> section:');
 		this.logger.error('');
