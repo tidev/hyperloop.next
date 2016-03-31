@@ -32,8 +32,8 @@ if [ $? -ne 0 ];
 then
 	exit $?
 fi
-cp -R build/zip/modules/iphone ../dist/modules
-cp -R build/zip/plugins/hyperloop ../dist/plugins/
+cp -R build/zip/modules/ ../dist/modules
+cp -R build/zip/plugins/ ../dist/plugins/
 cd ..
 
 echo "Creating combined zip with iOS and Android"
