@@ -986,7 +986,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		});
 	}
 
-	addParam('GCC_PREPROCESSOR_DEFINITIONS', 'HYPERLOOP=1');
+	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
 
 	// inject the params into the xcodebuild args
 	var args = data.args[1];
