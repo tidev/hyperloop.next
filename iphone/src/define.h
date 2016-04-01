@@ -15,12 +15,12 @@
 
 #ifdef USE_JSCORE_FRAMEWORK
 
-BOOL isIOS9OrGreater()
+static BOOL isIOS9OrGreater()
 {
 	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];;
 }
 
-BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
+static BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
 	if (isIOS9OrGreater()) return JSValueIsArray(js_context_ref, js_value_ref);
 	JSStringRef property_name = JSStringCreateWithUTF8CString("Array");
@@ -29,7 +29,7 @@ BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	BOOL isArray = JSValueIsInstanceOfConstructor(js_context_ref, js_value_ref, js_object_ref, NULL);
 	return isArray;
 }
-BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
+static BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
 	if (isIOS9OrGreater()) return JSValueIsDate(js_context_ref, js_value_ref);
 	JSStringRef property_name = JSStringCreateWithUTF8CString("Date");
