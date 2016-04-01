@@ -19,7 +19,7 @@ if [ "${CI}" = "1" ];
 then
 	echo "Testing ..."
 	xcodebuild clean >/dev/null
-	xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 6' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
+	xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 6' -scheme hyperloop -target Tests -configuration Debug test | xcpretty -r junit
 	if [ $? -ne 0 ];
 	then
 		exit $?
@@ -39,15 +39,10 @@ cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 
 # Build for the Apple JavaScriptCore built-in
 xcodebuild clean >/dev/null
+# we still need the "USE_JSCORE_FRAMEWORK=1" flag because of Titanium's header files
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a >/dev/null 2>&1
-
-# Build for the Titanium custom JavaScriptCore
-xcodebuild clean >/dev/null
-xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
+lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a >/dev/null 2>&1
 
 echo "Packaging ..."
 # make sure to update the plugin with the latest version in it's package.json
@@ -73,8 +68,6 @@ npm i --production >/dev/null 2>&1
 rm -rf unittest
 cp -R * $CWD/build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
 
-# titanium requires at least this file so just create an empty one
-echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
 
 cd $CWD/build/zip
 rm -rf $CWD/hyperloop-iphone-$VERSION.zip
