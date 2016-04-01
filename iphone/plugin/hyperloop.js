@@ -922,7 +922,8 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
 			xobjs.PBXBuildFile[buildFileUuid] = {
 				isa: 'PBXBuildFile',
 				fileRef: fileRefUuid,
-				fileRef_comment: name
+				fileRef_comment: name,
+				settings: {COMPILER_FLAGS : '"-fobjc-arc"' }
 			};
 			xobjs.PBXBuildFile[buildFileUuid + '_comment'] = name + ' in Sources';
 
