@@ -747,10 +747,11 @@ function generateInstanceMethod (state, json, method) {
 	code.push('\t\tvalue: function ' + generateArgList (state,json,method.arguments,'(',')', '()') + ' {');
 
 	var body = generateMethodBody(state, json, method, preamble, true, 'this.$native');
+	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
 	var returnsObject = (body.indexOf('new') !== -1) && (body.indexOf('.constructor(') !== -1);
-	code.push(body);
 	var prefix;
 	if (returnsObject) {
+		code.push(body);
 		code.push('\t\t\tvar instance = result;');
 		prefix = 'instance';
 	} else {
@@ -762,9 +763,9 @@ function generateInstanceMethod (state, json, method) {
 			code.push('\t\t\t'+prefix+'.$private.' + method.name + '.push(_' + arg.name + ');');
 		});
 	}
-	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
 
 	if (!returnsObject) {
+		code.push(body);
 		code.push('\t\t\treturn result;');
 	} else {
 		code.push('\t\t\treturn instance;');
