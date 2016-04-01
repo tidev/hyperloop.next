@@ -27,7 +27,6 @@ BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	BOOL isDate = JSValueIsInstanceOfConstructor(js_context_ref, js_value_ref, js_object_ref, NULL);
 	return isDate;
 }
-#endif
 
 #ifdef HYPERLOOP_MEMORY_TRACKING
 static NSMutableDictionary *hashTable;
@@ -58,3 +57,4 @@ void HyperloopTrackDumpAll() {
 	}
 	hashTable = nil;
 }
+#endif
