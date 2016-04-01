@@ -14,30 +14,9 @@
 #import "TiToJS.h"
 
 #ifdef USE_JSCORE_FRAMEWORK
-
-static BOOL isIOS9OrGreater()
-{
-	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];;
-}
-
-static BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
-	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
-	if (isIOS9OrGreater()) return JSValueIsArray(js_context_ref, js_value_ref);
-	JSStringRef property_name = JSStringCreateWithUTF8CString("Array");
-	JSObjectRef js_object_ref = (JSObjectRef)JSObjectGetProperty(js_context_ref, JSContextGetGlobalObject(js_context_ref), property_name, NULL);
-	JSStringRelease(property_name);
-	BOOL isArray = JSValueIsInstanceOfConstructor(js_context_ref, js_value_ref, js_object_ref, NULL);
-	return isArray;
-}
-static BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
-	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
-	if (isIOS9OrGreater()) return JSValueIsDate(js_context_ref, js_value_ref);
-	JSStringRef property_name = JSStringCreateWithUTF8CString("Date");
-	JSObjectRef js_object_ref = (JSObjectRef)JSObjectGetProperty(js_context_ref, JSContextGetGlobalObject(js_context_ref), property_name, NULL);
-	JSStringRelease(property_name);
-	BOOL isDate = JSValueIsInstanceOfConstructor(js_context_ref, js_value_ref, js_object_ref, NULL);
-	return isDate;
-}
+extern BOOL isIOS9OrGreater();
+extern BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref);
+extern BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref);
 #else
 #define HLValueIsDate TiValueIsDate
 #define HLValueIsArray TiValueIsArray
@@ -61,14 +40,17 @@ static BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) 
 #if TARGET_OS_SIMULATOR
 #define REMEMBER(p) { HyperloopTrackAddObject((__bridge void *)(p), [NSString stringWithFormat:@"%p (%@) (%s:%d)\n%@", p, [p class], __FILE__, __LINE__, [[NSThread callStackSymbols] componentsJoinedByString:@"\n"]]); }
 #define FORGET(p) HyperloopTrackRemoveObject((__bridge void *)(p))
-void HyperloopTrackAddObject (void * p, id description);
-void HyperloopTrackRemoveObject (void * p);
-void HyperloopTrackDumpAll();
+extern void HyperloopTrackAddObject (void * p, id description);
+extern void HyperloopTrackRemoveObject (void * p);
+extern void HyperloopTrackDumpAll();
 #define HYPERLOOP_MEMORY_TRACKING
 #else
-#define REMEMBER(p)
-#define FORGET(p)
 #endif
+#endif
+
+#ifndef REMEMBER
+#define REMEMBER(p) {}
+#define FORGET(p) {}
 #endif
 
 #define ARCRetain(...) { void *retainedThing = (__bridge_retained void *)__VA_ARGS__; retainedThing = retainedThing; }
