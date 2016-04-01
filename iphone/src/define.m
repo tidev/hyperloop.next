@@ -5,7 +5,6 @@
 
 #include "define.h"
 
-#ifdef USE_JSCORE_FRAMEWORK
 BOOL isIOS9OrGreater() {
 	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];;
 }
@@ -59,5 +58,3 @@ void HyperloopTrackDumpAll() {
 	}
 	hashTable = nil;
 }
-
-#endif
