@@ -396,10 +396,12 @@ case enc: {\
 	TiValueProtect(context, function);
 	TiValueProtect(context, thisRef);
 	TiObjectCallAsFunction(context, function, thisObjectRef, [args count], jsArgs, &exception);
-#if defined(TIMODULE) && defined(TARGET_IPHONE_SIMULATOR)
+#if defined(TIMODULE)
+#if TARGET_OS_SIMULATOR
 	if (exception) {
 		NSLog(@"[ERROR] JS exception encountered calling callback: %@", [Hyperloop JSValueRefToNSException:exception]);
 	}
+#endif
 #endif
 	if (args) {
 		for (size_t c = 0; c < [args count]; c++) {
@@ -430,10 +432,12 @@ case enc: {\
 	TiValueProtect(context, function);
 	TiObjectRef thisObject = HyperloopGetWrapperForId(sender);
 	TiValueRef jsResult = TiObjectCallAsFunction(context, function, thisObject, [args count], jsArgs, &exception);
-#if defined(TIMODULE) && defined(TARGET_IPHONE_SIMULATOR)
+#if defined(TIMODULE)
+#if TARGET_OS_SIMULATOR
 	if (exception) {
 		NSLog(@"[ERROR] JS exception encountered calling callback: %@", [Hyperloop JSValueRefToNSException:exception]);
 	}
+#endif
 #endif
 	if (exception == NULL) {
 		result = TiValueRefToId(context, jsResult, NULL);

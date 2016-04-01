@@ -44,8 +44,8 @@
 	@end
 #endif
 
-#ifdef TARGET_OS_SIMULATOR
-// extern void JSSynchronousGarbageCollectForDebugging(TiContextRef);
+#if TARGET_OS_SIMULATOR
+extern void JSSynchronousGarbageCollectForDebugging(TiContextRef);
 #endif
 
 static TiClassRef classClassRef;
@@ -629,11 +629,11 @@ static TiObjectRef Constructor (TiContextRef ctx, TiObjectRef constructor, size_
 /**
  * forces a garbage collection, this is called from JavaScript, `Hyperloop.garbageCollect()`
  */
-#ifdef TARGET_OS_SIMULATOR
+#if TARGET_OS_SIMULATOR
 JS_CALLBACK(GarbageCollect)
-//	NSLog(@"[HYPERLOOP] 🚚\tGarbage Collection");
-//	JSSynchronousGarbageCollectForDebugging(ctx);
-//	return TiValueMakeUndefined(ctx);
+	NSLog(@"[HYPERLOOP] 🚚\tGarbage Collection");
+	JSSynchronousGarbageCollectForDebugging(ctx);
+	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 #endif
 
@@ -1053,7 +1053,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  * this method is called before Titanium loads to allow Hyperloop to bootstrap into the JS VM
  */
 +(void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge {
-#ifdef TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 	NSLog(@"[HYPERLOOP] willStartNewContext %@", kroll);
 #endif
 
@@ -1064,7 +1064,7 @@ static BOOL isPlatformGUID (NSString *guid) {
 			NSLog(@"[WARN] Hyperloop is running in DEMO mode. This application will not run in production. To register this application with the Appcelerator Platform, run the command: appc new --import");
 		} else {
 			NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
-	#ifdef TARGET_IPHONE_SIMULATOR
+	#if TARGET_OS_SIMULATOR
 			UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
 										message:@"Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import"
 										delegate:nil
@@ -1133,7 +1133,7 @@ static BOOL isPlatformGUID (NSString *guid) {
 	// add our implementations
 
 
-#ifdef TARGET_OS_SIMULATOR
+#if TARGET_OS_SIMULATOR
 	MAKECALLBACK(garbageCollect, GarbageCollect);
 #endif
 	MAKECALLBACK(getWrapper, GetWrapper);
@@ -1187,7 +1187,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  * this method is called after Titanium starts the context
  */
 +(void)didStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#ifdef TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 	NSLog(@"[HYPERLOOP] didStartNewContext %@", kroll);
 #endif
 }
@@ -1197,7 +1197,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  * this method is called before Titanium shuts down the context
  */
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#ifdef TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 	NSLog(@"[HYPERLOOP] willStopNewContext %@", kroll);
 #endif
 	if (context) {
@@ -1230,7 +1230,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  * this method is called after Titanium stops the context
  */
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#ifdef TARGET_IPHONE_SIMULATOR
+#if TARGET_OS_SIMULATOR
 	NSLog(@"[HYPERLOOP] didStopNewContext %@", kroll);
 #endif
 }
