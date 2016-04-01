@@ -452,37 +452,4 @@ case enc: {\
 	return result;
 }
 
-
-#ifdef HYPERLOOP_MEMORY_TRACKING
-static NSMutableDictionary *hashTable;
-
-void HyperloopTrackAddObject (void * p, id desc) {
-	if (!hashTable) {
-		hashTable = [NSMutableDictionary dictionary];
-	}
-	NSNumber *key = [NSNumber numberWithLong:(long)p];
-	[hashTable setObject:desc forKey:key];
-}
-
-void HyperloopTrackRemoveObject (void * p) {
-	NSNumber *key = [NSNumber numberWithLong:(long)p];
-	[hashTable removeObjectForKey:key];
-}
-
-void HyperloopTrackDumpAll() {
-	if ([hashTable count] != 0) {
-		NSArray <NSString *> *values = [hashTable allValues];
-		NSLog(@"[ERROR] found the following leaked objects:");
-		NSLog(@" ");
-		for (NSString *each in values) {
-			NSLog(@"%@", [each stringByReplacingOccurrencesOfString:@"\\n" withString:@"\n"]);
-			NSLog(@" ");
-		}
-//		assert(false);
-	}
-	hashTable = nil;
-}
-
-#endif
-
 @end

@@ -14,7 +14,12 @@
 #import "TiToJS.h"
 
 #ifdef USE_JSCORE_FRAMEWORK
-#define TiValueIsDate JSValueIsDate
+extern BOOL isIOS9OrGreater();
+extern BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref);
+extern BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref);
+#else
+#define HLValueIsDate TiValueIsDate
+#define HLValueIsArray TiValueIsArray
 #endif
 
 #define TiObjectMakeConstructor JSObjectMakeConstructor
@@ -35,14 +40,17 @@
 #if TARGET_OS_SIMULATOR
 #define REMEMBER(p) { HyperloopTrackAddObject((__bridge void *)(p), [NSString stringWithFormat:@"%p (%@) (%s:%d)\n%@", p, [p class], __FILE__, __LINE__, [[NSThread callStackSymbols] componentsJoinedByString:@"\n"]]); }
 #define FORGET(p) HyperloopTrackRemoveObject((__bridge void *)(p))
-void HyperloopTrackAddObject (void * p, id description);
-void HyperloopTrackRemoveObject (void * p);
-void HyperloopTrackDumpAll();
+extern void HyperloopTrackAddObject (void * p, id description);
+extern void HyperloopTrackRemoveObject (void * p);
+extern void HyperloopTrackDumpAll();
 #define HYPERLOOP_MEMORY_TRACKING
 #else
-#define REMEMBER(p)
-#define FORGET(p)
 #endif
+#endif
+
+#ifndef REMEMBER
+#define REMEMBER(p) {}
+#define FORGET(p) {}
 #endif
 
 #define ARCRetain(...) { void *retainedThing = (__bridge_retained void *)__VA_ARGS__; retainedThing = retainedThing; }

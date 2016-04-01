@@ -207,25 +207,6 @@ NSString* GenerateIdentifier (NSString *className, NSString *methodName, BOOL in
 }
 
 /**
- * returns true if a TiObjectRef is a JS Array
- */
-BOOL isJSArray (TiContextRef ctx, TiObjectRef obj, TiValueRef *exception){
-#if USE_JSCORE_FRAMEWORK == 0
-	return TiValueIsArray(ctx, obj);
-#else
-	// determine if this is an array by checking the prototype for slice and length methods
-	// FIXME: switch to use constructor check like RegExp below
-	TiObjectRef proto = TiValueToObject(ctx, TiObjectGetPrototype(ctx, obj), exception);
-	TiStringRef slice = TiStringCreateWithUTF8CString("slice");
-	TiStringRef prop = TiStringCreateWithUTF8CString("length");
-	bool isArray = TiObjectHasProperty(ctx, proto, prop) && TiObjectHasProperty(ctx, proto, slice);
-	TiStringRelease(slice);
-	TiStringRelease(prop);
-	return isArray;
-#endif
-}
-
-/**
  * returns true if TiObjectRef is a JS RegExp instance
  */
 BOOL isJSRegExp (TiContextRef ctx, TiObjectRef obj, TiValueRef *exception) {
@@ -457,7 +438,7 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 				TiValueIsObjectOfClass(ctx, value, classClassRef) ||
 				TiValueIsObjectOfClass(ctx, value, constructorClassRef)) {
 				return (__bridge id)TiObjectGetPrivate(obj);
-			} else if (TiValueIsDate(ctx, value)) {
+			} else if (HLValueIsDate(ctx, value)) {
 				double ms = TiValueToNumber(ctx, value, exception);
 				CHECKEXCEPTION_NSNULL
 				return [NSDate dateWithTimeIntervalSince1970:(NSTimeInterval) (ms / 1000)];
@@ -466,7 +447,7 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 					@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"argument passed was not a valid Hyperloop object" userInfo:nil];
 				}
 				return [KrollObject toID:context value:value];
-			} else if (isJSArray(ctx, obj, exception)) {
+			} else if (HLValueIsArray(ctx, obj)) {
 				TiStringRef prop = TiStringCreateWithUTF8CString("length");
 				TiValueRef lengthValue = TiObjectGetProperty(ctx, obj, prop, exception);
 				CHECKEXCEPTION_NSNULL

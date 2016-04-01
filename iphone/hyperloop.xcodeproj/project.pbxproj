@@ -7,23 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		24033C3B1BBA29D700EE4875 /* TestUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 24033C3A1BBA29D700EE4875 /* TestUtils.m */; settings = {ASSET_TAGS = (); }; };
-		2452612D1BE5A1C700FF03D6 /* TestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2452612C1BE5A1C700FF03D6 /* TestView.swift */; settings = {ASSET_TAGS = (); }; };
-		2452612F1BE5A25100FF03D6 /* TestSwift.m in Sources */ = {isa = PBXBuildFile; fileRef = 2452612E1BE5A25100FF03D6 /* TestSwift.m */; settings = {ASSET_TAGS = (); }; };
-		2461FDA01BB0C286006D4D9E /* libhyperloop.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2461FD871BB08963006D4D9E /* libhyperloop.a */; settings = {ASSET_TAGS = (); ATTRIBUTES = (Required, ); }; };
+		24033C3B1BBA29D700EE4875 /* TestUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 24033C3A1BBA29D700EE4875 /* TestUtils.m */; };
+		2452612D1BE5A1C700FF03D6 /* TestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2452612C1BE5A1C700FF03D6 /* TestView.swift */; };
+		2452612F1BE5A25100FF03D6 /* TestSwift.m in Sources */ = {isa = PBXBuildFile; fileRef = 2452612E1BE5A25100FF03D6 /* TestSwift.m */; };
+		2461FDA01BB0C286006D4D9E /* libhyperloop.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2461FD871BB08963006D4D9E /* libhyperloop.a */; settings = {ATTRIBUTES = (Required, ); }; };
 		2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDAB1BB0C3F2006D4D9E /* class.m */; };
-		2461FDB31BB1DF01006D4D9E /* TestDispatch.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDB21BB1DF01006D4D9E /* TestDispatch.m */; settings = {ASSET_TAGS = (); }; };
-		2461FDBC1BB21348006D4D9E /* TestExtend.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDBB1BB21348006D4D9E /* TestExtend.m */; settings = {ASSET_TAGS = (); }; };
+		2461FDB31BB1DF01006D4D9E /* TestDispatch.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDB21BB1DF01006D4D9E /* TestDispatch.m */; };
+		2461FDBC1BB21348006D4D9E /* TestExtend.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDBB1BB21348006D4D9E /* TestExtend.m */; };
 		247077751BB304E100150B9F /* HyperloopModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077721BB304E100150B9F /* HyperloopModule.m */; };
-		247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077741BB304E100150B9F /* HyperloopModuleAssets.m */; settings = {ASSET_TAGS = (); }; };
-		2470777A1BB3424200150B9F /* TitaniumMocks.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077791BB3424200150B9F /* TitaniumMocks.m */; settings = {ASSET_TAGS = (); }; };
+		247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077741BB304E100150B9F /* HyperloopModuleAssets.m */; };
+		2470777A1BB3424200150B9F /* TitaniumMocks.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077791BB3424200150B9F /* TitaniumMocks.m */; };
 		2470779B1BB3A70300150B9F /* utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077991BB3A70300150B9F /* utils.m */; };
-		247077A51BB4494600150B9F /* TestPointers.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077A41BB4494600150B9F /* TestPointers.m */; settings = {ASSET_TAGS = (); }; };
+		247077A51BB4494600150B9F /* TestPointers.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077A41BB4494600150B9F /* TestPointers.m */; };
 		247077AD1BB87FAE00150B9F /* pointer.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077AB1BB87FAE00150B9F /* pointer.m */; };
 		24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */; };
-		24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */; settings = {ASSET_TAGS = (); }; };
+		24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */; };
 		24B0355E1BC7237900F3D9E5 /* TestJS.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0355C1BC7233000F3D9E5 /* TestJS.m */; };
 		24B035601BC726E000F3D9E5 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */; };
+		B68D53D41CAEED6600EBFE65 /* define.m in Sources */ = {isa = PBXBuildFile; fileRef = B68D53D31CAEED6600EBFE65 /* define.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 		24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopViewProxy.h; path = titanium/HyperloopViewProxy.h; sourceTree = "<group>"; };
 		24B0355C1BC7233000F3D9E5 /* TestJS.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestJS.m; sourceTree = "<group>"; };
 		24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		B68D53D31CAEED6600EBFE65 /* define.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = define.m; path = src/define.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -148,6 +150,7 @@
 				247077991BB3A70300150B9F /* utils.m */,
 				2470779A1BB3A70300150B9F /* utils.h */,
 				247077981BB3A5D900150B9F /* define.h */,
+				B68D53D31CAEED6600EBFE65 /* define.m */,
 				2461FDAA1BB0C3F2006D4D9E /* class.h */,
 				2461FDAB1BB0C3F2006D4D9E /* class.m */,
 			);
@@ -270,6 +273,7 @@
 				247077751BB304E100150B9F /* HyperloopModule.m in Sources */,
 				24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */,
 				247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */,
+				B68D53D41CAEED6600EBFE65 /* define.m in Sources */,
 				24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */,
 				2470779B1BB3A70300150B9F /* utils.m in Sources */,
 				2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */,
