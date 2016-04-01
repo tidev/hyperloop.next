@@ -45,7 +45,7 @@
 #endif
 
 #ifdef TARGET_OS_SIMULATOR
-extern void JSSynchronousGarbageCollectForDebugging(TiContextRef);
+// extern void JSSynchronousGarbageCollectForDebugging(TiContextRef);
 #endif
 
 static TiClassRef classClassRef;
@@ -612,9 +612,9 @@ static TiObjectRef Constructor (TiContextRef ctx, TiObjectRef constructor, size_
  */
 #ifdef TARGET_OS_SIMULATOR
 JS_CALLBACK(GarbageCollect)
-	NSLog(@"[HYPERLOOP] 🚚\tGarbage Collection");
-	JSSynchronousGarbageCollectForDebugging(ctx);
-	return TiValueMakeUndefined(ctx);
+//	NSLog(@"[HYPERLOOP] 🚚\tGarbage Collection");
+//	JSSynchronousGarbageCollectForDebugging(ctx);
+//	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 #endif
 

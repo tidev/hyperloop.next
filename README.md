@@ -7,7 +7,7 @@ This repo contains source code for the Hyperloop&reg; product.
 
 You must have the following on your machine to build it using `build.sh`, however, you can use `./tools/build.sh` to bootstrap your environment with the necessary build tools if you do not:
 
-- Titanium SDK 5.2.0 or later (from master)
+- Titanium SDK 5.4.0 or later (from master)
 - Xcodebuild + iOS SDK 9.0
 - grunt
 - Ant
