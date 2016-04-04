@@ -15,3 +15,4 @@ project.xcworkspace
 *.tgz
 *.zip
 npm-debug.log
+metabase/ios/bin/metabase
