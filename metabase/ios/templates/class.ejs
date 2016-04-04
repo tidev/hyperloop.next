@@ -60,7 +60,8 @@ function <%= data.class.name %> (pointer) {
 		configurable: true
 	}
 });
-Object.setPrototypeOf(<%= data.class.name %>, <%= data.superclass.name %>);
+// Object.setPrototypeOf is undefined in iOS 8
+Hyperloop.SetPrototypeOf(<%= data.class.name %>, <%= data.superclass.name %>);
 <% } -%>
 
 Object.defineProperty(<%= data.class.name %>, '$class', {
