@@ -193,6 +193,24 @@ for (var propertyName in classDefinition.properties) {
 }
 -%>
 
+// Inner classes
+<%
+if (classDefinition.innerClasses) {
+	for (var ic = 0; ic < classDefinition.innerClasses.length; ic++) {
+		var innerClassName = classDefinition.innerClasses[ic];
+		var baseInnerClassName = innerClassName.slice(innerClassName.indexOf('$') + 1);
+-%>
+Object.defineProperty(<%= sanitizedName %>, '<%= baseInnerClassName %>', {
+	get: function() {
+		return require('<%= innerClassName %>');
+	},
+	enumerable: true
+});
+<%
+	}
+}
+-%>
+
 // Static fields
 <%
 for (var propertyName in classDefinition.properties) {

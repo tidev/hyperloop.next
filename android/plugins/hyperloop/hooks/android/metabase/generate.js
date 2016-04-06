@@ -89,6 +89,8 @@ function expandClassDependencies(metabaseJSON, className, done) {
 		// if this is not an inner class, add any inner classes underneath it as dependencies
 		for (var otherClass in metabaseJSON.classes) {
 			if (otherClass.indexOf(className + '$') == 0) {
+				classDef.innerClasses = classDef.innerClasses || [];
+				classDef.innerClasses.push(otherClass);
 				expanded.push(otherClass);
 			}
 		}
