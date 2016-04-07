@@ -11,7 +11,9 @@ rm -rf dist
 mkdir dist
 
 VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
-# TODO Force the version into the manifest files in iphone/android directories!
+# Force the version into the manifest files in iphone/android directories!
+sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
+sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
 
 echo "Building Android module..."
 cd android
@@ -32,6 +34,7 @@ cd ..
 
 echo "Building iOS module..."
 cd iphone
+rm -rf hyperloop-iphone-*.zip
 ./build.sh
 if [ $? -ne 0 ];
 then
