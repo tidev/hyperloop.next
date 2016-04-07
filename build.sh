@@ -11,6 +11,15 @@ rm -rf dist
 mkdir dist
 
 VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
+# Replace manifest with manifest.bak if it exists!
+if [ -d "./android/manifest.bak" ]
+then
+  git checkout -- ./android/manifest
+fi
+if [ -d "./iphone/manifest.bak" ]
+then
+  git checkout -- ./iphone/manifest
+fi
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
