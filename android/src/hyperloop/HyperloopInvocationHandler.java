@@ -9,6 +9,7 @@ package hyperloop;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 
 import org.appcelerator.kroll.KrollFunction;
 
@@ -20,6 +21,20 @@ import org.appcelerator.kroll.KrollFunction;
  * @author cwilliams
  */
 class HyperloopInvocationHandler implements InvocationHandler {
+
+	private static final Method OBJECT_EQUALS = getObjectMethod("equals", Object.class);
+	private static final Method OBJECT_HASHCODE = getObjectMethod("hashCode");
+	private static final Method OBJECT_TOSTRING = getObjectMethod("toString");
+
+    private static Method getObjectMethod(String name, Class... types) {
+        try {
+            // null 'types' is OK.
+            return Object.class.getMethod(name, types);
+        }
+        catch (NoSuchMethodException e) {
+            throw new IllegalArgumentException(e);
+        }
+    }
 
     protected InstanceProxy hp;
 
@@ -50,12 +65,31 @@ class HyperloopInvocationHandler implements InvocationHandler {
             return HyperloopUtil
                     .unwrap(kf.call(this.hp.getKrollObject(),
                             HyperloopUtil.wrapArguments(method.getParameterTypes(), args)));
+        } else {
+            if (OBJECT_EQUALS == method) {
+                return doEquals(proxy, args[0]);
+            } else if (OBJECT_HASHCODE == method) {
+                return this.hashCode(); // Use the invocation handler's hash code in place of the dynamic proxy's
+            } else if (OBJECT_TOSTRING == method) {
+                return proxy.getClass().getName() + "@" + Integer.toHexString(this.hashCode());
+            }
         }
         return null;
     }
 
     void setProxy(InstanceProxy proxy) {
         this.hp = proxy;
+    }
+
+    private boolean doEquals(Object self, Object other) {
+        if (other == null) {
+            return false;
+        }
+        InvocationHandler handler = Proxy.getInvocationHandler(other);
+        if (!(handler instanceof HyperloopInvocationHandler)) {
+            return false;
+        }
+        return ((HyperloopInvocationHandler) handler).hp == this.hp;
     }
 
 }
