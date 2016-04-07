@@ -5,6 +5,8 @@
 SCRIPT_PATH=$(dirname $0)
 cd $SCRIPT_PATH
 
+npm install
+
 rm -rf dist
 mkdir dist
 
