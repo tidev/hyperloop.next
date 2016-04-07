@@ -10,6 +10,9 @@ npm install
 rm -rf dist
 mkdir dist
 
+VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
+# TODO Force the version into the manifest files in iphone/android directories!
+
 echo "Building Android module..."
 cd android
 ant
@@ -22,13 +25,12 @@ cd ..
 
 echo "Unzipping Android zipfile..."
 cd dist
-unzip hyperloop-android-*.zip
-rm hyperloop-android-*.zip
+unzip hyperloop-android-$VERSION.zip
+rm hyperloop-android-$VERSION.zip
 cd ..
 
 echo "Building iOS module..."
 cd iphone
-VERSION=`grep "^version:" manifest | cut -c 10-`
 ./build.sh
 if [ $? -ne 0 ];
 then
