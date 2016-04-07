@@ -15,6 +15,7 @@ VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2
 
 echo "Building Android module..."
 cd android
+rm -rf dist
 ant
 if [ $? -ne 0 ];
 then
