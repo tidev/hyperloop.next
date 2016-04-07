@@ -22,20 +22,6 @@ import org.appcelerator.kroll.KrollFunction;
  */
 class HyperloopInvocationHandler implements InvocationHandler {
 
-	private static final Method OBJECT_EQUALS = getObjectMethod("equals", Object.class);
-	private static final Method OBJECT_HASHCODE = getObjectMethod("hashCode");
-	private static final Method OBJECT_TOSTRING = getObjectMethod("toString");
-
-    private static Method getObjectMethod(String name, Class... types) {
-        try {
-            // null 'types' is OK.
-            return Object.class.getMethod(name, types);
-        }
-        catch (NoSuchMethodException e) {
-            throw new IllegalArgumentException(e);
-        }
-    }
-
     protected InstanceProxy hp;
 
     protected HyperloopInvocationHandler(InstanceProxy hyperloopProxy) {
@@ -66,11 +52,11 @@ class HyperloopInvocationHandler implements InvocationHandler {
                     .unwrap(kf.call(this.hp.getKrollObject(),
                             HyperloopUtil.wrapArguments(method.getParameterTypes(), args)));
         } else {
-            if (OBJECT_EQUALS == method) {
+            if ("equals".equals(method.getName()) && args.length == 1) {
                 return doEquals(proxy, args[0]);
-            } else if (OBJECT_HASHCODE == method) {
+            } else if ("hashCode".equals(method.getName()) && (args == null || args.length == 0)) {
                 return this.hashCode(); // Use the invocation handler's hash code in place of the dynamic proxy's
-            } else if (OBJECT_TOSTRING == method) {
+            } else if ("toString".equals(method.getName()) && (args == null || args.length == 0)) {
                 return proxy.getClass().getName() + "@" + Integer.toHexString(this.hashCode());
             }
         }
