@@ -8,11 +8,11 @@ architectures: armv7 arm64 i386 x86_64
 description: hyperloop
 author: Appcelerator
 license: Appcelerator Commercial License
-copyright: Copyright (c) 2015 by Appcelerator, Inc.
+copyright: Copyright (c) 2016 by Appcelerator, Inc.
 
 # these should not be edited
 name: hyperloop
 moduleid: hyperloop
 guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
 platform: iphone
-minsdk: 5.4.0
+minsdk: 5.2.1
