@@ -50,6 +50,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.appc = appc;
 	this.hyperloopConfig = hyperloopConfig || {};
 	this.hyperloopConfig.ios || (this.hyperloopConfig.ios = {});
+	this.hyperloopConfig.ios.cocoapods || (this.hyperloopConfig.ios.cocoapods = {});
 	this.builder = builder;
 
 	this.resourcesDir = path.join(builder.projectDir, 'Resources');
@@ -87,6 +88,7 @@ HyperloopiOSBuilder.prototype.run = function run(callback) {
 	this.appc.async.series(this, [
 		'validate',
 		'setup',
+		'processHyperloopModules',
 		'getSystemFrameworks',
 		'generateCocoaPods',
 		'processThirdPartyFrameworks',
@@ -169,7 +171,8 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 		this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
 		this.logger.info('');
 		this.logger.info('Using Apple JavaScriptCore by default when not specified.');
-		this.builder.tiapp.ios['use-jscore-framework'] = true;
+		// Allow developers to use TiJSCore for now
+		// this.builder.tiapp.ios['use-jscore-framework'] = true;
 	}
 
 	// create a temporary hyperloop directory
@@ -190,6 +193,184 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 	}, this);
 };
 
+HyperloopiOSBuilder.prototype.processHyperloopModules = function processHyperloopModules (callback) {
+
+	function createFolder(_path) {
+		if (fs.existsSync(_path)) return;
+		fs.mkdirSync(_path);
+	}
+
+	var builder = this.builder;
+	console.log('====================================');
+	console.log('processing hyperloop modules');
+	console.log('====================================');
+
+	var hyperloopsModulesPath = path.join(builder.projectDir, 'hyperloop');
+	var hyperloopsModules = fs.readdirSync(hyperloopsModulesPath);
+
+	var configs = {};
+	var jsFiles = {
+		ios: {},
+		android: {},
+		windows: {}
+	};
+
+	// check the contents of `project_dir/hyperloop`
+	hyperloopsModules.forEach(function (each) {
+
+		// check for each folder, each folder is a module
+		var modulePath = path.join(hyperloopsModulesPath, each);
+		if (fs.statSync(modulePath).isDirectory()) {
+			// get the config.json for each of the modules
+			var config = path.join(modulePath, 'module.json');
+			// make sure it exists!!
+			if (fs.existsSync(config)) {
+				// get the contents
+				config = require(config);
+				configs[each] = config;
+
+				// iterate through the folders of the module
+				// and look for ios, android, and windows
+				fs.readdirSync(modulePath).forEach(function (eachModule) {
+					var fullPath = path.join(modulePath, eachModule);
+					// only look for folders
+					if (fs.statSync(fullPath).isDirectory()) {
+						if (eachModule == 'ios' || eachModule == 'windows' || eachModule == 'android') {
+							// get the module.js of each module
+							var moduleSrc = path.join(fullPath, 'module.js');
+							if (fs.existsSync(moduleSrc)) {
+								jsFiles[eachModule][config.moduleid] = moduleSrc;
+							} else {
+								// TODO: Fix this!
+								throw new Error("No module.js file for " + each + " hyperloop module");
+								process.exit();
+							}
+						}
+					}
+				});
+
+			} else {
+				// TODO: Fix this!
+				throw new Error("No config file for " + each + " hyperloop module");
+				process.exit();
+			}
+		}
+	});
+
+	var resourcesDir = path.join(builder.projectDir, 'Resources');
+
+	// copy the modules to the Resources directory
+	['ios', 'android', 'windows'].forEach(function (each) {
+
+		// rename 'ios' into 'iphone'
+		var platform = each == 'ios' ? 'iphone' : each;
+		var platformSpecificFolder = path.join(resourcesDir, platform);
+		var key;
+		var org;
+		var dest;
+		for (key in jsFiles[each]) {
+			org = jsFiles[each][key];
+			dest = path.join(platformSpecificFolder, key + '.js');
+			fs.writeFileSync(dest, fs.readFileSync(org));
+		}
+	});
+
+	var pods = {};
+	var srcs = {};
+	var libs = [];
+	// create cocoapods file
+	for (var mod in configs) {
+		var config = configs[mod];
+		if (config.dependencies) {
+			var dependencies = config.dependencies.ios;
+			if (dependencies) {
+				var cocoapods = dependencies.cocoapods;
+				var sources = dependencies.files;
+				var libraries = dependencies.libs;
+				if (cocoapods) {
+					for (var pod in cocoapods) {
+						pods[pod] = cocoapods[pod];
+					}
+				}
+				if (sources) {
+					for (var key in sources) {
+						var srcPath = path.join(hyperloopsModulesPath, mod, 'ios', 'dependencies', key);
+						if (fs.existsSync(srcPath)) {
+							srcs[config.name] = srcs[config.name] || {};
+							srcs[config.name][srcPath] = sources[key];
+						} else {
+							throw "File does not exists: " + srcPath;
+						}
+					}
+				}
+				if (libraries) {
+					for (var i = 0, len = libraries.length; i < len; i++) {
+						var each = libraries[i];
+						var srcPath = path.join(hyperloopsModulesPath, mod, 'ios', 'dependencies', each);
+						if (fs.existsSync(srcPath)) {
+							libs.push(srcPath);
+						} else {
+							throw "Library does not exists: " + srcPath;
+						}
+					}
+				}
+			}
+		}
+	}
+
+	var hyperloopConfig = this.hyperloopConfig;
+	// =========================== COCOAPODS ===========================
+	(function () {
+		if (Object.keys(pods).length) {
+			hyperloopConfig.ios = hyperloopConfig.ios || {};
+			hyperloopConfig.ios.cocoapods = {};
+
+			for (var key in pods) {
+				hyperloopConfig.ios.cocoapods[key] = pods[key];
+			}
+		}
+	})();
+
+	// =========================== SOURCE FILES ===========================
+	(function () {
+			if (Object.keys(srcs).length > 0) {
+			var each;
+			var sources;
+			var headers;
+			var src;
+			hyperloopConfig.ios = hyperloopConfig.ios || {};
+			hyperloopConfig.ios.modules = {};
+			for (var mod in configs) {
+				each = configs[mod];
+				sources = srcs[each.name];
+				headers = {};
+				for (src in sources) {
+					if (/\.(h(pp)?|swift)$/.test(src)) {
+						headers[src] = sources[src];
+						delete sources[src];
+					}
+				}
+				hyperloopConfig.ios.modules[each.name] = {
+					sources: sources,
+					headers: headers
+				};
+			}
+		}
+	})();
+	// =========================== STATIC LIBRARIES ===========================
+
+	(function () {
+		if (libs.length > 0) {
+			hyperloopConfig.ios = hyperloopConfig.ios || {};
+			hyperloopConfig.ios.libs = [];
+			for (var i = 0, len = libs.length; i < len; i++) {
+				hyperloopConfig.ios.libs.push(libs[i]);
+			}
+		}
+	})();
+
+	callback();
+}
 /**
  * Gets the system frameworks from the Hyperloop Metabase.
  */
@@ -214,8 +395,29 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  * Has the Hyperloop Metabase generate the CocoaPods and then adds the symbols to the map of frameworks.
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
+
+	var pods = this.hyperloopConfig.ios.cocoapods;
+
+	if (Object.keys(pods).length == 0) callback();
+
+	var podfile = [];
+	podfile.push("platform :ios, '7.0'");
+	podfile.push("target '" + this.builder.tiapp.name + "' do");
+	for (var key in pods) {
+		if (pods[key] != '*') {
+			podfile.push("\tpod '" + key + "', '" + pods[key]+"'");
+		} else {
+			podfile.push("\tpod '" + key + "'");
+		}
+	}
+
+	podfile.push('end');
+	podfile.push('\n');
+
+	fs.writeFileSync(path.join(this.hyperloopBuildDir, 'Podfile'), podfile.join('\n'));
+
 	// attempt to handle cocoapods for third-party frameworks
-	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder.projectDir, this.builder.xcodeAppDir, this.builder.xcodeTargetOS, this.builder.iosSdkVersion, IOS_MIN, this.builder.xcodeEnv.executables, function (err, settings, symbols) {
+	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.hyperloopBuildDir, this.builder.xcodeAppDir, this.builder.xcodeTargetOS, this.builder.iosSdkVersion, IOS_MIN, this.builder.xcodeEnv.executables, function (err, settings, symbols) {
 		if (!err) {
 			this.buildSettings = settings;
 			symbols && Object.keys(symbols).forEach(function (k) {
@@ -239,6 +441,8 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	var swiftSources = this.swiftSources;
 	var hyperloopBuildDir = this.hyperloopBuildDir;
 	var thirdparty = this.hyperloopConfig.ios.thirdparty;
+	var hyperloopModules = this.hyperloopConfig.ios.modules;
+	var libraries = this.hyperloopConfig.ios.libs;
 	var projectDir = this.builder.projectDir;
 	var xcodeAppDir = this.builder.xcodeAppDir;
 	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
@@ -252,6 +456,20 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			});
 		}
 		return null;
+	}
+
+	if (hyperloopModules) {
+		(function(){
+			var headerName, moduleName, headers, obj;
+			for (moduleName in hyperloopModules) {
+				obj = {};
+				headers = hyperloopModules[moduleName].headers;
+				for (headerName in headers) {
+					obj[path.basename(headerName, path.extname(headerName))] = headerName;
+				}
+				frameworks[moduleName] = obj;
+			}
+		})();
 	}
 
 	async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
@@ -836,6 +1054,62 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
 		}, this);
 	}
 
+	if (this.hyperloopConfig.ios.modules) {
+		var modules = this.hyperloopConfig.ios.modules;
+		(function(){
+			for (var name in modules) {
+				groups[name] = {};
+				for (var src in modules[name].sources) {
+					var ext = path.extname(src);
+					if (ext == '.m' || ext == '.mm' || ext == '.cpp' || ext == '.c' || ext == '.c') {
+						groups[name][src] = modules[name].sources[src];
+					}
+				}
+			}
+		})();
+	}
+
+	if (this.hyperloopConfig.ios.libs) {
+		var self = this;
+		(function(){
+			var libs = self.hyperloopConfig.ios.libs;
+			for (var i = 0, len = libs.length; i < len; i++) {
+				var guid1 = generateUuid() 
+				var guid2 = generateUuid();
+				var name = path.basename(libs[i]);
+				xobjs.PBXBuildFile[guid1] = {
+					isa: 'PBXBuildFile',
+					fileRef: guid2,
+					fileRef_comment: name
+				}
+				xobjs.PBXFileReference[guid2] = {
+					isa: 'PBXFileReference',
+					lastKnownFileType: 'archive.ar',
+					path: '"' + libs[i] + '"',
+					sourceTree: '"<absolute>"',
+				};
+				xobjs.PBXFileReference[guid2 + '_comment'] = name;
+
+				Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(function (id) {
+					if (xobjs.PBXFrameworksBuildPhase[id] && typeof xobjs.PBXFrameworksBuildPhase[id] === 'object') {
+						xobjs.PBXFrameworksBuildPhase[id].files.push({
+							value: guid1 + '',
+							comment: name + ' in Frameworks'
+						});
+					}
+				});
+				for (var key in xobjs.PBXGroup) {
+					if (xobjs.PBXGroup[key].name == 'Frameworks') {
+						xobjs.PBXGroup[key].children.push({
+							value: guid2,
+							comment: name
+						});
+					}
+				}
+			}
+		})();
+	}
+
 	// if we have any swift files, enable swift support
 	if (containsSwift) {
 		Object.keys(xobjs.PBXNativeTarget).forEach(function (targetUuid) {
@@ -897,14 +1171,18 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
 
 		Object.keys(groups[groupName]).forEach(function (file) {
 			var name = path.basename(file);
+			var usesArc = groups[groupName][file].arc;
+			if (usesArc === undefined) usesArc = true;
 			var fileRefUuid = generateUuid();
 			var buildFileUuid = generateUuid();
+
+			var isSwift = swiftRegExp.test(file);
 
 			// add the file reference
 			xobjs.PBXFileReference[fileRefUuid] = {
 				isa: 'PBXFileReference',
 				fileEncoding: 4,
-				lastKnownFileType: 'sourcecode.' + (swiftRegExp.test(file) ? 'swift' : 'c.objc'),
+				lastKnownFileType: 'sourcecode.' + (isSwift ? 'swift' : 'c.objc'),
 				name: '"' + name + '"',
 				path: '"' + file + '"',
 				sourceTree: '"<absolute>"'
@@ -922,8 +1200,10 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
 				isa: 'PBXBuildFile',
 				fileRef: fileRefUuid,
 				fileRef_comment: name,
-				settings: {COMPILER_FLAGS : '"-fobjc-arc"' }
 			};
+			if (!!isSwift) {
+				xobjs.PBXBuildFile[buildFileUuid].settings = {COMPILER_FLAGS : usesArc ? '"-fobjc-arc"' :'"-fno-objc-arc"' };
+			}
 			xobjs.PBXBuildFile[buildFileUuid + '_comment'] = name + ' in Sources';
 
 			sourcesBuildPhase.files.push({
@@ -957,6 +1237,16 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		if (!params[key]) {
 			params[key] = [];
 		}
+
+		if (typeof value == 'string') {
+			var parts = value.toString().split(' ');
+			if (parts.length > 1) {
+				for (var i = 0, len = parts.length; i < len; i++) {
+					addParam(key, parts[i]);
+				}
+				return;
+			}
+		}
 		if (params[key].indexOf(value) === -1) {
 			params[key].push(value);
 		}
@@ -987,18 +1277,54 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		});
 	}
 
-	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
+	if (this.hyperloopConfig && this.hyperloopConfig.ios && this.hyperloopConfig.ios.libs) {
+		var libraries = this.hyperloopConfig.ios.libs;
+		var LIBRARY_SEARCH_PATHS = 'LIBRARY_SEARCH_PATHS';
+		if (params[LIBRARY_SEARCH_PATHS]) {
+			params[LIBRARY_SEARCH_PATHS].unshift('$(inherited)');
+		}
+		for (var i = 0, len = libraries.length; i < len; i++) {
+			addParam('LIBRARY_SEARCH_PATHS', path.dirname(libraries[i]));
+		}
+	}
+
+	addParam('GCC_PREPROCESSOR_DEFINITIONS', 'HYPERLOOP=1');
 
 	// inject the params into the xcodebuild args
 	var args = data.args[1];
 	var quotesRegExp = /^\".*\"$/;
+
+	var xcconfig = path.join(this.builder.projectDir, 'build', 'iphone', 'project.xcconfig');
+	var content = fs.readFileSync(xcconfig).toString().split('\n');
+
 	Object.keys(params).forEach(function (key) {
 		var value = params[key];
-		if (value.indexOf(' ') !== -1 && !quotesRegExp.test(value)) {
-			value = '"' + value + '"';
+		var inherits = false;
+		for (var i = 0, len = value.length; i < len; i++) {
+			var each = value[i].toString().trim().replace(/"/g, '');
+
+			if (each.indexOf('(inherited)') !== -1) {
+				inherits = true;
+				value.splice(i, 1);
+          		i--;
+          		len--;
+			} 
+			if (each.indexOf(' ') !== -1) {
+				value[i] = '"' + each + '"';
+			} else {
+				value[i] = each;
+			}
+		}
+		if (inherits && key != 'GCC_PREPROCESSOR_DEFINITIONS') {
+			value.unshift('$(inherited)');
 		}
 
-		// check if the param is already in the xcodebuild arguments
+		if (key == 'GCC_PREPROCESSOR_DEFINITIONS') {
+			args.push(key + '=' + value.join(' '));
+			return;
+		}
+
+		// // check if the param is already in the xcodebuild arguments
 		for (var i = 0; i < args.length; i++) {
 			var parts = args[i].split('=');
 			if (parts.length > 1 && parts[0] === key) {
@@ -1010,10 +1336,11 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 				return;
 			}
 		}
-
-		// param does not exist, so just add it
-		args.push(key + '=' + params[key]);
+		
+		content.push(key + '=' + value.join(' '));
 	});
+
+	fs.writeFileSync(xcconfig, content.join('\n'));
 };
 
 /**

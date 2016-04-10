@@ -21,6 +21,10 @@
 #import "TiHost.h"
 #import "HyperloopView.h"
 #import "TiViewProxy.h"
+// NSLog is defined in Titanium and logs are re-routed. For debugging purposes, we need this
+// let's keep it here for now
+#undef NSLog
+FOUNDATION_EXPORT void NSLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2);
 #else
 	#import "UIKit/UIKit.h"
 	// for unit testing
