@@ -1,4 +1,4 @@
-class Component
+export default class Component
 {
 	constructor() {
 
@@ -7,4 +7,3 @@ class Component
 		return 'something';
 	}
 };
-module.exports = Component;
