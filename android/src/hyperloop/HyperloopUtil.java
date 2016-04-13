@@ -78,12 +78,17 @@ abstract class HyperloopUtil {
      * @return
      */
     private static boolean isKnownType(Object item) {
-        // FIXME Look at TypeConverter to see all the ones we really handle
+        // Here's what TypeConverter lists:
+        // short, int, long, float, double, boolean, string, Date, (Object as Function?)
+        // Object[], boolean[], short[], int[], long[], float[], double[]
+        // Since we _always_ end up here due to reflection, we always get boxed types, not primitives
+        // so we check against the boxed types, not primitives (including arrays: for example, Integer[] instanceof Object[] == true)
         return item == null || item instanceof KrollProxy || item instanceof Integer
                 || item instanceof Double || item instanceof Float
                 || item instanceof Byte || item instanceof Short
                 || item instanceof Long || item instanceof HashMap
-                || item instanceof String || item instanceof Boolean || item instanceof Date;
+                || item instanceof String || item instanceof Boolean
+                || item instanceof Date || item instanceof Object[];
     }
 
     /**
