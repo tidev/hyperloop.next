@@ -5,11 +5,28 @@
 SCRIPT_PATH=$(dirname $0)
 cd $SCRIPT_PATH
 
+npm install
+
 rm -rf dist
 mkdir dist
 
+VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
+# Replace manifest with manifest.bak if it exists!
+if [ -d "./android/manifest.bak" ]
+then
+  git checkout -- ./android/manifest
+fi
+if [ -d "./iphone/manifest.bak" ]
+then
+  git checkout -- ./iphone/manifest
+fi
+# Force the version into the manifest files in iphone/android directories!
+sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
+sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
+
 echo "Building Android module..."
 cd android
+rm -rf dist
 ant
 if [ $? -ne 0 ];
 then
@@ -20,13 +37,13 @@ cd ..
 
 echo "Unzipping Android zipfile..."
 cd dist
-unzip hyperloop-android-*.zip
-rm hyperloop-android-*.zip
+unzip hyperloop-android-$VERSION.zip
+rm hyperloop-android-$VERSION.zip
 cd ..
 
 echo "Building iOS module..."
 cd iphone
-VERSION=`grep "^version:" manifest | cut -c 10-`
+rm -rf hyperloop-iphone-*.zip
 ./build.sh
 if [ $? -ne 0 ];
 then
