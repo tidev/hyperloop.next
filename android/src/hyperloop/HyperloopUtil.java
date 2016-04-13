@@ -65,6 +65,17 @@ abstract class HyperloopUtil {
      * @return
      */
     static Object wrap(Class<?> paramType, Object result) {
+        if (result == null) {
+            return result;
+        }
+        if (result instanceof byte[]) { // our bridge can't handle byte[], but can do short[] - so convert to short[]
+            byte[] b = (byte[]) result;
+            short[] s = new short[b.length];
+            for (int i = 0; i < b.length; i++) {
+                s[i] = b[i];
+            }
+			return s;
+        }
         return isKnownType(result) ? result
                 : HyperloopModule.getProxyFactory().newInstance(paramType, result);
     }
@@ -81,14 +92,19 @@ abstract class HyperloopUtil {
         // Here's what TypeConverter lists:
         // short, int, long, float, double, boolean, string, Date, (Object as Function?)
         // Object[], boolean[], short[], int[], long[], float[], double[]
-        // Since we _always_ end up here due to reflection, we always get boxed types, not primitives
-        // so we check against the boxed types, not primitives (including arrays: for example, Integer[] instanceof Object[] == true)
-        return item == null || item instanceof KrollProxy || item instanceof Integer
+        // Since we almost always end up here due to reflection, we always boxed types, not primitives in those cases
+        // so we check against the boxed types, not primitives, first (including arrays: for example, Integer[] instanceof Object[] == true)
+        return item instanceof KrollProxy || item instanceof Integer
                 || item instanceof Double || item instanceof Float
                 || item instanceof Byte || item instanceof Short
                 || item instanceof Long || item instanceof HashMap
                 || item instanceof String || item instanceof Boolean
-                || item instanceof Date || item instanceof Object[];
+                || item instanceof Date || item instanceof Object[]
+                // When we get a field through reflection we _can_ get primitive arrays, so check for all of those too
+                // Note lack of byte[], since bridge doesn't handle that, we treat it specially in wrap
+                || item instanceof int[] || item instanceof double[]
+                || item instanceof float[] || item instanceof short[]
+                || item instanceof long[] || item instanceof boolean[];
     }
 
     /**
