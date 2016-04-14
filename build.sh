@@ -26,6 +26,10 @@ sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
 
 echo "Building Android module..."
 cd android
+#These dirs need to exist for TRAVIS CI. Only create if doesn't exist
+mkdir -p ./lib
+mkdir -p ./build
+mkdir -p ./build/docs
 rm -rf dist
 ant
 if [ $? -ne 0 ];
@@ -58,3 +62,5 @@ cd dist
 zip -q -r hyperloop-$VERSION.zip *
 rm -rf modules
 rm -rf plugins
+echo "Combined zip completed successfully"
+exit 0
