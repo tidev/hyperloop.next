@@ -20,6 +20,8 @@ import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.titanium.proxy.ActivityProxy;
 import org.appcelerator.titanium.proxy.TiViewProxy;
 
+import android.util.Log;
+
 abstract class HyperloopUtil {
     // TODO This is a hack. We should move all this stuff into the BaseProxy or
     // something...
@@ -74,8 +76,14 @@ abstract class HyperloopUtil {
             for (int i = 0; i < b.length; i++) {
                 s[i] = b[i];
             }
-			return s;
-        }
+            return s;
+        } else if (result instanceof char[]) {
+        	// convert to String, so we end up with JS String
+        	return new String((char[]) result);
+		} else if (result instanceof Character) {
+			// convert to String, so we end up with JS String
+			return ((Character) result).toString();
+		}
         return isKnownType(result) ? result
                 : HyperloopModule.getProxyFactory().newInstance(paramType, result);
     }
@@ -124,7 +132,7 @@ abstract class HyperloopUtil {
     }
 
     /**
-     * If the argument is a proxy, unwrapp the native object it holds.
+     * If the argument is a proxy, unwrap the native object it holds.
      *
      * @param object
      * @return
@@ -230,10 +238,39 @@ abstract class HyperloopUtil {
                     return num.shortValue();
                 } else if (long.class.equals(target)) {
                     return num.longValue();
+                } else if (char.class.equals(target)) {
+                	if (num instanceof Float || num instanceof Double) {
+                		Log.e(TAG, "Supplied a non-integer number value for char primitive: " + num + ". Will default to (char) 0.");
+                		return Character.valueOf((char) 0);
+                	}
+                	int asInt = num.intValue();
+                	if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
+                		return Character.valueOf((char) num.intValue());
+                	}
+                	Log.e(TAG, "Supplied an integer value out of range for char primitive: " + asInt + ". Will default to (char) 0.");
+                	return Character.valueOf((char) 0);
+                }
+            } else if (newValue instanceof String) {
+            	String string = (String) newValue;
+            	if (char.class.equals(target)) {
+                	if (string.length() == 0) {
+                		Log.e(TAG, "Supplied an empty string for char. Will default to (char) 0.");
+                		return Character.valueOf((char) 0);
+                	}
+                	if (string.length() > 1) {
+                		Log.e(TAG, "Supplied a string with more than one character for char. Will default to first character.");
+                	}
+                	return Character.valueOf(string.charAt(0));
+                } else if (char[].class.equals(target)) {
+                	return string.toCharArray();
                 }
             }
             // Probably a big no-no...
             return newValue;
+        } else if (target.isArray()) {
+        	if (newValue instanceof String && char[].class.equals(target)) {
+                return ((String) newValue).toCharArray();
+        	}
         }
         // Not a primitive... So, just hope it's the right type?
         return newValue;
