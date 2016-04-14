@@ -71,19 +71,16 @@ abstract class HyperloopUtil {
             return result;
         }
         if (result instanceof byte[]) { // our bridge can't handle byte[], but can do short[] - so convert to short[]
-            byte[] b = (byte[]) result;
-            short[] s = new short[b.length];
-            for (int i = 0; i < b.length; i++) {
-                s[i] = b[i];
-            }
-            return s;
+            return convertTo(result, short[].class);
+        } else if (result instanceof Byte) { // our bridge can't handle byte, but can do short - so convert to short
+            return convertTo(result, short.class);
         } else if (result instanceof char[]) {
-        	// convert to String, so we end up with JS String
-        	return new String((char[]) result);
-		} else if (result instanceof Character) {
-			// convert to String, so we end up with JS String
-			return ((Character) result).toString();
-		}
+            // convert to String, so we end up with JS String
+            return new String((char[]) result);
+        } else if (result instanceof Character) {
+            // convert to String, so we end up with JS String
+            return ((Character) result).toString();
+        }
         return isKnownType(result) ? result
                 : HyperloopModule.getProxyFactory().newInstance(paramType, result);
     }
@@ -219,11 +216,15 @@ abstract class HyperloopUtil {
      * @return
      */
     static Object convertTo(Object newValue, Class<?> target) {
+        if (newValue == null) {
+            return null; // really bad if the target is a primitive type!
+        }
+        // are we of an assignable type already? Then just use what we have
+        if (target.isAssignableFrom(newValue.getClass())) {
+            return newValue;
+        }
+
         if (target.isPrimitive()) {
-            // uh oh!
-            if (newValue == null) {
-                return null;
-            }
             if (newValue instanceof Number) {
                 Number num = (Number) newValue;
                 if (byte.class.equals(target)) {
@@ -239,40 +240,51 @@ abstract class HyperloopUtil {
                 } else if (long.class.equals(target)) {
                     return num.longValue();
                 } else if (char.class.equals(target)) {
-                	if (num instanceof Float || num instanceof Double) {
-                		Log.e(TAG, "Supplied a non-integer number value for char primitive: " + num + ". Will default to (char) 0.");
-                		return Character.valueOf((char) 0);
-                	}
-                	int asInt = num.intValue();
-                	if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
-                		return Character.valueOf((char) num.intValue());
-                	}
-                	Log.e(TAG, "Supplied an integer value out of range for char primitive: " + asInt + ". Will default to (char) 0.");
-                	return Character.valueOf((char) 0);
+                    if (num instanceof Float || num instanceof Double) {
+                        Log.e(TAG, "Supplied a non-integer number value for char primitive: " + num + ". Will default to (char) 0.");
+                        return Character.valueOf((char) 0);
+                    }
+                    int asInt = num.intValue();
+                    if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
+                        return Character.valueOf((char) num.intValue());
+                    }
+                    Log.e(TAG, "Supplied an integer value out of range for char primitive: " + asInt + ". Will default to (char) 0.");
+                    return Character.valueOf((char) 0);
                 }
             } else if (newValue instanceof String) {
-            	String string = (String) newValue;
-            	if (char.class.equals(target)) {
-                	if (string.length() == 0) {
-                		Log.e(TAG, "Supplied an empty string for char. Will default to (char) 0.");
-                		return Character.valueOf((char) 0);
-                	}
-                	if (string.length() > 1) {
-                		Log.e(TAG, "Supplied a string with more than one character for char. Will default to first character.");
-                	}
-                	return Character.valueOf(string.charAt(0));
+                String string = (String) newValue;
+                if (char.class.equals(target)) {
+                    if (string.length() == 0) {
+                        Log.e(TAG, "Supplied an empty string for char. Will default to (char) 0.");
+                        return Character.valueOf((char) 0);
+                    }
+                    if (string.length() > 1) {
+                        Log.e(TAG, "Supplied a string with more than one character for char. Will default to first character.");
+                    }
+                    return Character.valueOf(string.charAt(0));
                 } else if (char[].class.equals(target)) {
-                	return string.toCharArray();
+                    return string.toCharArray();
                 }
             }
             // Probably a big no-no...
             return newValue;
         } else if (target.isArray()) {
-        	if (newValue instanceof String && char[].class.equals(target)) {
+            // treat string -> char[] special
+            if (newValue instanceof String && char[].class.equals(target)) {
                 return ((String) newValue).toCharArray();
-        	}
+            }
+            // Handle primitive arrays
+            Class<?> component = target.getComponentType();
+            if (component.isPrimitive()) {
+                int length = Array.getLength(newValue);
+                Object converted = Array.newInstance(component, length);
+                for (int i = 0; i < length; i++) {
+                    Array.set(converted, i, convertTo(Array.get(newValue, i), component));
+                }
+                return converted;
+            }
         }
-        // Not a primitive... So, just hope it's the right type?
+        // Not a primitive or primitive array... So, just hope it's the right type?
         return newValue;
     }
 
