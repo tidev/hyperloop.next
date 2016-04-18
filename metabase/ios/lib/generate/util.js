@@ -199,7 +199,9 @@ function getResultWrapper (state, json, obj, instance) {
 				addImport(state, name, struct);
 				return newPrefix(state, name);
 			} else {
-				typedef = json.typedefs[cls];
+				if (json.typedefs) {
+					typedef = json.typedefs[cls];	
+				}
 				if (typedef) {
 					return getResultWrapper(state, json, typedef, instance);
 				}
