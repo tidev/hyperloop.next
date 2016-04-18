@@ -4,8 +4,8 @@
 	</description>
 
 	<property name="ti.module.root" location="${basedir}"/>
-	<property file="${basedir}/../build/build.properties" />
-	<property file="build.properties" />
+	<property file="${basedir}/../build/build.properties" environment="env" />
+	<property file="build.properties" environment="env" />
 
 	<!-- Make sure 'architectures' is in manifest file -->
 	<property file="${ti.module.root}/manifest" prefix="manifest"/>
