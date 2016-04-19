@@ -1,5 +1,7 @@
 Hyperloop Package
 =================
+travis-ci: [![Build Status](https://travis-ci.com/appcelerator/hyperloop.next.svg?token=8dQAhgYRzHhMCNjormPs&branch=master)](https://travis-ci.com/appcelerator/hyperloop.next)
+
 
 This repo contains source code for the Hyperloop&reg; product.
 
