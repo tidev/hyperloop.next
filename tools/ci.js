@@ -20,7 +20,7 @@ var path = require('path'),
 	androidModuleDir = path.join(__dirname, '..', 'android'),
 	iosModuleDir = path.join(__dirname, '..', 'iphone'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
-	TITANIUM_ANDROID_API = 23, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
+	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.0.1-macosx.zip',
 	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
 
