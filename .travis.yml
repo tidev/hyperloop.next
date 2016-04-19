@@ -1,0 +1,8 @@
+language: objective-c
+osx_image: xcode7.3
+install:
+    - brew update
+    - brew install ant
+script: 
+    - cd tools
+    - ./build.sh

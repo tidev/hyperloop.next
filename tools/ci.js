@@ -20,7 +20,7 @@ var path = require('path'),
 	androidModuleDir = path.join(__dirname, '..', 'android'),
 	iosModuleDir = path.join(__dirname, '..', 'iphone'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
-	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
+	TITANIUM_ANDROID_API = 23, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.0.1-macosx.zip',
 	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
 
@@ -201,10 +201,16 @@ function installAndroidSDK(next) {
 
 function installAndroidSDKComponents(androidSDKPath, next) {
 	var androidBin = path.join(androidSDKPath, 'tools', 'android'),
-		// FIXME This re-installs these even if we aready have them! I think we need more fiddling, to remove --all, but that doesn't work just removing it.
-		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools,platform-tools,build-tools-23.0.1,extra-android-support,android-8,android-10,android-' + TITANIUM_ANDROID_API + ',addon-google_apis-google-' + TITANIUM_ANDROID_API,
+		buildToolsFolder = path.join(androidSDKPath, 'build-tools'),
+		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools;' + 
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter platform-tools;' +
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter build-tools-' + TITANIUM_ANDROID_API + '.0.0;' +
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter extra-android-support;' +
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-22;' +
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-' + TITANIUM_ANDROID_API +';' +
+ 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API,
 		prc;
-	if (fs.existsSync(androidBin)) {
+	if (fs.existsSync(buildToolsFolder)) {
 		console.log("Android SDK + Tools already installed at", androidBin);
 		return next();
 	}
@@ -231,7 +237,7 @@ function installAndroidNDK(next) {
 	downloadURL(ANDROID_NDK_URL, function (filename) {
 		exec('tar xzf "' + filename + '" -C "' + HOME + '"', function (error, stdout, stderr) {
 			if (error !== null) {
-				return next('Failed to sextract Android NDK: ' + error);
+				return next('Failed to extract Android NDK: ' + error);
 			}
 			exec('"' + titanium + '" config android.ndkPath ' + ndkHome, function (error, stdout, stderr) {
 				if (error !== null) {
