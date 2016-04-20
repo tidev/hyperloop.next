@@ -169,7 +169,8 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 		this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
 		this.logger.info('');
 		this.logger.info('Using Apple JavaScriptCore by default when not specified.');
-		this.builder.tiapp.ios['use-jscore-framework'] = true;
+		// Allow developers to use TiJSCore for now
+		// this.builder.tiapp.ios['use-jscore-framework'] = true;
 	}
 
 	// create a temporary hyperloop directory

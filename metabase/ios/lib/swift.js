@@ -11,7 +11,14 @@ var fs = require('fs'),
  * generate Swift AST output from a swift file
  */
 function generateSwiftAST (sdkPath, fn, callback) {
-	var child = spawn('xcrun', ['swiftc', '-sdk', sdkPath, '-dump-ast', fn]),
+	var args = ['swiftc', '-sdk', sdkPath, '-dump-ast', fn];
+	// workaround for now, will need to come back later
+	// the device build needs to know the target for the ast-dump
+	if (sdkPath.indexOf('Simulator') == -1) {
+		args.push('-target');
+		args.push('armv7-apple-ios7.1');
+	}
+	var child = spawn('xcrun', args),
 		buf = '';
 	// swiftc -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -dump-ast MySwift.swift
 	child.on('error', callback);

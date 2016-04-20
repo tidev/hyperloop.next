@@ -150,7 +150,7 @@ static TiObjectRef HLObjectMake (TiContextRef ctx, TiClassRef cls, id obj) {
 				TiObjectSetProperty(ctx, jsObject, prop, TiObjectMake(ctx, pointerClassRef, (__bridge void *)(obj)), kTiPropertyAttributeNone, NULL);
 			}
 			TiStringRelease(prop);
-			}
+		}
 #endif
 		// NSLog(@"[HYPERLOOP] Recycling object %@", [obj class]);
 		return jsObject;
@@ -339,7 +339,7 @@ static TiObjectRef CreateJSClassFromModulePath (NSString *path, id obj, TiClassR
  * returns a generic wrapper if not found
  */
 static TiObjectRef CreateJSClassFromNSClass (NSString *framework, NSString *clsname, id obj, TiClassRef classRef) {
-	NSString *path = [NSString stringWithFormat:@"hyperloop/%@/%@", framework, [clsname lowercaseString]];
+	NSString *path = [NSString stringWithFormat:@"hyperloop/%@/%@", [framework lowercaseString], [clsname lowercaseString]];
 	return CreateJSClassFromModulePath(path, obj, classRef, YES);
 }
 
@@ -617,6 +617,16 @@ JS_CALLBACK(GarbageCollect)
 	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 #endif
+
+JS_CALLBACK(SetPrototypeOf)
+	if (argumentCount != 2) {
+		@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"Hyperloop.SetPrototypeOf takes to arguments" userInfo:nil];
+	}
+	TiObjectRef firstObj = TiValueToObject(ctx, arguments[0], exception);
+	CHECKEXCEPTION
+	TiObjectSetPrototype(ctx, firstObj, arguments[1]);
+	return TiValueMakeBoolean(ctx, true);
+JS_CALLBACK_END
 
 JS_CALLBACK(GetWrapper)
 	TiObjectRef thisObject = TiValueToObject(ctx, arguments[0], exception);
@@ -1128,6 +1138,7 @@ static BOOL isPlatformGUID (NSString *guid) {
 	MAKECALLBACK(protect, Protect);
 	MAKECALLBACK(unprotect, Unprotect);
 	MAKECALLBACK(stringValue, String);
+	MAKECALLBACK(SetPrototypeOf, SetPrototypeOf);
 	MAKECALLBACK(log, Logger);
 
 
