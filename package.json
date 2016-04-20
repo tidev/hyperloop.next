@@ -1,35 +1,36 @@
 {
-	"name": "hyperloop",
-	"version": "1.1.2",
-	"description": "Access native APIs from within Titanium.",
-	"keywords": [
-		"appcelerator",
-		"titanium",
-		"hyperloop",
-		"android",
-		"ios"
-	],
-	"author": "Jeff Haynie",
-	"contributors": [
-		{
-			"name": "Chris Williams"
-		},
-		{
-			"name": "Pedro Enrique"
-		},
-		{
-			"name": "Dawson Toth"
-		}
-	],
-	"license": "UNLICENSED",
-	"private": true,
-	"devDependencies": {
-		"titanium": "git://github.com/appcelerator/titanium.git#master",
-		"async": "~0.9.0",
-		"colors": "~0.6.2",
-		"node-appc": "0.2.21",
-		"request": "~2.27.0",
-		"temp": "~0.6.0",
-		"wrench": "~1.5.8"
-	}
+  "name": "hyperloop",
+  "version": "1.1.2",
+  "description": "Access native APIs from within Titanium.",
+  "keywords": [
+    "appcelerator",
+    "titanium",
+    "hyperloop",
+    "android",
+    "ios"
+  ],
+  "author": "Jeff Haynie",
+  "contributors": [
+    {
+      "name": "Chris Williams"
+    },
+    {
+      "name": "Pedro Enrique"
+    },
+    {
+      "name": "Dawson Toth"
+    }
+  ],
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "titanium": "git://github.com/appcelerator/titanium.git#master",
+    "async": "~0.9.0",
+    "colors": "~0.6.2",
+    "node-appc": "0.2.21",
+    "request": "~2.27.0",
+		"semver": "^5.1.0",
+    "temp": "~0.6.0",
+    "wrench": "~1.5.8"
+  }
 }
