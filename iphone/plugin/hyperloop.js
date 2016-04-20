@@ -496,6 +496,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 				this.frameworks.$metadata.sdkType,
 				this.frameworks.$metadata.sdkPath,
 				this.frameworks.$metadata.minVersion,
+				this.builder.xcodeTargetOS,
 				this.metabase,
 				entry.framework,
 				entry.source,
