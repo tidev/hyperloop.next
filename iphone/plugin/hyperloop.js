@@ -525,9 +525,13 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
  * Generates the symbol reference based on the references from the metabase's parser state.
  */
 HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolReference() {
-	var symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json');
-	var json = JSON.stringify(this.parserState.getReferences(), null, 2);
 
+	if (!this.parserState) {
+		this.logger.info('Skipping ' + HL + ' generating of symbol references. Empty AST. ');
+		return;
+	}	
+	var symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
+		json = JSON.stringify(this.parserState.getReferences(), null, 2);
 	if (!fs.existsSync(symbolRefFile) || fs.readFileSync(symbolRefFile).toString() !== json) {
 		this.forceStubGeneration = true;
 		this.logger.trace('Forcing regeneration of wrappers');
@@ -549,6 +553,11 @@ HyperloopiOSBuilder.prototype.compileResources = function compileResources(callb
  * Generates stubs from the metabase.
  */
 HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
+
+	if (!this.parserState) {
+		this.logger.info('Skipping ' + HL + ' stub generation. Empty AST.');
+		return callback();
+	}
 	if (!this.forceStubGeneration) {
 		this.logger.debug('Skipping stub generation');
 		return callback();
