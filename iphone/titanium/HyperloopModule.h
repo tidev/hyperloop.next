@@ -16,8 +16,8 @@
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 
-+(TiObjectRef)createPointer:(HyperloopPointer *)pointer;
-+(NSException*)JSValueRefToNSException:(TiValueRef)exception;
++(JSObjectRef)createPointer:(HyperloopPointer *)pointer;
++(NSException*)JSValueRefToNSException:(JSValueRef)exception;
 
 @end
 

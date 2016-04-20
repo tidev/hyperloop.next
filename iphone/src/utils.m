@@ -13,20 +13,20 @@
 
 #ifndef TIMODULE
 @interface KrollContext : NSObject
--(TiContextRef)context;
+-(JSContextRef)context;
 @end
 
 @interface KrollCallback : NSObject
--(TiObjectRef)function;
+-(JSObjectRef)function;
 @end
 #endif
 
-TiObjectRef HyperloopGetWrapperForId(id obj);
-TiValueRef NSObjectToJSObject (id object);
-TiContextRef HyperloopCurrentContext ();
+JSObjectRef HyperloopGetWrapperForId(id obj);
+JSValueRef NSObjectToJSObject (id object);
+JSContextRef HyperloopCurrentContext ();
 NSString *cleanEncoding (NSString *encoding);
 KrollCallback* HyperloopGetCallbackForIdentifier (NSString *identifier);
-id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *exception);
+id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *exception);
 
 @implementation HyperloopUtils
 
@@ -380,22 +380,22 @@ case enc: {\
  * invoke a callback
  */
 +(void)invokeCallback:(id)callback args:(NSArray *)args thisObject:(id)thisObject {
-	TiContextRef context = HyperloopCurrentContext();
-	TiValueRef *jsArgs = NULL;
+	JSContextRef context = HyperloopCurrentContext();
+	JSValueRef *jsArgs = NULL;
 	if (args) {
-		jsArgs = (TiValueRef *)malloc(sizeof(TiValueRef) * [args count]);
+		jsArgs = (JSValueRef *)malloc(sizeof(JSValueRef) * [args count]);
 		for (size_t c = 0; c < [args count]; c++) {
 			jsArgs [c] = NSObjectToJSObject(args[c]);
-			TiValueProtect(context, jsArgs[c]);
+			JSValueProtect(context, jsArgs[c]);
 		}
 	}
-	TiObjectRef function = [(KrollCallback *)callback function];
-	TiValueRef exception = NULL;
-	TiValueRef thisRef = NSObjectToJSObject(thisObject);
-	TiObjectRef thisObjectRef = TiValueToObject(context, thisRef, &exception);
-	TiValueProtect(context, function);
-	TiValueProtect(context, thisRef);
-	TiObjectCallAsFunction(context, function, thisObjectRef, [args count], jsArgs, &exception);
+	JSObjectRef function = [(KrollCallback *)callback function];
+	JSValueRef exception = NULL;
+	JSValueRef thisRef = NSObjectToJSObject(thisObject);
+	JSObjectRef thisObjectRef = JSValueToObject(context, thisRef, &exception);
+	JSValueProtect(context, function);
+	JSValueProtect(context, thisRef);
+	JSObjectCallAsFunction(context, function, thisObjectRef, [args count], jsArgs, &exception);
 #if defined(TIMODULE)
 #if TARGET_OS_SIMULATOR
 	if (exception) {
@@ -405,11 +405,11 @@ case enc: {\
 #endif
 	if (args) {
 		for (size_t c = 0; c < [args count]; c++) {
-			TiValueUnprotect(context, jsArgs[c]);
+			JSValueUnprotect(context, jsArgs[c]);
 		}
 	}
-	TiValueUnprotect(context, function);
-	TiValueUnprotect(context, thisRef);
+	JSValueUnprotect(context, function);
+	JSValueUnprotect(context, thisRef);
 	free(jsArgs);
 }
 /**
@@ -417,21 +417,21 @@ case enc: {\
  */
 +(id)invokeCustomCallback:(NSArray *)args identifier:(NSString *)identifier thisObject:(id)sender {
 	KrollCallback* callback = HyperloopGetCallbackForIdentifier(identifier);
-	TiContextRef context = HyperloopCurrentContext();
-	TiValueRef *jsArgs = NULL;
+	JSContextRef context = HyperloopCurrentContext();
+	JSValueRef *jsArgs = NULL;
 	if (args) {
-		jsArgs = (TiValueRef *)malloc(sizeof(TiValueRef) * [args count]);
+		jsArgs = (JSValueRef *)malloc(sizeof(JSValueRef) * [args count]);
 		for (size_t c = 0; c < [args count]; c++) {
 			jsArgs [c] = NSObjectToJSObject(args[c]);
-			TiValueProtect(context, jsArgs[c]);
+			JSValueProtect(context, jsArgs[c]);
 		}
 	}
 	id result = nil;
-	TiObjectRef function = [callback function];
-	TiValueRef exception = NULL;
-	TiValueProtect(context, function);
-	TiObjectRef thisObject = HyperloopGetWrapperForId(sender);
-	TiValueRef jsResult = TiObjectCallAsFunction(context, function, thisObject, [args count], jsArgs, &exception);
+	JSObjectRef function = [callback function];
+	JSValueRef exception = NULL;
+	JSValueProtect(context, function);
+	JSObjectRef thisObject = HyperloopGetWrapperForId(sender);
+	JSValueRef jsResult = JSObjectCallAsFunction(context, function, thisObject, [args count], jsArgs, &exception);
 #if defined(TIMODULE)
 #if TARGET_OS_SIMULATOR
 	if (exception) {
@@ -440,14 +440,14 @@ case enc: {\
 #endif
 #endif
 	if (exception == NULL) {
-		result = TiValueRefToId(context, jsResult, NULL);
+		result = JSValueRefToId(context, jsResult, NULL);
 	}
 	if (args) {
 		for (size_t c = 0; c < [args count]; c++) {
-			TiValueUnprotect(context, jsArgs[c]);
+			JSValueUnprotect(context, jsArgs[c]);
 		}
 	}
-	TiValueUnprotect(context, function);
+	JSValueUnprotect(context, function);
 	free(jsArgs);
 	return result;
 }
