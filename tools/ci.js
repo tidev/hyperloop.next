@@ -21,7 +21,7 @@ var path = require('path'),
 	iosModuleDir = path.join(__dirname, '..', 'iphone'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
 	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
-	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.0.1-macosx.zip',
+	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.4.1-macosx.zip',
 	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
 
 function downloadURL(url, callback) {
@@ -202,13 +202,12 @@ function installAndroidSDK(next) {
 function installAndroidSDKComponents(androidSDKPath, next) {
 	var androidBin = path.join(androidSDKPath, 'tools', 'android'),
 		buildToolsFolder = path.join(androidSDKPath, 'build-tools'),
-		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools;' + 
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter platform-tools;' +
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter build-tools-' + TITANIUM_ANDROID_API + '.0.0;' +
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter extra-android-support;' +
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-22;' +
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-' + TITANIUM_ANDROID_API +';' +
- 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API,
+		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools;' +
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter platform-tools;' +
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter build-tools-' + TITANIUM_ANDROID_API + '.0.1;' +
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter extra-android-support;' + // FIXME Do we need this?
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-' + TITANIUM_ANDROID_API +';' +
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API,
 		prc;
 	if (fs.existsSync(buildToolsFolder)) {
 		console.log("Android SDK + Tools already installed at", androidBin);
@@ -256,7 +255,7 @@ function installAndroidNDK(next) {
 function writeBuildProperties(tiSDKPath, androidSDKPath, androidNDKPath, next) {
 	console.log('Writing build.properties for Ant'.green);
 	// Write out properties file
-	var buildProperties = path.join(buildTempDir, 'build.properties'),
+	var buildProperties = path.join(androidModuleDir, 'build.properties'),
 		content = "";
 	content += 'titanium.platform=' + tiSDKPath + '/android\n';
 	content += 'android.platform=' + androidSDKPath + '/platforms/android-' + TITANIUM_ANDROID_API + '\n';
