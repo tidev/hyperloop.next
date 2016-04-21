@@ -163,7 +163,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// check for built-in JSCore but only warn if not set
 	if (this.builder.tiapp.ios['use-jscore-framework'] === undefined) {
-		this.logger.info('Hyperloop compiler only works with the built-in iOS JavaScript library.');
+		this.logger.info('Hyperloop compiler works best with the built-in iOS JavaScript library.');
 		this.logger.info('Add the following to your tiapp.xml <ios> section to enable or disable this:');
 		this.logger.info('');
 		this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
@@ -180,9 +180,11 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
 		if (mod.id === 'hyperloop') {
-			mod.libName = 'libhyperloop.a';
+			var frag = this.builder.tiapp.ios['use-jscore-framework'] ? 'js' : 'ti';
+			mod.libName = 'libhyperloop-' + frag + 'core.a';
 			mod.libFile = path.join(mod.modulePath, mod.libName);
 			mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
+			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
 			return true;
 		}
 	}, this);

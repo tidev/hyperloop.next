@@ -9,8 +9,8 @@
 #import "pointer.h"
 
 
-JSObjectRef HyperloopGetWrapperForId(id obj);
-JSContextRef HyperloopCurrentContext();
+TiObjectRef HyperloopGetWrapperForId(id obj);
+TiContextRef HyperloopCurrentContext();
 
 @implementation HyperloopView
 
@@ -44,16 +44,16 @@ JSContextRef HyperloopCurrentContext();
 }
 
 -(void)protectFromGC {
-	JSObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
+	TiObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
 	if (wrapper != NULL) {
-		JSValueProtect(HyperloopCurrentContext(), wrapper);
+		TiValueProtect(HyperloopCurrentContext(), wrapper);
 	}
 }
 
 -(void)unprotectFromGC {
-	JSObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
+	TiObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
 	if (wrapper != NULL) {
-		JSValueUnprotect(HyperloopCurrentContext(), wrapper);
+		TiValueUnprotect(HyperloopCurrentContext(), wrapper);
 	}
 }
 
