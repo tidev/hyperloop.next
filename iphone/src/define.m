@@ -5,12 +5,13 @@
 
 #include "define.h"
 
+#ifdef USE_JSCORE_FRAMEWORK
 BOOL isIOS9OrGreater() {
 	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];;
 }
 
 BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
-	if (!JSValueIsObject(js_context_ref, js_value_ref)) return NO;
+	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
 	if (isIOS9OrGreater()) return JSValueIsArray(js_context_ref, js_value_ref);
 	JSStringRef property_name = JSStringCreateWithUTF8CString("Array");
 	JSObjectRef js_object_ref = (JSObjectRef)JSObjectGetProperty(js_context_ref, JSContextGetGlobalObject(js_context_ref), property_name, NULL);
@@ -19,7 +20,7 @@ BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	return isArray;
 }
 BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
-	if (!JSValueIsObject(js_context_ref, js_value_ref)) return NO;
+	if (!TiValueIsObject(js_context_ref, js_value_ref)) return NO;
 	if (isIOS9OrGreater()) return JSValueIsDate(js_context_ref, js_value_ref);
 	JSStringRef property_name = JSStringCreateWithUTF8CString("Date");
 	JSObjectRef js_object_ref = (JSObjectRef)JSObjectGetProperty(js_context_ref, JSContextGetGlobalObject(js_context_ref), property_name, NULL);
@@ -27,6 +28,7 @@ BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref) {
 	BOOL isDate = JSValueIsInstanceOfConstructor(js_context_ref, js_value_ref, js_object_ref, NULL);
 	return isDate;
 }
+#endif
 
 #ifdef HYPERLOOP_MEMORY_TRACKING
 static NSMutableDictionary *hashTable;
@@ -57,4 +59,5 @@ void HyperloopTrackDumpAll() {
 	}
 	hashTable = nil;
 }
+
 #endif

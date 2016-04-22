@@ -25,17 +25,17 @@
 	#import "UIKit/UIKit.h"
 	// for unit testing
 	@interface KrollContext : NSObject
-		-(JSContextRef)context;
+		-(TiContextRef)context;
 	@end
 	@interface KrollBridge : NSObject
 		-(id)require:(KrollContext*)kroll path:(NSString*)path;
 	@end
 	@interface KrollObject : NSObject
-		+(id)toID:(KrollContext *)c value:(JSValueRef)ref;
-		-(JSObjectRef) propsObject;
+		+(id)toID:(KrollContext *)c value:(TiValueRef)ref;
+		-(TiObjectRef) propsObject;
 	@end
 	@interface KrollWrapper : NSObject
-		@property (nonatomic,readwrite,assign)	JSObjectRef jsobject;
+		@property (nonatomic,readwrite,assign)	TiObjectRef jsobject;
 	@end
 	@interface KrollCallback : NSObject
 	@end
@@ -45,13 +45,13 @@
 #endif
 
 #if TARGET_OS_SIMULATOR
-extern void JSSynchronousGarbageCollectForDebugging(JSContextRef);
+extern void JSSynchronousGarbageCollectForDebugging(TiContextRef);
 #endif
 
-static JSClassRef classClassRef;
-static JSClassRef pointerClassRef;
-static JSClassRef constructorClassRef;
-static JSClassRef objectClassRef;
+static TiClassRef classClassRef;
+static TiClassRef pointerClassRef;
+static TiClassRef constructorClassRef;
+static TiClassRef objectClassRef;
 static KrollContext *context = nil;
 static KrollBridge *bridge = nil;
 static NSMutableDictionary <NSString *, KrollCallback *> * callbacks = nil;
@@ -59,9 +59,9 @@ static NSMutableDictionary <NSString *, KrollWrapper *> * modules = nil;
 static CFMutableDictionaryRef javaScriptWrappers = NULL;
 
 static NSString* HyperloopGetMemoryAddressOfId(id data);
-static void HyperloopRegisterWrapper(id pointer, JSValueRef thisObject);
-static JSObjectRef HLObjectMake(JSContextRef ctx, JSClassRef cls, id obj);
-JSObjectRef HyperloopGetWrapperForId(id obj);
+static void HyperloopRegisterWrapper(id pointer, TiValueRef thisObject);
+static TiObjectRef HLObjectMake(TiContextRef ctx, TiClassRef cls, id obj);
+TiObjectRef HyperloopGetWrapperForId(id obj);
 
 /**
  * gets the memory address of an Objective-C object as a string
@@ -102,7 +102,7 @@ static NSString* HyperloopGetMemoryAddressOfId (id data) {
  * stores the JS object in a non-retaining dictionay, `javaScriptWrappers`, using the memory
  * address (as a string) from an Objective-C object as the key
  */
-static void HyperloopRegisterWrapper (id pointer, JSValueRef thisObject) {
+static void HyperloopRegisterWrapper (id pointer, TiValueRef thisObject) {
 	if (pointer == nil || thisObject == NULL) {
 		return;
 	}
@@ -124,38 +124,38 @@ static void HyperloopRegisterWrapper (id pointer, JSValueRef thisObject) {
  * gets the js object stored in the `javaScriptWrappers` dictionary using the memory
  * address (as a string) from an Objective-C object as the key. Returns NULL if not found
  */
-JSObjectRef HyperloopGetWrapperForId (id obj) {
+TiObjectRef HyperloopGetWrapperForId (id obj) {
 	if (javaScriptWrappers == NULL || obj == nil) { return NULL; }
 
 	CFStringRef key = (__bridge CFStringRef)HyperloopGetMemoryAddressOfId(obj);
-	JSObjectRef result = NULL;
+	TiObjectRef result = NULL;
 	if (CFDictionaryContainsKey(javaScriptWrappers, key)) {
-		result = (JSObjectRef)CFDictionaryGetValue(javaScriptWrappers, key);
+		result = (TiObjectRef)CFDictionaryGetValue(javaScriptWrappers, key);
 	}
 	return result;
 }
 
 /**
  * replacement function for creating JS Objects. It looks for a wrapper in the `javaScriptWrappers` and
- * returns it if found, otherwise calls `JSObjectMake`
+ * returns it if found, otherwise calls `TiObjectMake`
  */
-static JSObjectRef HLObjectMake (JSContextRef ctx, JSClassRef cls, id obj) {
-	JSObjectRef jsObject = HyperloopGetWrapperForId(obj);
+static TiObjectRef HLObjectMake (TiContextRef ctx, TiClassRef cls, id obj) {
+	TiObjectRef jsObject = HyperloopGetWrapperForId(obj);
 	if (jsObject != nil) {
 #ifdef TIMODULE
 		if ([[obj nativeObject] isKindOfClass:[HyperloopView class]]) {
 			// Special case. If this is a UIView attached to a Titanium view, then grab the Titnaium view that owns it
-			JSStringRef prop = JSStringCreateWithUTF8CString("$native");
-			if (JSObjectHasProperty(ctx, jsObject, prop)) {
-				JSObjectSetProperty(ctx, jsObject, prop, JSObjectMake(ctx, pointerClassRef, (__bridge void *)(obj)), kJSPropertyAttributeNone, NULL);
+			TiStringRef prop = TiStringCreateWithUTF8CString("$native");
+			if (TiObjectHasProperty(ctx, jsObject, prop)) {
+				TiObjectSetProperty(ctx, jsObject, prop, TiObjectMake(ctx, pointerClassRef, (__bridge void *)(obj)), kTiPropertyAttributeNone, NULL);
 			}
-			JSStringRelease(prop);
+			TiStringRelease(prop);
 			}
 #endif
 		// NSLog(@"[HYPERLOOP] Recycling object %@", [obj class]);
 		return jsObject;
 	}
-	return JSObjectMake(ctx, cls, (__bridge void *)(obj));
+	return TiObjectMake(ctx, cls, (__bridge void *)(obj));
 }
 
 /**
@@ -177,20 +177,20 @@ void HyperloopRegisterCallbackForIdentifier (KrollCallback *callback, NSString *
 }
 
 /**
- * convert a JSStringRef into a NSString *
+ * convert a TiStringRef into a NSString *
  */
-static NSString* NSStringFromJSStringRef (JSContextRef ctx, JSStringRef string, JSValueRef *exception) {
-	CFStringRef str = JSStringCopyCFString(NULL, string);
+static NSString* NSStringFromTiStringRef (TiContextRef ctx, TiStringRef string, TiValueRef *exception) {
+	CFStringRef str = TiStringCopyCFString(NULL, string);
 	NSString* __autoreleasing nsstring =  (__bridge NSString *)str;
 	return nsstring;
 }
 
 /**
- * convert a JSValueRef into a NSString *
+ * convert a TiValueRef into a NSString *
  */
-static NSString* NSStringFromJSValueRef (JSContextRef ctx, JSValueRef value, JSValueRef *exception) {
-	JSStringRef string = JSValueToStringCopy(ctx, value, exception);
-	return NSStringFromJSStringRef(ctx, string, exception);
+static NSString* NSStringFromTiValueRef (TiContextRef ctx, TiValueRef value, TiValueRef *exception) {
+	TiStringRef string = TiValueToStringCopy(ctx, value, exception);
+	return NSStringFromTiStringRef(ctx, string, exception);
 }
 
 /**
@@ -207,26 +207,26 @@ NSString* GenerateIdentifier (NSString *className, NSString *methodName, BOOL in
 }
 
 /**
- * returns true if JSObjectRef is a JS RegExp instance
+ * returns true if TiObjectRef is a JS RegExp instance
  */
-BOOL isJSRegExp (JSContextRef ctx, JSObjectRef obj, JSValueRef *exception) {
-	JSStringRef script = JSStringCreateWithUTF8CString("RegExp");
-	JSObjectRef global = JSContextGetGlobalObject(ctx);
-	JSValueRef classRef = JSObjectGetProperty(ctx, global, script, exception);
-	JSObjectRef classObj = JSValueToObject(ctx, classRef, exception);
-	JSStringRelease(script);
-	return JSValueIsInstanceOfConstructor(ctx, obj, classObj, exception);
+BOOL isJSRegExp (TiContextRef ctx, TiObjectRef obj, TiValueRef *exception) {
+	TiStringRef script = TiStringCreateWithUTF8CString("RegExp");
+	TiObjectRef global = TiContextGetGlobalObject(ctx);
+	TiValueRef classRef = TiObjectGetProperty(ctx, global, script, exception);
+	TiObjectRef classObj = TiValueToObject(ctx, classRef, exception);
+	TiStringRelease(script);
+	return TiValueIsInstanceOfConstructor(ctx, obj, classObj, exception);
 }
 
 /**
- * returns the property for the JSObjectRef as a boolean or false if not found
+ * returns the property for the TiObjectRef as a boolean or false if not found
  */
-static BOOL TiPropToBool (JSContextRef ctx, JSObjectRef obj, const char *prop, JSValueRef *exception) {
-	JSStringRef propString = JSStringCreateWithUTF8CString(prop);
-	JSValueRef value = JSObjectGetProperty(ctx, obj, propString, exception);
-	JSStringRelease(propString);
-	if (JSValueIsBoolean(ctx, value)) {
-		return JSValueToBoolean(ctx, value);
+static BOOL TiPropToBool (TiContextRef ctx, TiObjectRef obj, const char *prop, TiValueRef *exception) {
+	TiStringRef propString = TiStringCreateWithUTF8CString(prop);
+	TiValueRef value = TiObjectGetProperty(ctx, obj, propString, exception);
+	TiStringRelease(propString);
+	if (TiValueIsBoolean(ctx, value)) {
+		return TiValueToBoolean(ctx, value);
 	}
 	return false;
 }
@@ -234,70 +234,70 @@ static BOOL TiPropToBool (JSContextRef ctx, JSObjectRef obj, const char *prop, J
 /**
  * returns an NSError as a JS Error object
  */
-static JSValueRef NSErrorToJSException (JSContextRef ctx, NSError *exception) {
-	JSStringRef message = JSStringCreateWithUTF8CString([[exception localizedDescription] UTF8String]);
-	JSValueRef args[1];
-	args[0] = JSValueMakeString(ctx, message);
-	JSObjectRef result = JSObjectMakeError(ctx, 1, args, NULL);
-	JSValueRef messageRef = JSValueMakeString(ctx, message);
-	JSStringRef prop = JSStringCreateWithUTF8CString("description");
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
-	prop = JSStringCreateWithUTF8CString("name");
-	message = JSStringCreateWithUTF8CString([[exception domain] UTF8String]);
-	messageRef = JSValueMakeString(ctx, message);
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
+static TiValueRef NSErrorToJSException (TiContextRef ctx, NSError *exception) {
+	TiStringRef message = TiStringCreateWithUTF8CString([[exception localizedDescription] UTF8String]);
+	TiValueRef args[1];
+	args[0] = TiValueMakeString(ctx, message);
+	TiObjectRef result = TiObjectMakeError(ctx, 1, args, NULL);
+	TiValueRef messageRef = TiValueMakeString(ctx, message);
+	TiStringRef prop = TiStringCreateWithUTF8CString("description");
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
+	prop = TiStringCreateWithUTF8CString("name");
+	message = TiStringCreateWithUTF8CString([[exception domain] UTF8String]);
+	messageRef = TiValueMakeString(ctx, message);
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
 	NSArray *array = [NSThread callStackSymbols];
 	array = [array subarrayWithRange:NSMakeRange(1, [array count] - 1)];
 	NSString *stack = [array componentsJoinedByString:@"\n"];
-	message = JSStringCreateWithUTF8CString([stack UTF8String]);
-	prop = JSStringCreateWithUTF8CString("nativeStack");
-	messageRef = JSValueMakeString(ctx, message);
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
+	message = TiStringCreateWithUTF8CString([stack UTF8String]);
+	prop = TiStringCreateWithUTF8CString("nativeStack");
+	messageRef = TiValueMakeString(ctx, message);
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
 	return result;
 }
 
 /**
  * returns an NSException as a JS Error object
  */
-static JSValueRef NSExceptionToJSException (JSContextRef ctx, NSException *exception) {
-	JSStringRef message = JSStringCreateWithUTF8CString([[exception reason] UTF8String]);
-	JSValueRef args[1];
-	args[0] = JSValueMakeString(ctx, message);
-	JSObjectRef result = JSObjectMakeError(ctx, 1, args, NULL);
-	JSValueRef messageRef = JSValueMakeString(ctx, message);
-	JSStringRef prop = JSStringCreateWithUTF8CString("description");
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
-	prop = JSStringCreateWithUTF8CString("name");
-	message = JSStringCreateWithUTF8CString([[exception name] UTF8String]);
-	messageRef = JSValueMakeString(ctx, message);
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
+static TiValueRef NSExceptionToJSException (TiContextRef ctx, NSException *exception) {
+	TiStringRef message = TiStringCreateWithUTF8CString([[exception reason] UTF8String]);
+	TiValueRef args[1];
+	args[0] = TiValueMakeString(ctx, message);
+	TiObjectRef result = TiObjectMakeError(ctx, 1, args, NULL);
+	TiValueRef messageRef = TiValueMakeString(ctx, message);
+	TiStringRef prop = TiStringCreateWithUTF8CString("description");
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
+	prop = TiStringCreateWithUTF8CString("name");
+	message = TiStringCreateWithUTF8CString([[exception name] UTF8String]);
+	messageRef = TiValueMakeString(ctx, message);
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
 	NSArray *array = [exception callStackSymbols];
 	array = [array subarrayWithRange:NSMakeRange(1, [array count] - 1)];
 	NSString *stack = [array componentsJoinedByString:@"\n"];
-	message = JSStringCreateWithUTF8CString([stack UTF8String]);
-	prop = JSStringCreateWithUTF8CString("nativeStack");
-	messageRef = JSValueMakeString(ctx, message);
-	JSObjectSetProperty(ctx, result, prop, messageRef, kJSPropertyAttributeReadOnly, NULL);
-	JSStringRelease(message);
-	JSStringRelease(prop);
+	message = TiStringCreateWithUTF8CString([stack UTF8String]);
+	prop = TiStringCreateWithUTF8CString("nativeStack");
+	messageRef = TiValueMakeString(ctx, message);
+	TiObjectSetProperty(ctx, result, prop, messageRef, kTiPropertyAttributeReadOnly, NULL);
+	TiStringRelease(message);
+	TiStringRelease(prop);
 	return result;
 }
 
 /**
  * attempt to get a class wrapper
  */
-static JSObjectRef CreateJSClassFromModulePath (NSString *path, id obj, JSClassRef classRef, BOOL newInstance) {
-	JSContextRef ctx = context.context;
+static TiObjectRef CreateJSClassFromModulePath (NSString *path, id obj, TiClassRef classRef, BOOL newInstance) {
+	TiContextRef ctx = context.context;
 	if (modules == nil) {
 		modules = [NSMutableDictionary dictionary];
 		ARCRetain(modules);
@@ -314,19 +314,19 @@ static JSObjectRef CreateJSClassFromModulePath (NSString *path, id obj, JSClassR
 		}
 	}
 	if (wrapper) {
-		JSObjectRef function = [wrapper jsobject];
-		JSObjectRef ref = HLObjectMake(ctx, pointerClassRef, obj);
+		TiObjectRef function = [wrapper jsobject];
+		TiObjectRef ref = HLObjectMake(ctx, pointerClassRef, obj);
 		if (newInstance) {
-			JSValueRef args [] = {ref};
-			return JSObjectCallAsConstructor(ctx, function, 1, args, NULL);
+			TiValueRef args [] = {ref};
+			return TiObjectCallAsConstructor(ctx, function, 1, args, NULL);
 		} else {
 			// we need to store our pointer since this is a KrollWrapper and it's native pointer
 			// will be a KrollContext but we want to get back to our class
-			JSStringRef prop = JSStringCreateWithUTF8CString("$native");
-			if (!JSObjectHasProperty(ctx, function, prop)) {
-				JSObjectSetProperty(ctx, function, prop, ref, kJSPropertyAttributeDontDelete | kJSPropertyAttributeDontEnum, 0);
+			TiStringRef prop = TiStringCreateWithUTF8CString("$native");
+			if (!TiObjectHasProperty(ctx, function, prop)) {
+				TiObjectSetProperty(ctx, function, prop, ref, kTiPropertyAttributeDontDelete | kTiPropertyAttributeDontEnum, 0);
 			}
-			JSStringRelease(prop);
+			TiStringRelease(prop);
 			return function;
 		}
 	} else {
@@ -338,23 +338,23 @@ static JSObjectRef CreateJSClassFromModulePath (NSString *path, id obj, JSClassR
  * create a JS wrapper class for a given framework / class.  the pointer should be obj
  * returns a generic wrapper if not found
  */
-static JSObjectRef CreateJSClassFromNSClass (NSString *framework, NSString *clsname, id obj, JSClassRef classRef) {
+static TiObjectRef CreateJSClassFromNSClass (NSString *framework, NSString *clsname, id obj, TiClassRef classRef) {
 	NSString *path = [NSString stringWithFormat:@"hyperloop/%@/%@", framework, [clsname lowercaseString]];
 	return CreateJSClassFromModulePath(path, obj, classRef, YES);
 }
 
 /**
- * for a given object, return a JSValueRef
+ * for a given object, return a TiValueRef
  */
-JSValueRef NSObjectToJSObject (id object) {
+TiValueRef NSObjectToJSObject (id object) {
 
-	JSObjectRef thisObject = HyperloopGetWrapperForId(object);
+	TiObjectRef thisObject = HyperloopGetWrapperForId(object);
 	if (thisObject != nil) return thisObject;
 
 	if (!object || [object isEqual:[NSNull null]]) {
-		return JSValueMakeNull(context.context);
+		return TiValueMakeNull(context.context);
 	} else if ([object isKindOfClass:[NSNumber class]]) {
-		return JSValueMakeNumber(context.context, [object doubleValue]);
+		return TiValueMakeNumber(context.context, [object doubleValue]);
 	} else if ([object isKindOfClass:[HyperloopPointer class]]) {
 		HyperloopPointer *pointer = (HyperloopPointer *)object;
 		if (pointer.framework && pointer.classname) {
@@ -367,27 +367,27 @@ JSValueRef NSObjectToJSObject (id object) {
 	} else {
 		return HLObjectMake(context.context, constructorClassRef, object);
 	}
-	return JSValueMakeUndefined(context.context);
+	return TiValueMakeUndefined(context.context);
 }
 
 /**
- * return the current JSContextRef
+ * return the current TiContextRef
  */
-JSContextRef HyperloopCurrentContext () {
+TiContextRef HyperloopCurrentContext () {
 	return context.context;
 }
 
 
 #define CHECKEXCEPTION \
 	if (exception && *exception != NULL) {\
-		id ex = JSValueRefToId(ctx, *exception, NULL);\
+		id ex = TiValueRefToId(ctx, *exception, NULL);\
 		NSLog(@"[ERROR] JS Exception detected %@", ex);\
-		return JSValueMakeUndefined(ctx); \
+		return TiValueMakeUndefined(ctx); \
 	}\
 
 #define CHECKEXCEPTION_NSNULL \
 	if (exception && *exception != NULL) {\
-		id ex = JSValueRefToId(ctx, *exception, NULL);\
+		id ex = TiValueRefToId(ctx, *exception, NULL);\
 		NSLog(@"[ERROR] JS Exception detected %@", ex);\
 		return [NSNull null];\
 	}\
@@ -400,13 +400,13 @@ JSContextRef HyperloopCurrentContext () {
 } @catch (NSException *ex) {\
   NSLog(@"[ERROR] %@", ex); \
   *exception = NSExceptionToJSException(ctx, ex);\
-  return JSValueMakeUndefined(ctx); \
+  return TiValueMakeUndefined(ctx); \
 }\
 }
 
 
 #define JS_CALLBACK(name) \
-static JSValueRef name (JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception) {\
+static TiValueRef name (TiContextRef ctx, TiObjectRef function, TiObjectRef thisObject, size_t argumentCount, const TiValueRef arguments[], TiValueRef *exception) {\
 BEGIN_METHOD \
 
 #define JS_CALLBACK_END \
@@ -414,59 +414,59 @@ END_METHOD \
 }\
 
 /**
- * convert a JSValueRef to an NSObject
+ * convert a TiValueRef to an NSObject
  */
-id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *exception) {
-	switch (JSValueGetType(ctx, value)) {
-		case kJSTypeUndefined:
-		case kJSTypeNull: {
+id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *exception) {
+	switch (TiValueGetType(ctx, value)) {
+		case kTITypeUndefined:
+		case kTITypeNull: {
 			return [NSNull null];
 		}
-		case kJSTypeBoolean: {
-			return [NSNumber numberWithBool:JSValueToBoolean(ctx, value)];
+		case kTITypeBoolean: {
+			return [NSNumber numberWithBool:TiValueToBoolean(ctx, value)];
 		}
-		case kJSTypeNumber: {
-			return [NSNumber numberWithDouble:JSValueToNumber(ctx, value, exception)];
+		case kTITypeNumber: {
+			return [NSNumber numberWithDouble:TiValueToNumber(ctx, value, exception)];
 		}
-		case kJSTypeString: {
-			return NSStringFromJSValueRef(ctx, value, exception);
+		case kTITypeString: {
+			return NSStringFromTiValueRef(ctx, value, exception);
 		}
-		case kJSTypeObject: {
-			JSObjectRef obj = JSValueToObject(ctx, value, exception);
+		case kTITypeObject: {
+			TiObjectRef obj = TiValueToObject(ctx, value, exception);
 			CHECKEXCEPTION_NSNULL
-			if (JSValueIsObjectOfClass(ctx, value, pointerClassRef) ||
-				JSValueIsObjectOfClass(ctx, value, classClassRef) ||
-				JSValueIsObjectOfClass(ctx, value, constructorClassRef)) {
-				return (__bridge id)JSObjectGetPrivate(obj);
+			if (TiValueIsObjectOfClass(ctx, value, pointerClassRef) ||
+				TiValueIsObjectOfClass(ctx, value, classClassRef) ||
+				TiValueIsObjectOfClass(ctx, value, constructorClassRef)) {
+				return (__bridge id)TiObjectGetPrivate(obj);
 			} else if (HLValueIsDate(ctx, value)) {
-				double ms = JSValueToNumber(ctx, value, exception);
+				double ms = TiValueToNumber(ctx, value, exception);
 				CHECKEXCEPTION_NSNULL
 				return [NSDate dateWithTimeIntervalSince1970:(NSTimeInterval) (ms / 1000)];
-			} else if (JSObjectIsFunction(ctx, obj)) {
+			} else if (TiObjectIsFunction(ctx, obj)) {
 				if (context == nil) {
 					@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"argument passed was not a valid Hyperloop object" userInfo:nil];
 				}
 				return [KrollObject toID:context value:value];
 			} else if (HLValueIsArray(ctx, obj)) {
-				JSStringRef prop = JSStringCreateWithUTF8CString("length");
-				JSValueRef lengthValue = JSObjectGetProperty(ctx, obj, prop, exception);
+				TiStringRef prop = TiStringCreateWithUTF8CString("length");
+				TiValueRef lengthValue = TiObjectGetProperty(ctx, obj, prop, exception);
 				CHECKEXCEPTION_NSNULL
-				double len = JSValueToNumber(ctx, lengthValue, exception);
+				double len = TiValueToNumber(ctx, lengthValue, exception);
 				CHECKEXCEPTION_NSNULL
 				NSMutableArray *result = [NSMutableArray arrayWithCapacity:len];
 				for (unsigned c = 0; c < len; c++) {
-					JSValueRef val = JSObjectGetPropertyAtIndex(ctx, obj, c, exception);
+					TiValueRef val = TiObjectGetPropertyAtIndex(ctx, obj, c, exception);
 					CHECKEXCEPTION_NSNULL
-					id value = JSValueRefToId(ctx, val, exception);
+					id value = TiValueRefToId(ctx, val, exception);
 					[result addObject:value];
 				}
-				JSStringRelease(prop);
+				TiStringRelease(prop);
 				return result;
 			} else if (isJSRegExp(ctx, obj, exception)) {
 				NSRegularExpressionOptions options = 0;
 				NSError *error = nil;
-				JSStringRef source = JSStringCreateWithUTF8CString("source");
-				JSValueRef sourceValue = JSObjectGetProperty(ctx, obj, source, exception);
+				TiStringRef source = TiStringCreateWithUTF8CString("source");
+				TiValueRef sourceValue = TiObjectGetProperty(ctx, obj, source, exception);
 				CHECKEXCEPTION_NSNULL
 				if (TiPropToBool(ctx, obj, "multiline", exception)) {
 					options |= NSRegularExpressionAnchorsMatchLines;
@@ -474,8 +474,8 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 				if (TiPropToBool(ctx, obj, "ignoreCase", exception)) {
 					options |= NSRegularExpressionCaseInsensitive;
 				}
-				NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:JSValueRefToId(ctx, sourceValue, exception) options:options error:&error];
-				JSStringRelease(source);
+				NSRegularExpression *re = [NSRegularExpression regularExpressionWithPattern:TiValueRefToId(ctx, sourceValue, exception) options:options error:&error];
+				TiStringRelease(source);
 				if (error) {
 					if (exception) {
 						*exception = NSErrorToJSException(ctx, error);
@@ -486,7 +486,7 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 			} else {
 				// check to see if it's a KrollObject where we're receiving a Ti object
 				// passed to Hyperloop
-				void *p = JSObjectGetPrivate(obj);
+				void *p = TiObjectGetPrivate(obj);
 				if (p) {
 					id po = (__bridge id)p;
 					if ([po isKindOfClass:[KrollObject class]]) {
@@ -500,41 +500,41 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 					}
 					return po;
 				}
-				JSStringRef prop = JSStringCreateWithUTF8CString("$native");
-				if (JSObjectHasProperty(ctx, obj, prop)) {
-					JSValueRef nativeRef = JSObjectGetProperty(ctx, obj, prop, exception);
+				TiStringRef prop = TiStringCreateWithUTF8CString("$native");
+				if (TiObjectHasProperty(ctx, obj, prop)) {
+					TiValueRef nativeRef = TiObjectGetProperty(ctx, obj, prop, exception);
 					CHECKEXCEPTION_NSNULL
-					id nativeObj = JSValueRefToId(ctx, nativeRef, exception);
+					id nativeObj = TiValueRefToId(ctx, nativeRef, exception);
 					CHECKEXCEPTION_NSNULL
-					JSStringRelease(prop);
+					TiStringRelease(prop);
 					return nativeObj;
 				}
-				JSStringRelease(prop);
+				TiStringRelease(prop);
 				NSMutableDictionary *result = [NSMutableDictionary dictionary];
-				JSPropertyNameArrayRef props = JSObjectCopyPropertyNames(ctx, obj);
-				size_t len = JSPropertyNameArrayGetCount(props);
+				TiPropertyNameArrayRef props = TiObjectCopyPropertyNames(ctx, obj);
+				size_t len = TiPropertyNameArrayGetCount(props);
 				for (unsigned c = 0; c < len; c++) {
-					JSStringRef name = JSPropertyNameArrayGetNameAtIndex(props, c);
-					JSValueRef val = JSObjectGetProperty(ctx, obj, name, exception);
-					id value = JSValueRefToId(ctx, val, exception);
-					[result setObject:value forKey:NSStringFromJSStringRef(ctx, name, exception)];
+					TiStringRef name = TiPropertyNameArrayGetNameAtIndex(props, c);
+					TiValueRef val = TiObjectGetProperty(ctx, obj, name, exception);
+					id value = TiValueRefToId(ctx, val, exception);
+					[result setObject:value forKey:NSStringFromTiStringRef(ctx, name, exception)];
 				}
 				// if it looks like an exception, add the message to the output
 				// FIXME: test for constructor instead
 				if ([result objectForKey:@"line"] && [result objectForKey:@"column"]) {
-					JSStringRef prop = JSStringCreateWithUTF8CString("message");
-					JSValueRef val = JSObjectGetProperty(ctx, obj, prop, exception);
-					id value = JSValueRefToId(ctx, val, exception);
-					[result setObject:value forKey:NSStringFromJSStringRef(ctx, prop, exception)];
-					JSStringRelease(prop);
+					TiStringRef prop = TiStringCreateWithUTF8CString("message");
+					TiValueRef val = TiObjectGetProperty(ctx, obj, prop, exception);
+					id value = TiValueRefToId(ctx, val, exception);
+					[result setObject:value forKey:NSStringFromTiStringRef(ctx, prop, exception)];
+					TiStringRelease(prop);
 
-					prop = JSStringCreateWithUTF8CString("stack");
-					val = JSObjectGetProperty(ctx, obj, prop, exception);
-					value = JSValueRefToId(ctx, val, exception);
-					[result setObject:value forKey:NSStringFromJSStringRef(ctx, prop, exception)];
-					JSStringRelease(prop);
+					prop = TiStringCreateWithUTF8CString("stack");
+					val = TiObjectGetProperty(ctx, obj, prop, exception);
+					value = TiValueRefToId(ctx, val, exception);
+					[result setObject:value forKey:NSStringFromTiStringRef(ctx, prop, exception)];
+					TiStringRelease(prop);
 				}
-				JSPropertyNameArrayRelease(props);
+				TiPropertyNameArrayRelease(props);
 				return result;
 			}
 		}
@@ -546,8 +546,8 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 /**
  * called when a new JS instance is created to retain the native object
  */
-static void Initializer (JSContextRef ctx, JSObjectRef object) {
-	id obj = (__bridge id)JSObjectGetPrivate(object);
+static void Initializer (TiContextRef ctx, TiObjectRef object) {
+	id obj = (__bridge id)TiObjectGetPrivate(object);
 	if (obj) {
 		ARCRetain(obj);
 #ifdef DEBUG_INITIALIZE
@@ -559,8 +559,8 @@ static void Initializer (JSContextRef ctx, JSObjectRef object) {
 /**
  * called when a new JS instance is garbage collected, need to release the native object
  */
-static void Finalizer (JSObjectRef object) {
-	id obj = (__bridge id)JSObjectGetPrivate(object);
+static void Finalizer (TiObjectRef object) {
+	id obj = (__bridge id)TiObjectGetPrivate(object);
 	if (!obj) return;
 #ifdef DEBUG_FINALIZE
 	if ([obj isKindOfClass:[HyperloopClass class]]) {
@@ -586,12 +586,12 @@ static void Finalizer (JSObjectRef object) {
 /**
  * called when a new JS wrapper is constructed
  */
-static JSObjectRef Constructor (JSContextRef ctx, JSObjectRef constructor, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) {
+static TiObjectRef Constructor (TiContextRef ctx, TiObjectRef constructor, size_t argumentCount, const TiValueRef arguments[], TiValueRef* exception) {
 	id obj;
 	if (argumentCount) {
-		obj = JSValueRefToId(ctx, arguments[0], exception);
+		obj = TiValueRefToId(ctx, arguments[0], exception);
 	} else {
-		HyperloopClass *cls = (__bridge HyperloopClass *)JSObjectGetPrivate(constructor);
+		HyperloopClass *cls = (__bridge HyperloopClass *)TiObjectGetPrivate(constructor);
 		Class customClass = (Class)[cls target];
 		obj = [[customClass alloc] init];
 		if (cls.customClass) {
@@ -614,21 +614,21 @@ static JSObjectRef Constructor (JSContextRef ctx, JSObjectRef constructor, size_
 JS_CALLBACK(GarbageCollect)
 	NSLog(@"[HYPERLOOP] 🚚\tGarbage Collection");
 	JSSynchronousGarbageCollectForDebugging(ctx);
-	return JSValueMakeUndefined(ctx);
+	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 #endif
 
 JS_CALLBACK(GetWrapper)
-	JSObjectRef thisObject = JSValueToObject(ctx, arguments[0], exception);
+	TiObjectRef thisObject = TiValueToObject(ctx, arguments[0], exception);
 	CHECKEXCEPTION
-	id nativePointer = (__bridge id)(JSObjectGetPrivate(thisObject));
+	id nativePointer = (__bridge id)(TiObjectGetPrivate(thisObject));
 	if (nativePointer == nil) {
-		return JSValueMakeUndefined(ctx);
+		return TiValueMakeUndefined(ctx);
 	}
 
-	JSValueRef result = HyperloopGetWrapperForId(nativePointer);
+	TiValueRef result = HyperloopGetWrapperForId(nativePointer);
 	if (result == NULL) {
-		return JSValueMakeUndefined(ctx);
+		return TiValueMakeUndefined(ctx);
 	}
 	// if ([nativePointer isKindOfClass:[HyperloopClass class]] || [nativePointer isKindOfClass:[KrollObject class]]) {
 	// 	NSLog(@"[HYPERLOOP] GetWrapper %@ %p", [[nativePointer target] class], [nativePointer target]);
@@ -650,29 +650,29 @@ JS_CALLBACK_END
  */
 
 JS_CALLBACK(RegisterWrapper)
-	JSObjectRef thisObject = JSValueToObject(ctx, arguments[0], exception);
+	TiObjectRef thisObject = TiValueToObject(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 	id nativePointer = nil;
 	{
-		JSStringRef str;
-		JSObjectRef jsObject;
+		TiStringRef str;
+		TiObjectRef jsObject;
 		{
-			str = JSStringCreateWithUTF8CString("$native");
-			JSValueRef value = JSObjectGetProperty(ctx, thisObject, str, exception);
-			JSStringRelease(str);
+			str = TiStringCreateWithUTF8CString("$native");
+			TiValueRef value = TiObjectGetProperty(ctx, thisObject, str, exception);
+			TiStringRelease(str);
 			CHECKEXCEPTION
-			jsObject = JSValueToObject(ctx, value, exception);
+			jsObject = TiValueToObject(ctx, value, exception);
 			CHECKEXCEPTION;
 		}
 
-		nativePointer = (__bridge id)(JSObjectGetPrivate(jsObject));
+		nativePointer = (__bridge id)(TiObjectGetPrivate(jsObject));
 		{
-			str = JSStringCreateWithUTF8CString("__wrapper__");
+			str = TiStringCreateWithUTF8CString("__wrapper__");
 			if ([nativePointer isKindOfClass:[KrollObject class]]) {
 				jsObject = [(KrollObject*)nativePointer propsObject];
 			}
-			JSObjectSetProperty(ctx, jsObject, str, thisObject, kJSPropertyAttributeDontDelete, exception);
-			JSStringRelease(str);
+			TiObjectSetProperty(ctx, jsObject, str, thisObject, kTiPropertyAttributeDontDelete, exception);
+			TiStringRelease(str);
 			CHECKEXCEPTION;
 		}
 
@@ -681,14 +681,14 @@ JS_CALLBACK(RegisterWrapper)
 		// }
 	}
 	HyperloopRegisterWrapper(nativePointer, thisObject);
-	return JSValueMakeUndefined(ctx);
+	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 
 /**
  * create a new Class proxy
  */
 JS_CALLBACK(NewProxy)
-	NSDictionary *properties = JSValueRefToId(ctx, arguments[0], exception);
+	NSDictionary *properties = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 	NSString *cls = [properties valueForKey:@"class"];
 	NSString *init = [properties valueForKey:@"init"];
@@ -714,13 +714,13 @@ JS_CALLBACK_END
  * create a new Pointer
  */
 JS_CALLBACK(CreatePointer)
-	NSString *encoding = JSValueRefToId(ctx, arguments[0], exception);
+	NSString *encoding = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 	HyperloopPointer *pointer = [HyperloopPointer encoding:[encoding UTF8String]];
 	if (argumentCount == 3) {
-		NSString *framework = JSValueRefToId(ctx, arguments[1], exception);
+		NSString *framework = TiValueRefToId(ctx, arguments[1], exception);
 		CHECKEXCEPTION
-		NSString *classname = JSValueRefToId(ctx, arguments[2], exception);
+		NSString *classname = TiValueRefToId(ctx, arguments[2], exception);
 		CHECKEXCEPTION
 		return CreateJSClassFromNSClass(framework, classname, pointer, pointerClassRef);
 	}
@@ -734,12 +734,12 @@ JS_CALLBACK(Dispatch)
 	if (argumentCount < 2) {
 		@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"you must pass at least 2 arguments to dispatch" userInfo:nil];
 	}
-	NSString *selector = NSStringFromJSValueRef(ctx, arguments[1], exception);
+	NSString *selector = NSStringFromTiValueRef(ctx, arguments[1], exception);
 	CHECKEXCEPTION
-	id args = argumentCount > 2 ? JSValueRefToId(ctx, arguments[2], exception) : nil;
+	id args = argumentCount > 2 ? TiValueRefToId(ctx, arguments[2], exception) : nil;
 	CHECKEXCEPTION
 
-	id target = JSValueRefToId(ctx, arguments[0], exception);
+	id target = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 
 	if ([args isEqual:[NSNull null]]) {
@@ -749,10 +749,10 @@ JS_CALLBACK(Dispatch)
 	if (args && [args isKindOfClass:[NSArray class]] == NO) {
 		args = @[args];
 	}
-	BOOL isInstance = argumentCount > 3 ? JSValueToBoolean(ctx, arguments[3]) : YES;
+	BOOL isInstance = argumentCount > 3 ? TiValueToBoolean(ctx, arguments[3]) : YES;
 	id result = [HyperloopUtils invokeSelector:NSSelectorFromString(selector) args:args target:target instance:isInstance];
 	if (result == nil || [result isEqual:[NSNull null]]) {
-		return JSValueMakeNull(ctx);
+		return TiValueMakeNull(ctx);
 	}
 	// NSLog(@"[DEBUG] dispatch %@ %@", target, selector);
 	if ([result isKindOfClass:[HyperloopPointer class]]) {
@@ -766,9 +766,9 @@ JS_CALLBACK(Dispatch)
 #endif
 		return HLObjectMake(ctx, pointerClassRef, result);
 	} else if ([result isKindOfClass:[NSNumber class]]) {
-		return JSValueMakeNumber(ctx, [result doubleValue]);
+		return TiValueMakeNumber(ctx, [result doubleValue]);
 	}
-	return JSValueMakeUndefined(ctx);
+	return TiValueMakeUndefined(ctx);
 JS_CALLBACK_END
 
 /**
@@ -779,7 +779,7 @@ JS_CALLBACK(DefineClass)
 		@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"you must pass at least 1 arguments to DefineClass" userInfo:nil];
 	}
 	// no-op since the bulk of the work is done at compile time
-	NSString *name = JSValueRefToId(ctx, arguments[0], exception);
+	NSString *name = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 	HyperloopClass *cls = [[HyperloopClass alloc] initWithClassName:name alloc:NO init:@selector(class) args:nil];
 	cls.customClass = NSClassFromString(name);
@@ -799,9 +799,9 @@ JS_CALLBACK_END
  * dynamically add a method to a class
  */
 JS_CALLBACK(AddMethod)
-	id targetClass = JSValueRefToId(ctx, arguments[0], exception);
+	id targetClass = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
-	NSDictionary *props = JSValueRefToId(ctx, arguments[1], exception);
+	NSDictionary *props = TiValueRefToId(ctx, arguments[1], exception);
 	CHECKEXCEPTION
 	BOOL isInstance = [props objectForKey:@"instance"] ? [HyperloopUtils booleanify:[props objectForKey:@"instance"]] : YES;
 	HyperloopClass *cls = (HyperloopClass *)targetClass;
@@ -817,35 +817,35 @@ JS_CALLBACK(AddMethod)
 		HyperloopRegisterCallbackForIdentifier(callback, identifier);
 	}
 
-	return JSValueMakeNull(ctx);
+	return TiValueMakeNull(ctx);
 JS_CALLBACK_END
 
 /**
  * return true if object is of type [NSNull class]
  */
 JS_CALLBACK(IsNull)
-	id target = JSValueRefToId(ctx, arguments[0], exception);
+	id target = TiValueRefToId(ctx, arguments[0], exception);
 	CHECKEXCEPTION
 	if (!target || [target isEqual:[NSNull null]]) {
-		return JSValueMakeBoolean(ctx, YES);
+		return TiValueMakeBoolean(ctx, YES);
 	}
-	return JSValueMakeBoolean(ctx, NO);
+	return TiValueMakeBoolean(ctx, NO);
 JS_CALLBACK_END
 
 /**
  * protect the passed in JS value from garbage collection
  */
 JS_CALLBACK(Protect)
-	JSValueProtect(ctx, arguments[0]);
-	return JSValueMakeBoolean(ctx, YES);
+	TiValueProtect(ctx, arguments[0]);
+	return TiValueMakeBoolean(ctx, YES);
 JS_CALLBACK_END
 
 /**
  * unprotect the passed in JS value so that it can be garbage collected
  */
 JS_CALLBACK(Unprotect)
-	JSValueUnprotect(ctx, arguments[0]);
-	return JSValueMakeBoolean(ctx, YES);
+	TiValueUnprotect(ctx, arguments[0]);
+	return TiValueMakeBoolean(ctx, YES);
 JS_CALLBACK_END
 
 /**
@@ -854,47 +854,47 @@ JS_CALLBACK_END
 JS_CALLBACK(Logger)
 	NSMutableArray *array = [NSMutableArray arrayWithCapacity:argumentCount];
 	for (size_t c = 0; c < argumentCount; c++) {
-		JSStringRef s = JSValueToStringCopy(ctx, arguments[c], exception);
+		TiStringRef s = TiValueToStringCopy(ctx, arguments[c], exception);
 		CHECKEXCEPTION
-		NSString *str = NSStringFromJSStringRef(ctx, s, exception);
+		NSString *str = NSStringFromTiStringRef(ctx, s, exception);
 		CHECKEXCEPTION
 		[array addObject:str];
 	}
 	NSLog(@"[INFO] %@", [array componentsJoinedByString:@" "]);
-	return JSValueMakeNull(ctx);
+	return TiValueMakeNull(ctx);
 JS_CALLBACK_END
 
 /**
  * coerce is JS value from one type to another
  */
-static JSValueRef Convert (JSContextRef ctx, JSObjectRef object, JSType type, JSValueRef* exception) {
-	id ref = (__bridge id)(JSObjectGetPrivate(object));
+static TiValueRef Convert (TiContextRef ctx, TiObjectRef object, TiType type, TiValueRef* exception) {
+	id ref = (__bridge id)(TiObjectGetPrivate(object));
 	switch (type) {
-		case kJSTypeUndefined: {
-			return JSValueMakeUndefined(ctx);
+		case kTITypeUndefined: {
+			return TiValueMakeUndefined(ctx);
 		}
-		case kJSTypeNull: {
-			return JSValueMakeNull(ctx);
+		case kTITypeNull: {
+			return TiValueMakeNull(ctx);
 		}
-		case kJSTypeBoolean: {
+		case kTITypeBoolean: {
 			if ([ref respondsToSelector:@selector(boolValue)]) {
-				return JSValueMakeBoolean(ctx, [ref boolValue]);
+				return TiValueMakeBoolean(ctx, [ref boolValue]);
 			}
-			return JSValueMakeBoolean(ctx, false);
+			return TiValueMakeBoolean(ctx, false);
 		}
-		case kJSTypeNumber: {
+		case kTITypeNumber: {
 			if ([ref respondsToSelector:@selector(doubleValue)]) {
-				return JSValueMakeNumber(ctx, [ref doubleValue]);
+				return TiValueMakeNumber(ctx, [ref doubleValue]);
 			}
-			return JSValueMakeNumber(ctx, NAN);
+			return TiValueMakeNumber(ctx, NAN);
 		}
-		case kJSTypeString: {
-			JSStringRef str = JSStringCreateWithUTF8CString([[ref description] UTF8String]);
-			JSValueRef result = JSValueMakeString(ctx, str);
-			JSStringRelease(str);
+		case kTITypeString: {
+			TiStringRef str = TiStringCreateWithUTF8CString([[ref description] UTF8String]);
+			TiValueRef result = TiValueMakeString(ctx, str);
+			TiStringRelease(str);
 			return result;
 		}
-		case kJSTypeObject: {
+		case kTITypeObject: {
 			return object;
 		}
 	}
@@ -903,76 +903,76 @@ static JSValueRef Convert (JSContextRef ctx, JSObjectRef object, JSType type, JS
 /**
  * stringify a JS object
  */
-static JSValueRef String (JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception) {
+static TiValueRef String (TiContextRef ctx, TiObjectRef function, TiObjectRef thisObject, size_t argumentCount, const TiValueRef arguments[], TiValueRef *exception) {
 	@autoreleasepool {
-		if (JSValueIsObject(ctx, arguments[0])) {
-			JSObjectRef obj = JSValueToObject(ctx, arguments[0], exception);
+		if (TiValueIsObject(ctx, arguments[0])) {
+			TiObjectRef obj = TiValueToObject(ctx, arguments[0], exception);
 			CHECKEXCEPTION
-			id target = (__bridge id)(JSObjectGetPrivate(obj));
+			id target = (__bridge id)(TiObjectGetPrivate(obj));
 			if (target) {
-				JSStringRef str = JSStringCreateWithUTF8CString([[target description] UTF8String]);
-				JSValueRef result = JSValueMakeString(ctx, str);
-				JSStringRelease(str);
+				TiStringRef str = TiStringCreateWithUTF8CString([[target description] UTF8String]);
+				TiValueRef result = TiValueMakeString(ctx, str);
+				TiStringRelease(str);
 				return result;
 			}
-			return Convert(ctx, obj, kJSTypeString, exception);
-		} else if (JSValueIsString(ctx, arguments[0])) {
+			return Convert(ctx, obj, kTITypeString, exception);
+		} else if (TiValueIsString(ctx, arguments[0])) {
 			return arguments[0];
-		} else if (JSValueIsBoolean(ctx, arguments[0])) {
-			if (JSValueToBoolean(ctx, arguments[0])) {
-				JSStringRef str = JSStringCreateWithUTF8CString("true");
-				JSValueRef result = JSValueMakeString(ctx, str);
-				JSStringRelease(str);
+		} else if (TiValueIsBoolean(ctx, arguments[0])) {
+			if (TiValueToBoolean(ctx, arguments[0])) {
+				TiStringRef str = TiStringCreateWithUTF8CString("true");
+				TiValueRef result = TiValueMakeString(ctx, str);
+				TiStringRelease(str);
 				return result;
 			} else {
-				JSStringRef str = JSStringCreateWithUTF8CString("false");
-				JSValueRef result = JSValueMakeString(ctx, str);
-				JSStringRelease(str);
+				TiStringRef str = TiStringCreateWithUTF8CString("false");
+				TiValueRef result = TiValueMakeString(ctx, str);
+				TiStringRelease(str);
 				return result;
 			}
-		} else if (JSValueIsNumber(ctx, arguments[0])) {
-			double n = JSValueToNumber(ctx, arguments[0], exception);
+		} else if (TiValueIsNumber(ctx, arguments[0])) {
+			double n = TiValueToNumber(ctx, arguments[0], exception);
 			CHECKEXCEPTION
 			NSNumber *num = [NSNumber numberWithDouble:n];
-			JSStringRef str = JSStringCreateWithUTF8CString([[num stringValue] UTF8String]);
-			JSValueRef result = JSValueMakeString(ctx, str);
-			JSStringRelease(str);
+			TiStringRef str = TiStringCreateWithUTF8CString([[num stringValue] UTF8String]);
+			TiValueRef result = TiValueMakeString(ctx, str);
+			TiStringRelease(str);
 			return result;
 		} else {
-			return JSValueMakeNull(ctx);
+			return TiValueMakeNull(ctx);
 		}
 	}
 }
 
 #define GETNUMVALUE(type, name, fn, def) \
 JS_CALLBACK(name)\
-	if (JSValueIsObject(ctx, arguments[0])) {\
-		JSObjectRef obj = JSValueToObject(ctx, arguments[0], exception);\
+	if (TiValueIsObject(ctx, arguments[0])) {\
+		TiObjectRef obj = TiValueToObject(ctx, arguments[0], exception);\
 		CHECKEXCEPTION\
-		id target = (__bridge id)JSObjectGetPrivate(obj);\
+		id target = (__bridge id)TiObjectGetPrivate(obj);\
 		NSNumber *result = [NSNumber numberWith##name:[HyperloopPointer type##Value:target]];\
 		return fn(ctx, [result type##Value]); \
-	} else if (JSValueIsBoolean(ctx, arguments[0])) {\
-		return fn(ctx, JSValueToBoolean(ctx, arguments[0]));\
-	} else if (JSValueIsNumber(ctx, arguments[0])) { \
-		return fn(ctx, JSValueToNumber(ctx, arguments[0], exception));\
+	} else if (TiValueIsBoolean(ctx, arguments[0])) {\
+		return fn(ctx, TiValueToBoolean(ctx, arguments[0]));\
+	} else if (TiValueIsNumber(ctx, arguments[0])) { \
+		return fn(ctx, TiValueToNumber(ctx, arguments[0], exception));\
 	}\
-	return JSValueMakeBoolean(ctx, def);\
+	return TiValueMakeBoolean(ctx, def);\
 JS_CALLBACK_END
 
-GETNUMVALUE(bool, Bool, JSValueMakeBoolean, false);
-GETNUMVALUE(float, Float, JSValueMakeNumber, NAN);
-GETNUMVALUE(int, Int, JSValueMakeNumber, NAN);
-GETNUMVALUE(short, Short, JSValueMakeNumber, NAN);
-GETNUMVALUE(double, Double, JSValueMakeNumber, NAN);
-GETNUMVALUE(long, Long, JSValueMakeNumber, NAN);
-GETNUMVALUE(longLong, LongLong, JSValueMakeNumber, NAN);
-GETNUMVALUE(char, Char, JSValueMakeNumber, NAN);
-GETNUMVALUE(unsignedInt, UnsignedInt, JSValueMakeNumber, NAN);
-GETNUMVALUE(unsignedLong, UnsignedLong, JSValueMakeNumber, NAN);
-GETNUMVALUE(unsignedLongLong, UnsignedLongLong, JSValueMakeNumber, NAN);
-GETNUMVALUE(unsignedShort, UnsignedShort, JSValueMakeNumber, NAN);
-GETNUMVALUE(unsignedChar, UnsignedChar, JSValueMakeNumber, NAN);
+GETNUMVALUE(bool, Bool, TiValueMakeBoolean, false);
+GETNUMVALUE(float, Float, TiValueMakeNumber, NAN);
+GETNUMVALUE(int, Int, TiValueMakeNumber, NAN);
+GETNUMVALUE(short, Short, TiValueMakeNumber, NAN);
+GETNUMVALUE(double, Double, TiValueMakeNumber, NAN);
+GETNUMVALUE(long, Long, TiValueMakeNumber, NAN);
+GETNUMVALUE(longLong, LongLong, TiValueMakeNumber, NAN);
+GETNUMVALUE(char, Char, TiValueMakeNumber, NAN);
+GETNUMVALUE(unsignedInt, UnsignedInt, TiValueMakeNumber, NAN);
+GETNUMVALUE(unsignedLong, UnsignedLong, TiValueMakeNumber, NAN);
+GETNUMVALUE(unsignedLongLong, UnsignedLongLong, TiValueMakeNumber, NAN);
+GETNUMVALUE(unsignedShort, UnsignedShort, TiValueMakeNumber, NAN);
+GETNUMVALUE(unsignedChar, UnsignedChar, TiValueMakeNumber, NAN);
 
 // directly from titanium_prep
 static const char ALPHA [] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
@@ -1059,55 +1059,55 @@ static BOOL isPlatformGUID (NSString *guid) {
 
 	context = kroll;
 	bridge = krollbridge;
-	JSGlobalContextRef ctx = (JSGlobalContextRef)[kroll context];
-	JSGlobalContextRetain(ctx);
+	TiGlobalContextRef ctx = (TiGlobalContextRef)[kroll context];
+	TiGlobalContextRetain(ctx);
 
 	// create our hyperloop class
-	JSClassDefinition classDef = kJSClassDefinitionEmpty;
+	TiClassDefinition classDef = kTiClassDefinitionEmpty;
 	classDef.className = "Hyperloop";
 	classDef.initialize = Initializer;
 	classDef.finalize = Finalizer;
 	classDef.convertToType = Convert;
-	objectClassRef = JSClassCreate(&classDef);
+	objectClassRef = TiClassCreate(&classDef);
 
 
 	classDef.className = "HyperloopPointer";
-	pointerClassRef = JSClassCreate(&classDef);
+	pointerClassRef = TiClassCreate(&classDef);
 
-	JSObjectRef globalObjectRef = JSContextGetGlobalObject(ctx);
-	JSValueRef exception = NULL;
+	TiObjectRef globalObjectRef = TiContextGetGlobalObject(ctx);
+	TiValueRef exception = NULL;
 
 	// create our base constructor
 	classDef.className = "HyperloopObject";
 	classDef.callAsConstructor = Constructor;
-	constructorClassRef = JSClassCreate(&classDef);
+	constructorClassRef = TiClassCreate(&classDef);
 
-	JSStaticFunction StaticFunctionsArray [] = {
+	TiStaticFunction StaticFunctionsArray [] = {
 		{ "addMethod", AddMethod,
-			kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontEnum | kJSPropertyAttributeDontDelete },
+			kTiPropertyAttributeReadOnly | kTiPropertyAttributeDontEnum | kTiPropertyAttributeDontDelete },
 		NULL
 	};
 
 	classDef.staticFunctions = StaticFunctionsArray;
 	classDef.className = "HyperloopClass";
-	classClassRef = JSClassCreate(&classDef);
+	classClassRef = TiClassCreate(&classDef);
 
-	JSStringRef constructorProp = JSStringCreateWithUTF8CString("HyperloopObject");
-	JSObjectRef constructor = HLObjectMake(ctx, constructorClassRef, 0);
-	JSObjectSetProperty(ctx, globalObjectRef, constructorProp, constructor, kJSPropertyAttributeDontDelete, &exception);
+	TiStringRef constructorProp = TiStringCreateWithUTF8CString("HyperloopObject");
+	TiObjectRef constructor = HLObjectMake(ctx, constructorClassRef, 0);
+	TiObjectSetProperty(ctx, globalObjectRef, constructorProp, constructor, kTiPropertyAttributeDontDelete, &exception);
 	assert(exception==NULL);
 
 	// register it with the Global Context
-	JSStringRef href = JSStringCreateWithUTF8CString("Hyperloop");
-	JSObjectRef objectRef = HLObjectMake(ctx, objectClassRef, context);
+	TiStringRef href = TiStringCreateWithUTF8CString("Hyperloop");
+	TiObjectRef objectRef = HLObjectMake(ctx, objectClassRef, context);
 	assert(exception==NULL);
 
 	#define MAKECALLBACK(name, fn) \
 	{\
-		JSStringRef ref##name = JSStringCreateWithUTF8CString(STR(name));\
-		JSObjectRef newProxy##name = JSObjectMakeFunctionWithCallback(ctx, ref##name, fn);\
-		JSObjectSetProperty(ctx, objectRef, ref##name, newProxy##name, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontEnum | kJSPropertyAttributeDontDelete, &exception);\
-		JSStringRelease(ref##name);\
+		TiStringRef ref##name = TiStringCreateWithUTF8CString(STR(name));\
+		TiObjectRef newProxy##name = TiObjectMakeFunctionWithCallback(ctx, ref##name, fn);\
+		TiObjectSetProperty(ctx, objectRef, ref##name, newProxy##name, kTiPropertyAttributeReadOnly | kTiPropertyAttributeDontEnum | kTiPropertyAttributeDontDelete, &exception);\
+		TiStringRelease(ref##name);\
 		assert(exception==NULL);\
 	}\
 
@@ -1133,10 +1133,10 @@ static BOOL isPlatformGUID (NSString *guid) {
 
 	#define DEFINENUM(type,name) \
 	{\
-		JSStringRef ref##name = JSStringCreateWithUTF8CString(STR(type##Value));\
-		JSObjectRef fn##name = JSObjectMakeFunctionWithCallback(ctx, ref##name, name);\
-		JSObjectSetProperty(ctx, objectRef, ref##name, fn##name, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontEnum | kJSPropertyAttributeDontDelete, &exception);\
-		JSStringRelease(ref##name);\
+		TiStringRef ref##name = TiStringCreateWithUTF8CString(STR(type##Value));\
+		TiObjectRef fn##name = TiObjectMakeFunctionWithCallback(ctx, ref##name, name);\
+		TiObjectSetProperty(ctx, objectRef, ref##name, fn##name, kTiPropertyAttributeReadOnly | kTiPropertyAttributeDontEnum | kTiPropertyAttributeDontDelete, &exception);\
+		TiStringRelease(ref##name);\
 		assert(exception==NULL);\
 	}\
 
@@ -1158,9 +1158,9 @@ static BOOL isPlatformGUID (NSString *guid) {
 
 
 	// now set the object and seal it
-	JSObjectSetProperty(ctx, globalObjectRef, href, objectRef, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontEnum | kJSPropertyAttributeDontDelete, &exception);
-	JSValueProtect(ctx, objectRef);
-	JSStringRelease(href);
+	TiObjectSetProperty(ctx, globalObjectRef, href, objectRef, kTiPropertyAttributeReadOnly | kTiPropertyAttributeDontEnum | kTiPropertyAttributeDontDelete, &exception);
+	TiValueProtect(ctx, objectRef);
+	TiStringRelease(href);
 	assert(exception==NULL);
 }
 
@@ -1184,18 +1184,18 @@ static BOOL isPlatformGUID (NSString *guid) {
 	if (context) {
 		[callbacks removeAllObjects];
 		[modules removeAllObjects];
-		JSGlobalContextRef ctx = (JSGlobalContextRef)[kroll context];
-		JSStringRef prop = JSStringCreateWithUTF8CString("Hyperloop");
-		JSObjectRef globalObjectRef = JSContextGetGlobalObject(ctx);
-		JSValueRef objectRef = JSObjectGetProperty(ctx, globalObjectRef, prop, NULL);
-		JSValueUnprotect(ctx, objectRef);
-		JSObjectDeleteProperty(ctx, globalObjectRef, prop, NULL);
-		JSStringRelease(prop);
-		JSClassRelease(classClassRef);
-		JSClassRelease(pointerClassRef);
-		JSClassRelease(constructorClassRef);
-		JSClassRelease(objectClassRef);
-		JSGlobalContextRelease(ctx);
+		TiGlobalContextRef ctx = (TiGlobalContextRef)[kroll context];
+		TiStringRef prop = TiStringCreateWithUTF8CString("Hyperloop");
+		TiObjectRef globalObjectRef = TiContextGetGlobalObject(ctx);
+		TiValueRef objectRef = TiObjectGetProperty(ctx, globalObjectRef, prop, NULL);
+		TiValueUnprotect(ctx, objectRef);
+		TiObjectDeleteProperty(ctx, globalObjectRef, prop, NULL);
+		TiStringRelease(prop);
+		TiClassRelease(classClassRef);
+		TiClassRelease(pointerClassRef);
+		TiClassRelease(constructorClassRef);
+		TiClassRelease(objectClassRef);
+		TiGlobalContextRelease(ctx);
 		ARCRelease(callbacks);
 		ARCRelease(modules);
 		classClassRef = nil;
@@ -1216,12 +1216,12 @@ static BOOL isPlatformGUID (NSString *guid) {
 #endif
 }
 
-+(JSObjectRef)createPointer:(HyperloopPointer *)pointer {
++(TiObjectRef)createPointer:(HyperloopPointer *)pointer {
 	return HLObjectMake(context.context, pointerClassRef, pointer);
 }
 
-+(NSException *)JSValueRefToNSException:(JSValueRef)exception {
-	NSDictionary *dictionary = JSValueRefToId(context.context, exception, 0);
++(NSException *)JSValueRefToNSException:(TiValueRef)exception {
+	NSDictionary *dictionary = TiValueRefToId(context.context, exception, 0);
 	return [NSException exceptionWithName:@"Exception" reason:[dictionary objectForKey:@"message"] userInfo:dictionary];
 }
 

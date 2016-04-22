@@ -4,8 +4,6 @@
  */
 #define STR(a) #a
 
-#import <JavaScriptCore/JavaScriptCore.h>
-
 #ifdef TIMODULE
 	#import "TiBase.h"
     #import "KrollCallback.h"
@@ -13,12 +11,28 @@
 
 #define BASECLASS NSObject<HyperloopBase>
 
+#import "TiToJS.h"
+
+#ifdef USE_JSCORE_FRAMEWORK
 extern BOOL isIOS9OrGreater();
 extern BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref);
 extern BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref);
+#else
+#define HLValueIsDate TiValueIsDate
+#define HLValueIsArray TiValueIsArray
+#endif
 
-#define JSObjectMakeConstructor JSObjectMakeConstructor
+#define TiObjectMakeConstructor JSObjectMakeConstructor
 
+#ifdef TIMODULE
+	#ifdef USE_JSCORE_FRAMEWORK
+	#define TiObjectCallAsConstructor JSObjectCallAsConstructor
+	#else
+	TiObjectRef TiObjectCallAsConstructor(TiContextRef ctx, TiObjectRef object, size_t argumentCount, const TiValueRef arguments[], TiValueRef* exception);
+	#endif
+#else
+	#define TiObjectCallAsConstructor JSObjectCallAsConstructor
+#endif
 
 #define RELEASE_AND_CHECK(s) { if (s) { s = nil; } }
 
