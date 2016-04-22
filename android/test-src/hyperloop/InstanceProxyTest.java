@@ -9,16 +9,16 @@ import org.junit.Test;
 public class InstanceProxyTest {
 
     public static class Whatever {
+        public byte primitiveByte = 3;
+        public byte[] primitiveByteArray = new byte[] {0, 2};
         public char primitiveChar = 'a';
         public char[] primitiveCharArray = new char[] {'a', 'b', 'c'};
         public int primitiveInt = 1;
         public int[] primitiveIntArray = new int[] {1, 2, 3};
-        public short primitiveShort = (short) 2;
-        public short[] primitiveShortArray = new short[] {3, 2, 1};
         public long primitiveLong = 123L;
         public long[] primitiveLongArray = new long[] {7, 8, 9, 10};
-        public byte primitiveByte = 3;
-        public byte[] primitiveByteArray = new byte[] {0, 2};
+        public short primitiveShort = (short) 2;
+        public short[] primitiveShortArray = new short[] {3, 2, 1};
 
         public void setByte(byte b) {
             primitiveByte = b;
@@ -34,6 +34,30 @@ public class InstanceProxyTest {
 
         public void setCharArray(char[] value) {
             primitiveCharArray = value;
+        };
+
+        public void setInt(int c) {
+            primitiveInt = c;
+        };
+
+        public void setIntArray(int[] value) {
+            primitiveIntArray = value;
+        };
+
+        public void setLong(long c) {
+            primitiveLong = c;
+        };
+
+        public void setLongArray(long[] value) {
+            primitiveLongArray = value;
+        };
+
+        public void setShort(short c) {
+            primitiveShort = c;
+        };
+
+        public void setShortArray(short[] value) {
+            primitiveShortArray = value;
         };
     }
 
@@ -110,8 +134,21 @@ public class InstanceProxyTest {
         Whatever w = new Whatever();
         InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
         assertEquals(1, w.primitiveInt);
-        ip.setNativeField("primitiveInt", 42);
+        ip.setNativeField("primitiveInt", Integer.valueOf(42));
         assertEquals(42, w.primitiveInt);
+    }
+
+    @Test
+    public void testPrimitiveIntMethodArgument() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setInt");
+        dict.put("instanceMethod", true);
+        // arguments array holds a single argument, which is an Integer
+        dict.put("args", new Object[] { Integer.valueOf(99) });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals(99, w.primitiveInt);
     }
 
     @Test
@@ -122,7 +159,8 @@ public class InstanceProxyTest {
         assertEquals(1, w.primitiveIntArray[0]);
         assertEquals(2, w.primitiveIntArray[1]);
         assertEquals(3, w.primitiveIntArray[2]);
-        ip.setNativeField("primitiveIntArray", new int[] { 1, 3, 3, 7 });
+        // From JS we get a generic Object[] holding boxed Integers
+        ip.setNativeField("primitiveIntArray", new Object[] { Integer.valueOf(1), Integer.valueOf(3), Integer.valueOf(3), Integer.valueOf(7) });
         assertEquals(4, w.primitiveIntArray.length);
         assertEquals(1, w.primitiveIntArray[0]);
         assertEquals(3, w.primitiveIntArray[1]);
@@ -131,11 +169,25 @@ public class InstanceProxyTest {
     }
 
     @Test
+    public void testPrimitiveIntArrayMethodArgument() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setIntArray");
+        dict.put("instanceMethod", true);
+        // arguments array holds a single argument, which is an Integer
+        dict.put("args", new Object[] { new Object[] { Integer.valueOf(99) } });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals(1, w.primitiveIntArray.length);
+        assertEquals(99, w.primitiveIntArray[0]);
+    }
+
+    @Test
     public void testSetNativeFieldPrimitiveShort() throws Exception {
         Whatever w = new Whatever();
         InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
         assertEquals(2, w.primitiveShort);
-        ip.setNativeField("primitiveShort", 7);
+        ip.setNativeField("primitiveShort", Integer.valueOf(7));
         assertEquals(7, w.primitiveShort);
     }
 
@@ -147,7 +199,8 @@ public class InstanceProxyTest {
         assertEquals(3, w.primitiveShortArray[0]);
         assertEquals(2, w.primitiveShortArray[1]);
         assertEquals(1, w.primitiveShortArray[2]);
-        ip.setNativeField("primitiveShortArray", new short[] { 5, 2, 1, 6 });
+        // from JS we get an Object array holding either Integer or Double
+        ip.setNativeField("primitiveShortArray", new Object[] { Integer.valueOf(5), Integer.valueOf(2), Integer.valueOf(1), Integer.valueOf(6) });
         assertEquals(4, w.primitiveShortArray.length);
         assertEquals(5, w.primitiveShortArray[0]);
         assertEquals(2, w.primitiveShortArray[1]);
@@ -156,11 +209,26 @@ public class InstanceProxyTest {
     }
 
     @Test
+    public void testPrimitiveShortArrayMethodArgument() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setShortArray");
+        dict.put("instanceMethod", true);
+        // arguments array holds a single argument, which is an Integer
+        // numbers from JS come in as Double or Integer
+        dict.put("args", new Object[] { new Object[] { Integer.valueOf(99) } });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals(1, w.primitiveShortArray.length);
+        assertEquals(99, w.primitiveShortArray[0]);
+    }
+
+    @Test
     public void testSetNativeFieldPrimitiveLong() throws Exception {
         Whatever w = new Whatever();
         InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
         assertEquals(123L, w.primitiveLong);
-        ip.setNativeField("primitiveLong", 5623);
+        ip.setNativeField("primitiveLong", Integer.valueOf(5623));
         assertEquals(5623, w.primitiveLong);
     }
 
@@ -173,7 +241,7 @@ public class InstanceProxyTest {
         assertEquals(8, w.primitiveLongArray[1]);
         assertEquals(9, w.primitiveLongArray[2]);
         assertEquals(10, w.primitiveLongArray[3]);
-        ip.setNativeField("primitiveLongArray", new long[] { 5, 2, 1, 6 });
+        ip.setNativeField("primitiveLongArray", new Object[] { Integer.valueOf(5), Integer.valueOf(2), Integer.valueOf(1), Integer.valueOf(6) });
         assertEquals(4, w.primitiveLongArray.length);
         assertEquals(5, w.primitiveLongArray[0]);
         assertEquals(2, w.primitiveLongArray[1]);
@@ -214,7 +282,7 @@ public class InstanceProxyTest {
         assertEquals(2, w.primitiveByteArray.length);
         assertEquals(0, w.primitiveByteArray[0]);
         assertEquals(2, w.primitiveByteArray[1]);
-        ip.setNativeField("primitiveByteArray", new byte[] { 5, 2, 1, 6 });
+        ip.setNativeField("primitiveByteArray", new Object[] { Integer.valueOf(5), Integer.valueOf(2), Integer.valueOf(1), Integer.valueOf(6) });
         assertEquals(4, w.primitiveByteArray.length);
         assertEquals(5, w.primitiveByteArray[0]);
         assertEquals(2, w.primitiveByteArray[1]);
