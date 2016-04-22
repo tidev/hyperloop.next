@@ -467,18 +467,19 @@ abstract class HyperloopUtil {
             return 0;
         }
         // typical case
-        return distance(param, arg.getClass());
+        return distance(param, arg.getClass(), arg);
     }
 
     /**
      * Determine the distance between the argument types and the intended
-     * parameter types. Returns -1 if no match.
+     * parameter types. Returns -1 if no match. Note that this and {@link #convertTo(Object, Class)} basically need to stay in sync
      *
-     * @param target
-     * @param argument
+     * @param target The target type we're trying to match against!
+     * @param argument The type of the argument (arg.getClass())
+     * @param arg The actual argument we received
      * @return
      */
-    private static int distance(Class<?> target, Class<?> argument) {
+    private static int distance(Class<?> target, Class<?> argument, Object arg) {
         // Primitives - we always have a boxed type for our argument
         if (target.isPrimitive()) {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-5.html#jls-5.3
@@ -512,7 +513,7 @@ abstract class HyperloopUtil {
                     return 5;
                 }
             }
-            if (short.class.equals(target)) {
+            else if (short.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 1;
                 }
@@ -532,7 +533,7 @@ abstract class HyperloopUtil {
                     return 4;
                 }
             }
-            if (int.class.equals(target)) {
+            else if (int.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 2;
                 }
@@ -552,7 +553,7 @@ abstract class HyperloopUtil {
                     return 3;
                 }
             }
-            if (long.class.equals(target)) {
+            else if (long.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 3;
                 }
@@ -572,7 +573,7 @@ abstract class HyperloopUtil {
                     return 2;
                 }
             }
-            if (float.class.equals(target)) {
+            else if (float.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 4;
                 }
@@ -592,7 +593,7 @@ abstract class HyperloopUtil {
                     return 1;
                 }
             }
-            if (double.class.equals(target)) {
+            else if (double.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 5;
                 }
@@ -612,10 +613,48 @@ abstract class HyperloopUtil {
                     return Match.EXACT;
                 }
             }
-            if (boolean.class.equals(target) && Boolean.class.equals(argument)) {
+            else if (char.class.equals(target)) {
+                // Integer in valid range is nearly an exact match
+                if (Integer.class.equals(argument)) {
+                    Number num = (Number) arg;
+                    int asInt = num.intValue();
+                    if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
+                        return 1;
+                    }
+                }
+                // String of length == 1 is an exact match
+                else if (String.class.equals(argument)) {
+                    String stringArg = (String) arg;
+                    if (stringArg.length() == 1) {
+                        return Match.EXACT;
+                    }
+                }
+            }
+            else if (boolean.class.equals(target) && Boolean.class.equals(argument)) {
                 return Match.EXACT;
             }
             return Match.NO_MATCH;
+        } else if (target.isArray()) {
+            // treat string -> char[] special
+            if (String.class.equals(argument) && char[].class.equals(target)) {
+                return Match.EXACT;
+            }
+            // Handle primitive arrays
+            Class<?> component = target.getComponentType();
+            if (component.isPrimitive()) {
+                // Now ensure that the array elements are all compatible with the target array's component type
+                // For this we measure the distance of each element and sum them all together.
+                int length = Array.getLength(arg);
+                int sum = 0;
+                for (int i = 0; i < length; i++) {
+                    int elementDistance = matchArg(component, Array.get(arg, i));
+                    if (elementDistance == Match.NO_MATCH) {
+                        return Match.NO_MATCH;
+                    }
+                    sum += elementDistance;
+                }
+                return sum;
+            }
         }
 
         // Non-primitives

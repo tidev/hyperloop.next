@@ -2,6 +2,7 @@ package hyperloop;
 
 import static org.junit.Assert.*;
 
+import org.appcelerator.kroll.KrollDict;
 import org.junit.Test;
 
 
@@ -18,6 +19,22 @@ public class InstanceProxyTest {
         public long[] primitiveLongArray = new long[] {7, 8, 9, 10};
         public byte primitiveByte = 3;
         public byte[] primitiveByteArray = new byte[] {0, 2};
+
+        public void setByte(byte b) {
+            primitiveByte = b;
+        };
+
+        public void setByteArray(byte[] value) {
+            primitiveByteArray = value;
+        };
+
+        public void setChar(char c) {
+            primitiveChar = c;
+        };
+
+        public void setCharArray(char[] value) {
+            primitiveCharArray = value;
+        };
     }
 
     @Test
@@ -30,6 +47,30 @@ public class InstanceProxyTest {
         // Because this is JS facing API, we convert char to String for JS!
         Object result = ip.getNativeField("primitiveChar");
         assertEquals("b", result);
+    }
+
+    @Test
+    public void testPrimitiveCharMethodArgumentWithStringLengthOne() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setChar");
+        dict.put("instanceMethod", true);
+        dict.put("args", new Object[] { "z" });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals('z', w.primitiveChar);
+    }
+
+    @Test
+    public void testPrimitiveCharMethodArgumentWithIntegerInRange() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setChar");
+        dict.put("instanceMethod", true);
+        dict.put("args", new Object[] { Integer.valueOf(65) }); // 'A'
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals('A', w.primitiveChar);
     }
 
     @Test
@@ -154,6 +195,19 @@ public class InstanceProxyTest {
     }
 
     @Test
+    public void testPrimitiveByteMethodArgument() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setByte");
+        dict.put("instanceMethod", true);
+        // arguments array holds a single argument, which is an Integer
+        dict.put("args", new Object[] { Integer.valueOf(0) });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals(0, w.primitiveByte);
+    }
+
+    @Test
     public void testSetNativeFieldPrimitiveByteArray() throws Exception {
         Whatever w = new Whatever();
         InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
@@ -177,4 +231,18 @@ public class InstanceProxyTest {
         assertEquals(6, shortArray[3]);
     }
 
+    @Test
+    public void testPrimitiveByteArrayMethodArgument() throws Exception {
+        Whatever w = new Whatever();
+        InstanceProxy ip = new InstanceProxy(Whatever.class, Whatever.class.getName(), w);
+        KrollDict dict = new KrollDict();
+        dict.put("func", "setByteArray");
+        dict.put("instanceMethod", true);
+        // arguments array holds a single argument, which is defined as an array of Objects, and contains two Integers inside.
+        dict.put("args", new Object[] { new Object[] { Integer.valueOf(0), Integer.valueOf(1) } });
+        ip.callNativeFunction(new Object[] { dict });
+        assertEquals(2, w.primitiveByteArray.length);
+        assertEquals(0, w.primitiveByteArray[0]);
+        assertEquals(1, w.primitiveByteArray[1]);
+    }
 }
