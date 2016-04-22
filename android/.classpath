@@ -4,8 +4,8 @@
 	<classpathentry kind="src" path="test-src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
-	<classpathentry kind="lib" path="/Users/cwilliams/Library/android-sdk-macosx/platforms/android-23/android.jar"/>
-	<classpathentry kind="lib" path="/Users/cwilliams/Library/android-sdk-macosx/add-ons/addon-google_apis-google-23/libs/maps.jar"/>
+	<classpathentry kind="lib" path="/opt/android-sdk/platforms/android-21/android.jar"/>
+	<classpathentry kind="lib" path="/opt/android-sdk/add-ons/addon-google_apis-google-21/libs/maps.jar"/>
 	<classpathentry kind="lib" path="/Users/cwilliams/Library/Application Support/Titanium/mobilesdk/osx/5.2.1.GA/android/titanium.jar"/>
 	<classpathentry kind="lib" path="/Users/cwilliams/Library/Application Support/Titanium/mobilesdk/osx/5.2.1.GA/android/kroll-common.jar"/>
 	<classpathentry kind="lib" path="/Users/cwilliams/Library/Application Support/Titanium/mobilesdk/osx/5.2.1.GA/android/kroll-apt.jar"/>
@@ -16,5 +16,6 @@
 			<attribute name="optional" value="true"/>
 		</attributes>
 	</classpathentry>
+	<classpathentry combineaccessrules="false" kind="src" path="/android-support-v7-appcompat"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
