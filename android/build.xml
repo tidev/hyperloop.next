@@ -89,6 +89,7 @@
 	<property name="test.lib" location="${ti.module.root}/test-lib"/>
 
 	<target name="test" depends="compile.tests">
+		<mkdir dir="${build}/reports"/>
 		<junit printsummary="yes" haltonfailure="yes">
 			<classpath>
 				<fileset dir="${test.lib}">
