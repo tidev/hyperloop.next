@@ -55,7 +55,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.resourcesDir = path.join(builder.projectDir, 'Resources');
 	this.hyperloopBuildDir = path.join(builder.projectDir, 'build', 'hyperloop', 'ios');
 	this.hyperloopJSDir = path.join(this.hyperloopBuildDir, 'js');
-	this.hyperloopResourcesDir = path.join(this.resourcesDir, 'hyperloop');
+	this.hyperloopResourcesDir = path.join(this.resourcesDir, 'iphone', 'hyperloop');
 
 	this.forceMetabase = false;
 	this.forceStubGeneration = false;
