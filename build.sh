@@ -40,13 +40,6 @@ then
 	exit 1
 fi
 
-if [ ! -d "$ANDROID_SDK/platforms/android-23" ];
-then
-	echo "Android 6.0 (Marshmallow) / (android-23) not installed"
-	echo "Download Android 6.0 using the Android SDK Manager"
-	exit 1
-fi
-
 if [ "$ANDROID_NDK" = "" ];
 then
 	export ANDROID_NDK=$ANDROID_SDK/ndk-bundle
