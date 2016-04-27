@@ -8,6 +8,7 @@ android/libs/
 android/documentation/
 android/assets/
 android/example/
+android/bin
 android/LICENSE
 dist/
 xcuserdata
