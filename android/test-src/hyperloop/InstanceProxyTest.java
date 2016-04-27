@@ -144,7 +144,19 @@ public class InstanceProxyTest {
         };
 
         public short[] getShortArray() {
-        	return primitiveShortArray;
+            return primitiveShortArray;
+        }
+        
+        public void overload(int[] i) {
+            
+        }
+        
+        public void overload(Object o) {
+            
+        }
+        
+        public void setPrimitiveHolderArray(PrimitiveHolder[] p) {
+            
         }
     }
 
@@ -711,6 +723,21 @@ public class InstanceProxyTest {
         assertEquals(8, array[1]);
         assertEquals(9, array[2]);
         assertEquals(10, array[3]);
+    }
+
+    @Test
+    public void testInvokeOverlodedMethodThatHasPrimitiveArrayArgumentAsOneOverload() throws Exception {
+        ip.callNativeFunction(makeMethodCall("overload", "string")); // call the overload with Object arg...
+        // This should not throw an exception about argument not being an array!
+    }
+
+    // TODO Support JS array being used for a List/Collection argument (we'll get an Object[] or primitive array from JS, method takes List/Collection)
+    // TODO Add tests to ensure we support non-primitive arrays as method args
+
+    @Test
+    public void testNonPrimitiveArrayMethodArgument() throws Exception {
+        ip.callNativeFunction(makeMethodCall("setPrimitiveHolderArray", new Object[] { new Object[] { new PrimitiveHolder() } }));
+        // TODO How do we confirm it did the right thing outside of no excpetions?
     }
 
     private Object[] makeMethodCall(String methodName, Object... args) {

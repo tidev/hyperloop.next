@@ -11,6 +11,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -273,9 +274,10 @@ abstract class HyperloopUtil {
             if (newValue instanceof String && char[].class.equals(target)) {
                 return ((String) newValue).toCharArray();
             }
-            // Handle primitive arrays
-            Class<?> component = target.getComponentType();
-            if (component.isPrimitive()) {
+            // TODO Allow new value to be List/Collection too, see #distance
+            // Handle arrays
+            if (newValue.getClass().isArray()) {
+                Class<?> component = target.getComponentType();
                 int length = Array.getLength(newValue);
                 Object converted = Array.newInstance(component, length);
                 for (int i = 0; i < length; i++) {
@@ -284,7 +286,7 @@ abstract class HyperloopUtil {
                 return converted;
             }
         }
-        // Not a primitive or primitive array... So, just hope it's the right type?
+        // Not a primitive or array... So, just hope it's the right type?
         return newValue;
     }
 
@@ -639,9 +641,11 @@ abstract class HyperloopUtil {
             if (String.class.equals(argument) && char[].class.equals(target)) {
                 return Match.EXACT;
             }
-            // Handle primitive arrays
-            Class<?> component = target.getComponentType();
-            if (component.isPrimitive()) {
+            // TODO If we're expecting an array, we should allow List or array args
+
+            // Handle arrays
+            if (argument.isArray()) {
+                Class<?> component = target.getComponentType();
                 // Now ensure that the array elements are all compatible with the target array's component type
                 // For this we measure the distance of each element and sum them all together.
                 int length = Array.getLength(arg);
