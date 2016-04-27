@@ -31,7 +31,7 @@ mkdir -p ./lib
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
-ant
+ant test dist
 if [ $? -ne 0 ];
 then
 	exit $?

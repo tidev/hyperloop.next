@@ -23,7 +23,7 @@ var Hyperloop = require('hyperloop');
 if (isInnerClass) {
 	// it's a nested class. Load up the parent, then just hang our class off of that.
 	enclosingClassName = classDefinition.name.slice(0, classDefinition.name.indexOf('$'));
-	sanitizedName = 'EnclosingClass.' + baseName;
+	sanitizedName = baseName;
 -%>
 var EnclosingClass = require('<%= enclosingClassName %>');
 <%
@@ -42,7 +42,7 @@ global.<%= parts.slice(0, i + 1).join('.') %> = global.<%= parts.slice(0, i + 1)
  * @constructor
  * @see {@link <%- BASE_URL %>}
  **/
-<%= sanitizedName %> = function() {
+<% if (isInnerClass) {-%>var <% } %><%= sanitizedName %> = function() {
 	var result;
 	// Allow the constructor to either invoke the real java constructor, or function as a "wrapping" method that will take
 	// a single argument that is a native hyperloop proxy for this class type and just wraps it in our JS type.

@@ -159,17 +159,6 @@ public class HyperloopModule extends KrollModule {
         return "Hyperloop";
     }
 
-    @SuppressWarnings("unchecked")
-    static KrollDict argsToDict(Object[] args) {
-        KrollDict dict;
-        if (args[0] instanceof KrollDict) {
-            dict = (KrollDict) args[0];
-        } else {
-            dict = new KrollDict((Map<? extends String, ? extends Object>) args[0]);
-        }
-        return dict;
-    }
-
     public static ProxyFactory getProxyFactory() {
         return fgProxyFactory;
     }

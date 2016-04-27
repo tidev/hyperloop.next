@@ -11,6 +11,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
+import java.util.Map;
 
 import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.annotations.Kroll;
@@ -85,9 +86,20 @@ public abstract class BaseProxy extends TiViewProxy {
         return null;
     }
 
+    @SuppressWarnings("unchecked")
+    private KrollDict argsToDict(Object[] args) {
+        KrollDict dict;
+        if (args[0] instanceof KrollDict) {
+            dict = (KrollDict) args[0];
+        } else {
+            dict = new KrollDict((Map<? extends String, ? extends Object>) args[0]);
+        }
+        return dict;
+    }
+
     @Kroll.method
     public Object callNativeFunction(Object[] args) {
-        KrollDict dict = HyperloopModule.argsToDict(args);
+        KrollDict dict = argsToDict(args);
 
         String methodname = dict.getString("func");
         if (methodname == null) {

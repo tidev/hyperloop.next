@@ -11,6 +11,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -19,6 +20,8 @@ import java.util.List;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.titanium.proxy.ActivityProxy;
 import org.appcelerator.titanium.proxy.TiViewProxy;
+
+import android.util.Log;
 
 abstract class HyperloopUtil {
     // TODO This is a hack. We should move all this stuff into the BaseProxy or
@@ -69,12 +72,15 @@ abstract class HyperloopUtil {
             return result;
         }
         if (result instanceof byte[]) { // our bridge can't handle byte[], but can do short[] - so convert to short[]
-            byte[] b = (byte[]) result;
-            short[] s = new short[b.length];
-            for (int i = 0; i < b.length; i++) {
-                s[i] = b[i];
-            }
-			return s;
+            return convertTo(result, short[].class);
+        } else if (result instanceof Byte) { // our bridge can't handle byte, but can do short - so convert to short
+            return convertTo(result, short.class);
+        } else if (result instanceof char[]) {
+            // convert to String, so we end up with JS String
+            return new String((char[]) result);
+        } else if (result instanceof Character) {
+            // convert to String, so we end up with JS String
+            return ((Character) result).toString();
         }
         return isKnownType(result) ? result
                 : HyperloopModule.getProxyFactory().newInstance(paramType, result);
@@ -124,7 +130,7 @@ abstract class HyperloopUtil {
     }
 
     /**
-     * If the argument is a proxy, unwrapp the native object it holds.
+     * If the argument is a proxy, unwrap the native object it holds.
      *
      * @param object
      * @return
@@ -211,11 +217,15 @@ abstract class HyperloopUtil {
      * @return
      */
     static Object convertTo(Object newValue, Class<?> target) {
+        if (newValue == null) {
+            return null; // really bad if the target is a primitive type!
+        }
+        // are we of an assignable type already? Then just use what we have
+        if (target.isAssignableFrom(newValue.getClass())) {
+            return newValue;
+        }
+
         if (target.isPrimitive()) {
-            // uh oh!
-            if (newValue == null) {
-                return null;
-            }
             if (newValue instanceof Number) {
                 Number num = (Number) newValue;
                 if (byte.class.equals(target)) {
@@ -230,12 +240,53 @@ abstract class HyperloopUtil {
                     return num.shortValue();
                 } else if (long.class.equals(target)) {
                     return num.longValue();
+                } else if (char.class.equals(target)) {
+                    if (num instanceof Float || num instanceof Double) {
+                        Log.e(TAG, "Supplied a non-integer number value for char primitive: " + num + ". Will default to (char) 0.");
+                        return Character.valueOf((char) 0);
+                    }
+                    int asInt = num.intValue();
+                    if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
+                        return Character.valueOf((char) num.intValue());
+                    }
+                    Log.e(TAG, "Supplied an integer value out of range for char primitive: " + asInt + ". Will default to (char) 0.");
+                    return Character.valueOf((char) 0);
+                }
+            } else if (newValue instanceof String) {
+                String string = (String) newValue;
+                if (char.class.equals(target)) {
+                    if (string.length() == 0) {
+                        Log.e(TAG, "Supplied an empty string for char. Will default to (char) 0.");
+                        return Character.valueOf((char) 0);
+                    }
+                    if (string.length() > 1) {
+                        Log.e(TAG, "Supplied a string with more than one character for char. Will default to first character.");
+                    }
+                    return Character.valueOf(string.charAt(0));
+                } else if (char[].class.equals(target)) {
+                    return string.toCharArray();
                 }
             }
             // Probably a big no-no...
             return newValue;
+        } else if (target.isArray()) {
+            // treat string -> char[] special
+            if (newValue instanceof String && char[].class.equals(target)) {
+                return ((String) newValue).toCharArray();
+            }
+            // TODO Allow new value to be List/Collection too, see #distance
+            // Handle arrays
+            if (newValue.getClass().isArray()) {
+                Class<?> component = target.getComponentType();
+                int length = Array.getLength(newValue);
+                Object converted = Array.newInstance(component, length);
+                for (int i = 0; i < length; i++) {
+                    Array.set(converted, i, convertTo(Array.get(newValue, i), component));
+                }
+                return converted;
+            }
         }
-        // Not a primitive... So, just hope it's the right type?
+        // Not a primitive or array... So, just hope it's the right type?
         return newValue;
     }
 
@@ -418,18 +469,19 @@ abstract class HyperloopUtil {
             return 0;
         }
         // typical case
-        return distance(param, arg.getClass());
+        return distance(param, arg.getClass(), arg);
     }
 
     /**
      * Determine the distance between the argument types and the intended
-     * parameter types. Returns -1 if no match.
+     * parameter types. Returns -1 if no match. Note that this and {@link #convertTo(Object, Class)} basically need to stay in sync
      *
-     * @param target
-     * @param argument
+     * @param target The target type we're trying to match against!
+     * @param argument The type of the argument (arg.getClass())
+     * @param arg The actual argument we received
      * @return
      */
-    private static int distance(Class<?> target, Class<?> argument) {
+    private static int distance(Class<?> target, Class<?> argument, Object arg) {
         // Primitives - we always have a boxed type for our argument
         if (target.isPrimitive()) {
             // https://docs.oracle.com/javase/specs/jls/se7/html/jls-5.html#jls-5.3
@@ -463,7 +515,7 @@ abstract class HyperloopUtil {
                     return 5;
                 }
             }
-            if (short.class.equals(target)) {
+            else if (short.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 1;
                 }
@@ -483,7 +535,7 @@ abstract class HyperloopUtil {
                     return 4;
                 }
             }
-            if (int.class.equals(target)) {
+            else if (int.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 2;
                 }
@@ -503,7 +555,7 @@ abstract class HyperloopUtil {
                     return 3;
                 }
             }
-            if (long.class.equals(target)) {
+            else if (long.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 3;
                 }
@@ -523,7 +575,7 @@ abstract class HyperloopUtil {
                     return 2;
                 }
             }
-            if (float.class.equals(target)) {
+            else if (float.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 4;
                 }
@@ -543,7 +595,7 @@ abstract class HyperloopUtil {
                     return 1;
                 }
             }
-            if (double.class.equals(target)) {
+            else if (double.class.equals(target)) {
                 if (Byte.class.equals(argument)) {
                     return 5;
                 }
@@ -563,10 +615,50 @@ abstract class HyperloopUtil {
                     return Match.EXACT;
                 }
             }
-            if (boolean.class.equals(target) && Boolean.class.equals(argument)) {
+            else if (char.class.equals(target)) {
+                // Integer in valid range is nearly an exact match
+                if (Integer.class.equals(argument)) {
+                    Number num = (Number) arg;
+                    int asInt = num.intValue();
+                    if (asInt >= 0 && asInt <= Character.MAX_VALUE) {
+                        return 1;
+                    }
+                }
+                // String of length == 1 is an exact match
+                else if (String.class.equals(argument)) {
+                    String stringArg = (String) arg;
+                    if (stringArg.length() == 1) {
+                        return Match.EXACT;
+                    }
+                }
+            }
+            else if (boolean.class.equals(target) && Boolean.class.equals(argument)) {
                 return Match.EXACT;
             }
             return Match.NO_MATCH;
+        } else if (target.isArray()) {
+            // treat string -> char[] special
+            if (String.class.equals(argument) && char[].class.equals(target)) {
+                return Match.EXACT;
+            }
+            // TODO If we're expecting an array, we should allow List or array args
+
+            // Handle arrays
+            if (argument.isArray()) {
+                Class<?> component = target.getComponentType();
+                // Now ensure that the array elements are all compatible with the target array's component type
+                // For this we measure the distance of each element and sum them all together.
+                int length = Array.getLength(arg);
+                int sum = 0;
+                for (int i = 0; i < length; i++) {
+                    int elementDistance = matchArg(component, Array.get(arg, i));
+                    if (elementDistance == Match.NO_MATCH) {
+                        return Match.NO_MATCH;
+                    }
+                    sum += elementDistance;
+                }
+                return sum;
+            }
         }
 
         // Non-primitives
