@@ -15,5 +15,6 @@ xcuserdata
 project.xcworkspace
 *.tgz
 *.zip
+*.bak
 npm-debug.log
 metabase/ios/bin/metabase

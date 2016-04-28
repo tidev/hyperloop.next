@@ -169,7 +169,6 @@ function getAndroidPaths(next) {
 
 		process.env.ANDROID_SDK = androidSDKPath;
 		process.env.ANDROID_NDK = androidNDKPath;
-		process.env.ANDROID_HOME = androidSDKPath;
 
 		next(null, {sdk: androidSDKPath, ndk: androidNDKPath});
 	});
@@ -179,7 +178,7 @@ function installAndroidSDK(next) {
 	var sdkHome = path.join(HOME, 'android-sdk-macosx');
 	if (fs.existsSync(sdkHome)) {
 		console.log("Android SDK found at", sdkHome);
-		process.env.ANDROID_HOME = sdkHome;
+		process.env.ANDROID_SDK = sdkHome;
 		return next(null, sdkHome);
 	}
 
@@ -192,7 +191,7 @@ function installAndroidSDK(next) {
 				if (error !== null) {
 					return next('Failed to set android.sdkPath in CLI config: ' + error);
 				}
-				process.env.ANDROID_HOME = sdkHome;
+				process.env.ANDROID_SDK = sdkHome;
 				next(null, sdkHome);
 			});
 		});
@@ -229,6 +228,7 @@ function installAndroidNDK(next) {
 	var ndkHome = path.join(HOME, 'android-ndk-r8c');
 	if (fs.existsSync(ndkHome)) {
 		console.log("Android NDK already installed at", ndkHome);
+		process.env.ANDROID_NDK = ndkHome;		
 		return next(null, ndkHome);
 	}
 
@@ -242,7 +242,7 @@ function installAndroidNDK(next) {
 				if (error !== null) {
 					return next('Failed to set path to Android NDK in titanium CLI config: ' + error);
 				}
-				// TODO Set env var!
+				process.env.ANDROID_NDK = ndkHome;
 				next(null, ndkHome);
 			});
 		});
