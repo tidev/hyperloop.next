@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2016 by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -48,17 +48,28 @@ exports.cliVersion = '>=3.2';
 	/*
 	 Config.
 	 */
+	function HyperloopAndroidBuilder (_logger, _config, _cli, appc, hyperloopConfig, builder) {
+		this.logger = _logger;
+		this.config = _config;
+		this.cli = _cli;
+		this.appc = appc;
+		this.cfg = hyperloopConfig;
+		this.builder = builder;
+	}
 
-	exports.init = function (_logger, _config, _cli, appc, hyperloopConfig, next) {
-		var builder = this;
+	module.exports = HyperloopAndroidBuilder;
 
-		config = _config;
-		cli = _cli;
-		logger = _logger;
+	HyperloopAndroidBuilder.prototype.init = function (next) {
+		var builder = this.builder;
+
+		config = this.config;
+		cli = this.cli;
+		logger = this.logger;
+
 		afs = appc.fs;
 
 		// Verify minimum SDK version
-		if (!appc.version.satisfies(_cli.sdk.manifest.version, '>=' + TI_MIN)) {
+		if (!appc.version.satisfies(cli.sdk.manifest.version, '>=' + TI_MIN)) {
 			logger.error('You cannot use the Hyperloop compiler with a version of Titanium older than ' + TI_MIN);
 			logger.error('Set the value of <sdk-version> to a newer version in tiapp.xml.');
 			logger.error('For example:');
@@ -66,10 +77,10 @@ exports.cliVersion = '>=3.2';
 			process.exit(1);
 		}
 
-		resourcesDir = path.join(cli.argv['project-dir'], 'Resources');
+		resourcesDir = path.join(builder.projectDir, 'Resources');
 		hyperloopResources = path.join(resourcesDir, 'android', 'hyperloop');
 
-		var buildDir = path.join(cli.argv['project-dir'], 'build');
+		var buildDir = path.join(builder.projectDir, 'build');
 		var buildPlatform = path.join(buildDir, 'platform');
 		if (!afs.exists(buildDir)) {
 			fs.mkdirSync(buildDir);
@@ -189,7 +200,7 @@ exports.cliVersion = '>=3.2';
 			}
 		});
 
-		prepareBuild(this, next);
+		prepareBuild(builder, next);
 	};
 
 	/*
@@ -221,9 +232,9 @@ exports.cliVersion = '>=3.2';
 				}
 				findit(platformAndroid)
 					.on('file', function (file, stat) {
-						if (path.extname(file) == '.jar') {
+						if (path.extname(file) === '.jar') {
 							jars.push(file);
-						} else if (path.extname(file) == '.aar') {
+						} else if (path.extname(file) === '.aar') {
 							aarFiles.push(file);
 						}
 					})
