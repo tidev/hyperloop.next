@@ -474,6 +474,8 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 				function (err, result, newMetabase) {
 					if (!err) {
 						this.metabase = newMetabase;
+					} else if (result) {
+						this.logger.error(result);
 					}
 					cb(err);
 				}.bind(this)
