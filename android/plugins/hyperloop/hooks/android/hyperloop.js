@@ -43,7 +43,7 @@ exports.cliVersion = '>=3.2';
 		jars = [],
 		aars = {},
 		cleanup = [],
-		requireRegex = /require\s*\([\\"']+([\w_\/-\\.]+)[\\"']+\)/ig;
+		requireRegex = /require\s*\([\\"']+([\w_\/-\\.\\*]+)[\\"']+\)/ig;
 
 	/*
 	 Config.
@@ -436,7 +436,7 @@ exports.cliVersion = '>=3.2';
 					found = [];
 				logger.trace('Searching for hyperloop requires in: ' + file);
 				(contents.match(requireRegex) || []).forEach(function (m) {
-					var re = /require\s*\([\\"']+([\w_\/-\\.]+)[\\"']+\)/i.exec(m),
+					var re = /require\s*\([\\"']+([\w_\/-\\.\\*]+)[\\"']+\)/i.exec(m),
 						className = re[1],
 						lastIndex,
 						validPackage = false,
@@ -451,7 +451,7 @@ exports.cliVersion = '>=3.2';
 					// Look for requires using wildcard package names and assume all types under that namespace!
 					if (className.indexOf('.*') == className.length - 2) {
 						// Check that it's a valid package name and search for all the classes directly under that package!
-						for (var mClass in Object.keys(metabaseJSON.classes)) {
+						for (var mClass in metabaseJSON.classes) {
 							if (mClass.match(packageRegexp)) {
 								found.push('hyperloop/' + mClass);
 								validPackage = true;
