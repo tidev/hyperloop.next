@@ -438,26 +438,49 @@ exports.cliVersion = '>=3.2';
 				(contents.match(requireRegex) || []).forEach(function (m) {
 					var re = /require\s*\([\\"']+([\w_\/-\\.]+)[\\"']+\)/i.exec(m),
 						className = re[1],
-						lastIndex;
+						lastIndex,
+						validPackage = false,
+						type,
+						ref,
+						str,
+						packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
 
 					// Is this a Java type we found in the JARs/APIs?
 					logger.trace('Checking require for: ' + className);
-					var type = metabaseJSON.classes[className];
-					if (!type) {
-						// fallback for using dot notation to refer to nested class
-						lastIndex = className.lastIndexOf('.');
-						className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
+
+					// Look for requires using wildcard package names and assume all types under that namespace!
+					if (className.indexOf('.*') == className.length - 2) {
+						// Check that it's a valid package name and search for all the classes directly under that package!
+						for (var mClass in Object.keys(metabaseJSON.classes)) {
+							if (mClass.match(packageRegexp)) {
+								found.push('hyperloop/' + mClass);
+								validPackage = true;
+							}
+						}
+						if (validPackage) {
+							ref = 'hyperloop/' + className.slice(0, className.length - 2); // drop the .* ending
+							str = "require('" + ref + "')";
+							contents = replaceAll(contents, m, str);
+						}
+					} else {
+						// single type
 						type = metabaseJSON.classes[className];
 						if (!type) {
-							return;
+							// fallback for using dot notation to refer to nested class
+							lastIndex = className.lastIndexOf('.');
+							className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
+							type = metabaseJSON.classes[className];
+							if (!type) {
+								return;
+							}
 						}
+						// Looks like it's a Java type, so let's hack it and add it to our list!
+						// replace the require to point to our generated file path
+						ref = 'hyperloop/' + className;
+						str = "require('" + ref + "')";
+						contents = replaceAll(contents, m, str);
+						found.push(ref);
 					}
-					// Looks like it's a Java type, so let's hack it and add it to our list!
-					// replace the require to point to our generated file path
-					var ref = 'hyperloop/' + className;
-					var str = "require('" + ref + "')";
-					contents = replaceAll(contents, m, str);
-					found.push(ref);
 				});
 				return [found, contents];
 			}

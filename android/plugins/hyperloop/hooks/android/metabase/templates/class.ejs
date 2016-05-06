@@ -1,10 +1,11 @@
 <%
-var sanitizedName = classDefinition.name.replace('$', '.'),
-	fullName = sanitizedName,
-	parts = sanitizedName.split('.'),
+var sanitizedName = classDefinition.safeName,
+	fullName = classDefinition.name,
+	parts = fullName.replace('$', '.').split('.'),
 	baseName = parts[parts.length - 1],
-	isInnerClass = (classDefinition.name.indexOf('$') != -1),
-	enclosingClassName,
+	isInnerClass = (fullName.indexOf('$') != -1),
+	isGlobal = parts.length == 1,
+	parent,
 	BASE_URL = 'http://developer.android.com/reference/' + classDefinition.name.replace(/\./g, '/').replace('$', '.') + '.html'; // Used to build up API URLs
 -%>
 /**
@@ -14,27 +15,23 @@ var sanitizedName = classDefinition.name.replace('$', '.'),
  *
  * WARNING: This is generated code. Modify at your own risk and without support
  *
- * @module <%= sanitizedName %>
+ * @module <%= fullName %>
  */
 var Hyperloop = require('hyperloop');
 
 <%
-// build up the namespace to hang the class off of
 if (isInnerClass) {
 	// it's a nested class. Load up the parent, then just hang our class off of that.
-	enclosingClassName = classDefinition.name.slice(0, classDefinition.name.indexOf('$'));
-	sanitizedName = baseName;
+	parent = classDefinition.name.slice(0, classDefinition.name.indexOf('$'));
 -%>
-var EnclosingClass = require('<%= enclosingClassName %>');
+var EnclosingClass = require('<%= parent %>');
 <%
-} else {
-	for (var i = 0; i < parts.length - 1; i++) { // don't include last segment: class base name
+} else if (parts.length > 1) {
+	// hang off the package
+	parent = parts.slice(0, parts.length - 1).join('.');
 -%>
-global.<%= parts.slice(0, i + 1).join('.') %> = global.<%= parts.slice(0, i + 1).join('.') %> || {};
-<%
-	}
-}
--%>
+var parentPackage = require('<%= parent %>');
+<% } -%>
 
 /**
  * @class <%= fullName %>
@@ -42,7 +39,7 @@ global.<%= parts.slice(0, i + 1).join('.') %> = global.<%= parts.slice(0, i + 1)
  * @constructor
  * @see {@link <%- BASE_URL %>}
  **/
-<% if (isInnerClass) {-%>var <% } %><%= sanitizedName %> = function() {
+var <%= sanitizedName %> = function() {
 	var result;
 	// Allow the constructor to either invoke the real java constructor, or function as a "wrapping" method that will take
 	// a single argument that is a native hyperloop proxy for this class type and just wraps it in our JS type.
@@ -51,7 +48,7 @@ global.<%= parts.slice(0, i + 1).join('.') %> = global.<%= parts.slice(0, i + 1)
 	}
 	else {
 <% if (classDefinition.attributes.indexOf('abstract') != -1) { -%>
-		Ti.API.error('Cannot instantiate instance of abstract class: <%= classDefinition.name %>. Create a subclass using <%= sanitizedName %>.extend();' );
+		Ti.API.error('Cannot instantiate instance of abstract class: <%= classDefinition.name %>. Create a subclass using <%= fullName %>.extend();' );
 <% } else { -%>
 		result = <%= sanitizedName %>.class.newInstance(arguments);
 <% } -%>
@@ -61,6 +58,9 @@ global.<%= parts.slice(0, i + 1).join('.') %> = global.<%= parts.slice(0, i + 1)
 	this._hasPointer = result != null;
 	this._private = {};
 };
+<% if (isGlobal) { -%>
+global.<%= baseName %> = <%= sanitizedName %>;
+<% } -%>
 
 <% if (classDefinition.superClass) {
 	// This is a subclass, let's extend the superclass!
