@@ -339,7 +339,7 @@ static TiObjectRef CreateJSClassFromModulePath (NSString *path, id obj, TiClassR
  * returns a generic wrapper if not found
  */
 static TiObjectRef CreateJSClassFromNSClass (NSString *framework, NSString *clsname, id obj, TiClassRef classRef) {
-	NSString *path = [NSString stringWithFormat:@"hyperloop/%@/%@", framework, [clsname lowercaseString]];
+	NSString *path = [NSString stringWithFormat:@"hyperloop/%@/%@", [framework lowercaseString], [clsname lowercaseString]];
 	return CreateJSClassFromModulePath(path, obj, classRef, YES);
 }
 
