@@ -43,7 +43,7 @@ var <%= sanitizedName %> = function() {
 	var result;
 	// Allow the constructor to either invoke the real java constructor, or function as a "wrapping" method that will take
 	// a single argument that is a native hyperloop proxy for this class type and just wraps it in our JS type.
-	if (arguments.length == 1 && arguments[0].isNativeProxy && arguments[0].isInstanceProxy && arguments[0].apiName === '<%= classDefinition.name %>') {
+	if (arguments.length == 1 && arguments[0].isNativeProxy && arguments[0].isInstanceProxy && arguments[0].isInstanceOf('<%= classDefinition.name %>')) {
 		result = arguments[0];
 	}
 	else {
@@ -68,6 +68,14 @@ global.<%= baseName %> = <%= sanitizedName %>;
 var SuperClass = require('<%- classDefinition.superClass %>');
 <%= sanitizedName %>.prototype = Object.create(SuperClass.prototype);
 <%= sanitizedName %>.prototype.constructor = <%= sanitizedName %>;
+
+Object.defineProperty(<%= sanitizedName %>.prototype, 'super', {
+	get: function() {
+		if (!this._hasPointer) return null;
+		return new <%= sanitizedName %>(this.$native.super);
+	},
+	enumerable: true
+});
 <%
 } else {
 -%>
@@ -80,17 +88,6 @@ var SuperClass = require('<%- classDefinition.superClass %>');
 		return '[object ' + this.className + ']';
 	}
 	return null;
-};
-
-<%= sanitizedName %>.isInstanceOf = function (self, cls) {
-	if (typeof cls !== 'function' || typeof self !== 'function') { return false; }
-	while (self) {
-		if (cls === self || self instanceof cls || self.className === cls.className) {
-			return true;
-		}
-		self = self.__superclass__;
-	}
-	return false;
 };
 <%
 }
@@ -119,7 +116,7 @@ if (classDefinition.attributes.indexOf('final') == -1 &&
 	var subclassProxy = Hyperloop.extend('<%= classDefinition.name %>');
 
 	// Generate a JS wrapper for our dynamic subclass
-	var whatever = function() {
+	var SubClass = function() {
 		var result = subclassProxy.newInstance(arguments),
 			instance = this,
 			copy = overrides,
@@ -158,13 +155,11 @@ if (classDefinition.attributes.indexOf('final') == -1 &&
 		this.$native = result;
 		this._hasPointer = result != null;
 		this._private = {};
-
-		// TODO Set up super?!
 	};
 	// it extends the JS wrapper for the parent type
-	whatever.prototype = Object.create(<%= sanitizedName %>.prototype);
-	whatever.prototype.constructor = whatever;
-	return whatever;
+	SubClass.prototype = Object.create(<%= sanitizedName %>.prototype);
+	SubClass.prototype.constructor = SubClass;
+	return SubClass;
 };
 <%
 }

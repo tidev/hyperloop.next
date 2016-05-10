@@ -24,6 +24,12 @@ class HyperloopInvocationHandler implements InvocationHandler {
 
     protected InstanceProxy hp;
 
+    /**
+     * Special flag we use for forcing subclasses to call up to their super implementations,
+     * ignoring dynamic subclass JS overrides
+     */
+    protected boolean callSuper = false;
+
     protected HyperloopInvocationHandler(InstanceProxy hyperloopProxy) {
         this.hp = hyperloopProxy;
     }

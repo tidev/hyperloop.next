@@ -7,6 +7,7 @@
 
 package hyperloop;
 
+import java.lang.reflect.Method;
 import java.util.Map;
 
 import org.appcelerator.kroll.KrollDict;
@@ -17,6 +18,8 @@ import org.appcelerator.titanium.view.TiUIView;
 import android.app.Activity;
 import android.content.Context;
 import android.view.View;
+
+import com.android.dx.stock.ProxyBuilder;
 
 /**
  * This is a proxy that wraps a Java object.
@@ -31,10 +34,12 @@ public class InstanceProxy extends BaseProxy {
      */
     private Object nativeObject;
 
+    private boolean isSuper = false;
+
     /**
      * The JS object containing overriding method implementations.
      */
-    // TODO Support overrides on standard InstanceProxy instances (not dynamic
+    // TODO Support overrides on standard InstanceProxy instances too (not just dynamic
     // subclasses or instances of interfaces)?
     private Map<String, Object> overrides;
 
@@ -104,9 +109,24 @@ public class InstanceProxy extends BaseProxy {
         return true;
     }
 
+    @Kroll.method
+    public boolean isInstanceOf(String className) {
+        // If empty class name, it's a no
+        if (className == null || className.isEmpty()) return false;
+
+        // shortcut for same class name
+        if (this.className.equals(className)) return true;
+
+        Class<?> javaClass = HyperloopModule.getJavaClass(className);
+        if (javaClass == null) {
+            Log.e(TAG, "Cannot determine if object is an instanceof '" + className + "': class not found. Assuming false.");
+            return false;
+        }
+        return javaClass.isAssignableFrom(this.clazz);
+    }
+
     // FIXME I'd love to make this just Map<String, Object>, but native kroll
-    // layer can't
-    // handle that
+    // layer can't handle that
     @Kroll.method
     public void setOverrides(KrollDict overrides) {
         this.overrides = overrides;
@@ -140,7 +160,29 @@ public class InstanceProxy extends BaseProxy {
 
     @Override
     public void release() {
-        ((HyperloopModule) getCreatedInModule()).getProxyFactory().release(this);
+        HyperloopModule.getProxyFactory().release(this);
         super.release();
+    }
+
+    @Override
+    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) {
+        if (receiver != null && isSuper) {
+            // let the handler know this call is explicitly to super!
+            HyperloopInvocationHandler hih = (HyperloopInvocationHandler) ProxyBuilder.getInvocationHandler(receiver);
+            hih.callSuper = true;
+        }
+        return super.invokeMethod(m, receiver, convertedArgs);
+    }
+
+    @Kroll.getProperty @Kroll.method
+    public InstanceProxy getSuper() {
+        if (!ProxyBuilder.isProxyClass(this.clazz)) {
+            return this;
+        }
+        // create a copy of the proxy that we set as "super" to avoid using override for next method call
+        InstanceProxy superCopy = new InstanceProxy(this.clazz, this.className, this.nativeObject);
+        superCopy.overrides = this.overrides;
+        superCopy.isSuper = true; // we have to specially mark this one, so that just before method calls we let handler know not to use overrides
+        return superCopy;
     }
 }

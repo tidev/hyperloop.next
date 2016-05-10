@@ -9,9 +9,7 @@ package hyperloop;
 
 import java.io.IOException;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 
-import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;

@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2015 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -26,8 +26,9 @@ class DynamicSubclassInvocationHandler extends HyperloopInvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        if (!this.hp.getOverrides().containsKey(method.getName())) {
+        if (callSuper || !this.hp.getOverrides().containsKey(method.getName())) {
             // TODO What if superclass has marked the method as abstract?
+            callSuper = false; // ok, reset it at the very first chance...
             return HyperloopUtil
                     .unwrap(ProxyBuilder.callSuper(this.hp.getWrappedObject(), method, args));
         }
