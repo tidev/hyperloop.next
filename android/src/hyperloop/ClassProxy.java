@@ -71,7 +71,7 @@ public class ClassProxy extends BaseProxy {
                     && !(initArgs[0] instanceof BaseProxy)) {
                 // Wrap the Titanium proxy as a hyperloop proxy of an
                 // instance
-                return ((HyperloopModule) getCreatedInModule()).getProxyFactory()
+                return HyperloopModule.getProxyFactory()
                         .newInstance(convertedArgs[0]);
             }
 
@@ -94,7 +94,7 @@ public class ClassProxy extends BaseProxy {
                 return null;
             }
 
-            return ((HyperloopModule) getCreatedInModule()).getProxyFactory().newInstance(clazz,
+            return HyperloopModule.getProxyFactory().newInstance(clazz,
                     instance);
         } catch (InstantiationException e) {
             Log.e(TAG, "Unable to instantiate class '" + className + "'", e);

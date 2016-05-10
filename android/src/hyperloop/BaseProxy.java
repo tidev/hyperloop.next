@@ -1,6 +1,6 @@
 /**
  * Appcelerator Titanium Mobile
- * Copyright (c) 2015 by Appcelerator, Inc. All Rights Reserved.
+ * Copyright (c) 2015-2016 by Appcelerator, Inc. All Rights Reserved.
  * Licensed under the terms of the Apache Public License
  * Please see the LICENSE included with this distribution for details.
  */
@@ -138,7 +138,7 @@ public abstract class BaseProxy extends TiViewProxy {
         return HyperloopUtil.resolveMethod(clazz, methodName, convertedArgs, instanceMethod);
     }
 
-    private Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) {
+    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) {
         m.setAccessible(true); // should offer perf boost since doesn't have to
                                // check security
         try {

@@ -31,6 +31,9 @@ public class DynamicSubclassProxy extends ClassProxy {
         if (ip == null) {
             return null;
         }
+        // Hack to set the class name to match the superclass we're extending
+        // FIXME Send in className to ProxyFactory.newInstance?
+        ip.className = this.className;
         ProxyBuilder.setInvocationHandler(ip.getWrappedObject(),
                 new DynamicSubclassInvocationHandler(ip));
         return ip;
