@@ -132,4 +132,9 @@ public class ClassProxy extends BaseProxy {
         }
         return array;
     }
+
+    @Override
+    public String toString() {
+        return "ClassProxy@" + Integer.toHexString(hashCode()) + "; " + this.className;
+    }
 }
