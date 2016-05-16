@@ -159,7 +159,16 @@ public class InstanceProxy extends BaseProxy {
     }
 
     @Override
+    public void releaseViews() {
+        // release from our cache, because we're cleaning this view up
+        HyperloopModule.getProxyFactory().release(this);
+        super.releaseViews(); // do normal cleanup for the view hierarchy
+        super.release(); // now release the underlying JS object
+    }
+
+    @Override
     public void release() {
+        // ensure we release from our cache
         HyperloopModule.getProxyFactory().release(this);
         super.release();
     }
@@ -184,5 +193,10 @@ public class InstanceProxy extends BaseProxy {
         superCopy.overrides = this.overrides;
         superCopy.isSuper = true; // we have to specially mark this one, so that just before method calls we let handler know not to use overrides
         return superCopy;
+    }
+
+    @Override
+    public String toString() {
+        return "InstanceProxy@" + Integer.toHexString(hashCode()) + "; " + getWrappedObject();
     }
 }

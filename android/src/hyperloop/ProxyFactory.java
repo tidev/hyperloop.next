@@ -7,6 +7,7 @@
 
 package hyperloop;
 
+import java.lang.ref.WeakReference;
 import java.util.WeakHashMap;
 
 import org.appcelerator.kroll.common.Log;
@@ -32,12 +33,16 @@ public class ProxyFactory {
      */
     private static final int CLASS_CACHE_SIZE = 25;
 
-    private WeakHashMap<Object, InstanceProxy> fInstanceCache;
+    /* FIXME It'd be good to hook up a ReferenceQueue in these WeakReference<InstanceProxy> 
+     * so we know when the refs expire. I can't tell if UI related proxies like LayoutParams 
+     * used on another proxy are getting properly cleaned up.
+     */
+    private WeakHashMap<Object, WeakReference<InstanceProxy>> fInstanceCache;
     private LruCache<String, ClassProxy> fClassCache;
 
     ProxyFactory() {
         Log.d(TAG, "Instantiating a ProxyFactory");
-        fInstanceCache = new WeakHashMap<Object, InstanceProxy>();
+        fInstanceCache = new WeakHashMap<Object, WeakReference<InstanceProxy>>();
         fClassCache = new LruCache<String, ClassProxy>(CLASS_CACHE_SIZE);
     }
 
@@ -51,12 +56,16 @@ public class ProxyFactory {
             if (fInstanceCache.containsKey(object)) {
                 // TODO What if the proxy holds a different class type? We
                 // likely need to "cast"
-                return fInstanceCache.get(object);
+                WeakReference<InstanceProxy> ref = fInstanceCache.get(object);
+                InstanceProxy proxy = ref.get();
+                if (proxy != null) {
+                    return proxy;
+                }
             }
         }
         // Insert into cache!
         InstanceProxy proxy = new InstanceProxy(object.getClass(), paramType.getName(), object);
-        fInstanceCache.put(object, proxy);
+        fInstanceCache.put(object, new WeakReference<InstanceProxy>(proxy));
         return proxy;
     }
 
