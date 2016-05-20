@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2016 by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -36,7 +36,6 @@ function init(logger, config, cli, appc) {
 
 					// see if we have the plugin installed
 					if (fs.existsSync(platformHookFile)) {
-						logger.warn('Hyperloop is currently available in Beta and should not be used for production applications.');
 						var cfg = loadConfig(builder.projectDir).hyperloop || {};
 						var Builder = require(platformHookFile);
 						var instance = new Builder(logger, config, cli, appc, cfg, builder);
