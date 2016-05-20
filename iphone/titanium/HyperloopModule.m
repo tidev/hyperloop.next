@@ -989,18 +989,18 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  * The GUID format is a generated random UUID v4 but where the following is changed:
  *
  * 9cba353d-81aa-4593-9111-2e83c0136c14
- *					^
- *					+---- always 9
+ *					  ^
+ *					  +---- always 9
  *
  * 9cba353d-81aa-4593-9111-2e83c0136c14
- *					 ^^^
- *					  +---- the following 3 characters will be the same and will be
- *							one of 0-9a-f
+ *					   ^^^
+ *					   +---- the following 3 characters will be the same and will be
+ *							 one of 0-9a-f
  *
  * 9cba353d-81aa-4593-9111-2e83c0136c14
- *						 ^
- *						 +----- the last remaining string is a SHA1 encoding of
- *								the org_id + app id (first 12 characters of the SHA1)
+ *						   ^
+ *						   +----- the last remaining string is a SHA1 encoding of
+ *								  the org_id + app id (first 12 characters of the SHA1)
  *
  */
 static BOOL isPlatformGUID (NSString *guid) {
@@ -1040,21 +1040,16 @@ static BOOL isPlatformGUID (NSString *guid) {
 
 	// if not a valid platform GUID, we aren't going to enable Hyperloop
 	if (isPlatformGUID(TI_APPLICATION_GUID) == NO) {
-		// allow demo apps with demo GUID to run only in development mode
-		if ([TI_APPLICATION_GUID isEqual:@"11111111-1111-1111-1111-111111111111"] && [TI_APPLICATION_DEPLOYTYPE isEqual:@"development"]) {
-			NSLog(@"[WARN] Hyperloop is running in DEMO mode. This application will not run in production. To register this application with the Appcelerator Platform, run the command: appc new --import");
-		} else {
-			NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
-	#if TARGET_OS_SIMULATOR
-			UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
-										message:@"Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import"
-										delegate:nil
-										cancelButtonTitle:@"OK"
-										otherButtonTitles:nil];
-			[theAlert show];
-	#endif
-			return;
-		}
+        NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
+#if TARGET_OS_SIMULATOR
+        UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
+                                                           message:@"Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import"
+                                                          delegate:nil
+                                                 cancelButtonTitle:@"OK"
+                                                 otherButtonTitles:nil];
+        [theAlert show];
+#endif
+        return;
 	}
 
 	context = kroll;
