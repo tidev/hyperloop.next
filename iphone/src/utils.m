@@ -177,7 +177,7 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 	}
 	else {
 		if (invocation) {
-			NSLog(@"[ERROR] not sure the type of %@ (%@) at %zu", arg, [arg class], index);
+			NSLog(@"[ERROR] Not sure the type of %@ (%@) at %lu", arg, [arg class], (unsigned long)index);
 			[invocation setArgument:&arg atIndex:index];
 		}
 	}
