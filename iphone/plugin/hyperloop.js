@@ -15,6 +15,11 @@ var IOS_MIN = '7.0';
 var TI_MIN = '5.4.0';
 // set the iOS SDK minium
 var IOS_SDK_MIN = '9.0';
+// enum for ios javascript core
+var coreLib = {
+    JSCore: 'libhyperloop-jscore.a',
+    TiCore: 'libhyperloop-ticore.a'
+};
 
 var path = require('path'),
 	hm = require('hyperloop-metabase'),
@@ -172,7 +177,6 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
-		var frag;
 		if (mod.id === 'hyperloop') {
 			// check for built-in JSCore but only warn if not set
 			if (this.builder.tiapp.ios['use-jscore-framework'] === undefined) {
@@ -182,12 +186,10 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 				this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
 				this.logger.info('');
 				this.logger.info('Using Titanium JavaScriptCore by default when not specified.');
-				frag = 'ti';
+				mod.libName = coreLib.TiCore;
+			} else {
+				mod.libName = this.builder.tiapp.ios['use-jscore-framework'] ? coreLib.JSCore : coreLib.TiCore;
 			}
-			else {
-				frag = this.builder.tiapp.ios['use-jscore-framework'] ? 'js' : 'ti';
-			}
-			mod.libName = 'libhyperloop-' + frag + 'core.a';
 			mod.libFile = path.join(mod.modulePath, mod.libName);
 			mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
 			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
