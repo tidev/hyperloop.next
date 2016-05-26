@@ -1040,16 +1040,16 @@ static BOOL isPlatformGUID (NSString *guid) {
 
 	// if not a valid platform GUID, we aren't going to enable Hyperloop
 	if (isPlatformGUID(TI_APPLICATION_GUID) == NO) {
-        NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
+		NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
 #if TARGET_OS_SIMULATOR
-        UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
+		UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
                                                            message:@"Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import"
                                                           delegate:nil
                                                  cancelButtonTitle:@"OK"
                                                  otherButtonTitles:nil];
-        [theAlert show];
+		[theAlert show];
 #endif
-        return;
+		return;
 	}
 
 	context = kroll;
