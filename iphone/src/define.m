@@ -7,7 +7,10 @@
 
 #ifdef USE_JSCORE_FRAMEWORK
 BOOL isIOS9OrGreater() {
-	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wundeclared-selector"
+	return [NSClassFromString(@"UIImage") instancesRespondToSelector:@selector(flipsForRightToLeftLayoutDirection)];
+#pragma clang diagnostic pop
 }
 
 BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref) {

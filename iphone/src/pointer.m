@@ -167,7 +167,7 @@ NSString *cleanEncoding (NSString *encoding) {
 					SEL sel = NSSelectorFromString(obj);
 					return [HyperloopPointer pointer:sel encoding:@encode(SEL)];
 				} else {
-					NSLog(@"not sure what type of object SEL is at %lu", index);
+					NSLog(@"[ERROR] Not sure what type of object SEL is at %lu", (unsigned long)index);
 				}
 				break;
 			}
@@ -205,7 +205,7 @@ NSString *cleanEncoding (NSString *encoding) {
 				if ([obj isKindOfClass:[NSString class]]) {
 					*(SEL *)ptr = NSSelectorFromString(obj);
 				} else {
-					NSLog(@"not sure what type of object SEL is at %lu", index);
+					NSLog(@"[ERROR] Not sure what type of object SEL is at %lu", (unsigned long)index);
 				}
 				break;
 			}
@@ -1130,7 +1130,7 @@ case ch: {\
 					break;
 				}
 				default: {
-					NSLog(@"[ERROR] don't know how to encode argument at index %lu with type %c", index, ch);
+					NSLog(@"[ERROR] Don't know how to encode argument at index %lu with type %c", (unsigned long)index, ch);
 					break;
 				}
 			}
