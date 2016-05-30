@@ -165,4 +165,12 @@ function $initialize () {
 	$init = true;
 }
 
+/**
+ * ticore compatibility with ES6
+ */
+Object.setPrototypeOf = Object.setPrototypeOf || function(obj, proto) {
+  obj.__proto__ = proto;
+  return obj; 
+}
+
 module.exports = <%= data.class.name %>;
