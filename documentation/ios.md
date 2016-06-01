@@ -365,18 +365,25 @@ module.exports = {
 		ios: {
 			xcodebuild: {
 				flags: {
-					FRAMEWORK_SEARCH_PATHS: '/path/to/framework'
+					FRAMEWORK_SEARCH_PATHS: '../../src'
 				},
 				frameworks: [
 					'FrameworkName'
 				]
-			}
+			},
+			thirdparty: {
+				'FrameworkName': {
+					source: ['src'],
+					header: 'src',
+					resource: 'src'
+				}
+			}			
 		}
 	}
 };
 ```
 
-In the above example, `/path/to/framework` should point the the location of the `.framework` file and `FrameworkName` should be the name of the Framework.
+In the above example, the value for key `FRAMEWORK_SEARCH_PATHS` should point to the location of the `.framework` file and `FrameworkName` should be the name of the Framework. The `.framework` file should be in the `src` folder in project root.
 
 ## Resources
 
