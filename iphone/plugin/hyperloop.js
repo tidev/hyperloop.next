@@ -1028,20 +1028,20 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		}
 		value.forEach(function (value) {
 			// check if the param is already in the xcodebuild arguments
-			for (var i = 0; i < args.length; i++) {
-				var parts = args[i].split('=');
+			args.forEach(function (arg) {
+				var parts = arg.split('=');
 				if (parts.length > 1 && parts[0] === key) {
 					// yes, so merge the values
 					var values = parts[1].match(/(?:[^\s"]+|"[^"]*")+/g);
 					if (values.indexOf(value) === -1) {
-						args[i] = key + '=' + parts[1] + ' ' + value;
+						arg = key + '=' + parts[1] + ' ' + value;
 					}
 					return;
 				}
-			}
+			});
 			// param does not exist, so just add it
-			args.push(key + '=' + params[key]);			
-		})
+			args.push(key + '=' + params[key]);
+		});
 	});
 };
 
