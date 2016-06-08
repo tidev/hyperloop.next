@@ -755,8 +755,8 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			isa: 'PBXFileReference',
 			lastKnownFileType: 'wrapper.framework',
 			name: '"' + framework + '"',
-			path: '"System/Library/Frameworks/' + framework + '"',
-			sourceTree: 'SDKROOT'
+			path: '"../../src/' + framework + '"',
+			sourceTree: '"<absolute>"'
 		};
 		xobjs.PBXFileReference[fileRefUuid + '_comment'] = framework;
 
@@ -1009,6 +1009,11 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		this.headers.forEach(function (header) {
 			addParam('HEADER_SEARCH_PATHS', header);
 		});
+		//For some reason, when using ticore and having custom headers, the original header search path goes missing. 
+		//FIX ME
+		if(!this.builder.tiapp.ios['use-jscore-framework']) {
+			addParam('HEADER_SEARCH_PATHS', 'headers');
+		}		
 	}
 
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
@@ -1021,22 +1026,22 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		if (value.indexOf(' ') !== -1 && !quotesRegExp.test(value)) {
 			value = '"' + value + '"';
 		}
-
-		// check if the param is already in the xcodebuild arguments
-		for (var i = 0; i < args.length; i++) {
-			var parts = args[i].split('=');
-			if (parts.length > 1 && parts[0] === key) {
-				// yes, so merge the values
-				var values = parts[1].match(/(?:[^\s"]+|"[^"]*")+/g);
-				if (values.indexOf(value) === -1) {
-					args[i] = key + '=' + parts[1] + ' ' + value;
+		value.forEach(function (value) {
+			// check if the param is already in the xcodebuild arguments
+			args.forEach(function (arg) {
+				var parts = arg.split('=');
+				if (parts.length > 1 && parts[0] === key) {
+					// yes, so merge the values
+					var values = parts[1].match(/(?:[^\s"]+|"[^"]*")+/g);
+					if (values.indexOf(value) === -1) {
+						arg = key + '=' + parts[1] + ' ' + value;
+					}
+					return;
 				}
-				return;
-			}
-		}
-
-		// param does not exist, so just add it
-		args.push(key + '=' + params[key]);
+			});
+			// param does not exist, so just add it
+			args.push(key + '=' + params[key]);
+		});
 	});
 };
 
