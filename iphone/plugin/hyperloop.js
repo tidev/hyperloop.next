@@ -223,7 +223,7 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
 	// attempt to handle cocoapods for third-party frameworks
-	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder.projectDir, this.builder.xcodeAppDir, this.builder.xcodeTargetOS, this.builder.iosSdkVersion, IOS_MIN, this.builder.xcodeEnv.executables, function (err, settings, symbols) {
+	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder.projectDir, this.builder.xcodeAppDir, this.builder.xcodeTargetOS, this.builder.iosSdkVersion, this.builder.minIosVer, this.builder.xcodeEnv.executables, function (err, settings, symbols) {
 		if (!err) {
 			this.buildSettings = settings;
 			symbols && Object.keys(symbols).forEach(function (k) {
