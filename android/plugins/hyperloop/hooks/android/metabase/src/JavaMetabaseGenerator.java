@@ -82,7 +82,7 @@ public class JavaMetabaseGenerator
                     }
 
                     uniques.add(classname);
-                } catch (org.apache.bcel.classfile.ClassFormatException cfe) {
+                } catch (Throwable t) {
                     // TODO Spit an error to System.err?
                 }
             }
