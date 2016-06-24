@@ -3,6 +3,7 @@
 # Script buid building and packaging the Hyperloop iOS package
 #
 CWD=`pwd`
+METABASE=$CWD/build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
@@ -71,7 +72,8 @@ rm -rf *.tgz
 cd package
 npm i --production >/dev/null 2>&1
 rm -rf unittest
-cp -R * $CWD/build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
+cp -R * $METABASE
+rm -rf $METABASE/hyperloop-metabase.xcodeproj $METABASE/hyperloop-metabase.xcodeproj $METABASE/src $METABASE/unittest $METABASE/include $METABASE/build
 
 # titanium requires at least this file so just create an empty one
 echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
