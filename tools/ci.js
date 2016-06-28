@@ -130,10 +130,10 @@ function extract(filename, installLocation, keepFiles, callback) {
 	});
 }
 
-// Install master branch Titanium SDK
+// Install 5_4_X branch Titanium SDK
 function installSDK(next) {
-	console.log('Checking for updated Ti SDK from master'.green);
-	var args = ['sdk', 'install', '-b', 'master', '-d', '--no-banner'],
+	console.log('Checking for updated Ti SDK from 5_4_X'.green);
+	var args = ['sdk', 'install', '-b', '5_4_X', '-d', '--no-banner'],
 		prc;
 	if (process.argv.indexOf('--no-progress-bars') != -1) {
 		args.push('--no-progress-bars');
@@ -141,7 +141,7 @@ function installSDK(next) {
 	prc = spawn(titanium, args, {stdio:'inherit'});
 	prc.on('exit', function (code) {
 		if (code !== 0) {
-			next("Failed to install master SDK. Exit code: " + code);
+			next("Failed to install 5_4_X SDK. Exit code: " + code);
 		} else {
 			next();
 		}
@@ -228,7 +228,7 @@ function installAndroidNDK(next) {
 	var ndkHome = path.join(HOME, 'android-ndk-r8c');
 	if (fs.existsSync(ndkHome)) {
 		console.log("Android NDK already installed at", ndkHome);
-		process.env.ANDROID_NDK = ndkHome;		
+		process.env.ANDROID_NDK = ndkHome;
 		return next(null, ndkHome);
 	}
 
@@ -350,7 +350,7 @@ function writeAndroidPluginPackage (next) {
 }
 
 /**
- * The whole shebang. Installs latest and greatest Titanium SDK from master,
+ * The whole shebang. Installs latest and greatest Titanium SDK from 5_4_X,
  * Android SDK/NDK, sets up the android/build.properties to point at them,
  * iphone/titanium.xcconfig, then runs the build.sh file in the root of the repo
  * If you already have dependencies installed, this is overkill. But useful for
@@ -372,7 +372,7 @@ function build(callback) {
 			wrench.mkdirSyncRecursive(buildTempDir);
 			next();
 		},
-		// Install latest Titaniun SDK from master
+		// Install latest Titanium SDK from 5_4_X
 		installSDK,
 		// Grab location it got installed
 		function (next) {
