@@ -21,10 +21,7 @@ namespace hyperloop {
 
 		switch (kind) {
 			case CXCursor_ParmDecl: {
-				auto argType = clang_getCursorType(cursor);
-				auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
-				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-				methodDef->addArgument(displayName, argType, typeValue, encoding);
+				methodDef->addArgument(cursor);
 				break;
 			}
 			case CXCursor_ObjCClassRef: {
@@ -41,6 +38,28 @@ namespace hyperloop {
 		return CXChildVisit_Continue;
 	}
 
+	/**
+	 * Parses the argument of a block and adds it to our metabase if it's another block
+	 *
+	 * @param cursor Cursor to the argument
+	 * @param parent Cursor to the block the argument belongs to
+	 * @param clientData Can be cast to the MethodDefinition the block is an argument for
+	 * @return Always continue traversing argument siblings, so return CXChildVisit_Continue
+	 */
+	static CXChildVisitResult parseBlockArgument(CXCursor cursor, CXCursor parent, CXClientData clientData) {
+		auto methodDef = static_cast<MethodDefinition*>(clientData);
+		auto argType = clang_getCursorType(cursor);
+		auto typeValue = CXStringToString(clang_getTypeSpelling(argType));
+		auto type = new Type(methodDef->getContext(), argType, typeValue);
+
+		if (type->getType() == "block") {
+			auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
+			addBlockIfFound(methodDef->getContext(), methodDef, methodDef->getFramework(), type, encoding);
+		}
+
+		return CXChildVisit_Continue;
+	}
+
 	MethodDefinition::MethodDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx, bool _instance, bool _optional) :
 		Definition(cursor, name, ctx), instance(_instance), optional(_optional), encoding(CXStringToString(clang_getDeclObjCTypeEncoding(cursor))), returnType(nullptr) {
 	}
@@ -52,13 +71,23 @@ namespace hyperloop {
 		}
 	}
 
-	void MethodDefinition::addArgument(const std::string &argName, const CXType &paramType, const std::string &argType, const std::string &encoding) {
-		auto type = new Type(this->getContext(), paramType, argType);
+	void MethodDefinition::addArgument(const CXCursor argumentCursor) {
+		auto argType = clang_getCursorType(argumentCursor);
+		auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
+		auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(argumentCursor));
+		auto displayName = CXStringToString(clang_getCursorDisplayName(argumentCursor));
+		auto type = new Type(this->getContext(), argType, typeValue);
+
 		if (type->getType() == "unexposed") {
 			type->setType(EncodingToType(encoding));
 		}
-		addBlockIfFound(this->getContext(), this, this->getFramework(), type, encoding);
-		arguments.add(argName, type, encoding);
+
+		if (type->getType() == "block") {
+			addBlockIfFound(this->getContext(), this, this->getFramework(), type, encoding);
+			clang_visitChildren(argumentCursor, parseBlockArgument, this);
+		}
+
+		arguments.add(displayName, type, encoding);
 	}
 
 	Json::Value MethodDefinition::toJSON () const {
