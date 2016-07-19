@@ -11,11 +11,11 @@ var fs = require('fs'),
  * generate Swift AST output from a swift file
  */
 function generateSwiftAST (sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
-	var args = ['swiftc', '-sdk', sdkPath, '-dump-ast', fn];
-	if (xcodeTargetOS === 'iphoneos') {
+	var args = ['swiftc', '-sdk', sdkPath, '-dump-ast', fn];	
+	if (xcodeTargetOS === 'iphoneos' || xcodeTargetOS === 'iphonesimulator') {
 		args.push('-target');
-		//armv7 should be ok across all devices. But to note that we can do armv7s and arm64 here
-		args.push('armv7-apple-ios' + iosMinVersion);
+		// armv7 for devices, i386 for sims. But to note that we can do armv7s and arm64 here
+		args.push((xcodeTargetOS === 'iphoneos' ? 'armv7' : 'i386') + '-apple-ios' + iosMinVersion);
 	}
  	var child = spawn('xcrun', args),
 		buf = '';
