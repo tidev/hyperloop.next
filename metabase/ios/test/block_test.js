@@ -41,6 +41,34 @@ describe('block', function () {
 					name: 'A',
 					thirdparty: true
 				},
+				Blockception: {
+					filename: helper.getFixture('blocks.h'),
+					framework: 'fixtures',
+					line: '10',
+					methods: {
+						'blockWithin:': {
+							arguments: [
+							 	{
+									encoding: '@?',
+									name: 'block',
+									type: 'block',
+									value: 'void (^)(int, void (^)(float))'
+								}
+							],
+							encoding: 'v24@0:8@?16',
+							instance: true,
+							name: 'blockWithin',
+							returns: {
+								encoding: 'v',
+								type: 'void',
+								value: 'void'
+							},
+							selector: 'blockWithin:'
+						}
+					},
+					name: 'Blockception',
+					thirdparty: true
+				},
 				C: {
 					filename: helper.getFixture('blocks.h'),
 					framework: 'fixtures',
@@ -101,6 +129,23 @@ describe('block', function () {
 				{
 					arguments: [
 						{
+							encoding: 'f',
+							type: 'float',
+							value: 'float'
+						}
+					],
+					encoding: '@?',
+					returns: {
+						encoding: 'v',
+						type: 'void',
+						value: 'void'
+					},
+					signature: 'void (^)(float)',
+					type: 'block'
+				},
+				{
+					arguments: [
+						{
 							encoding: 'i',
 							type: 'int',
 							value: 'int'
@@ -113,6 +158,28 @@ describe('block', function () {
 						value: 'void'
 					},
 					signature: 'void (^)(int)',
+					type: 'block'
+				},
+				{
+					arguments: [
+						{
+							encoding: 'i',
+							type: 'int',
+							value: 'int'
+						},
+						{
+							encoding: '@?',
+							type: 'block',
+							value: 'void (^)(float)'
+						}
+					],
+					encoding: '@?',
+					returns: {
+						encoding: 'v',
+						type: 'void',
+						value: 'void'
+					},
+					signature: 'void (^)(int, void (^)(float))',
 					type: 'block'
 				},
 				{

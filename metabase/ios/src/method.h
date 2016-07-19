@@ -16,7 +16,7 @@ namespace hyperloop {
 		MethodDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx, bool instance, bool optional);
 		~MethodDefinition ();
 		Json::Value toJSON () const;
-		void addArgument(const std::string &argName, const CXType &paramType, const std::string &argType, const std::string &encoding);
+		void addArgument(CXCursor argumentCursor);
 		void resolveReturnType();
 	private:
 		bool instance;
