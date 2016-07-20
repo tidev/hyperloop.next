@@ -181,7 +181,8 @@ void HyperloopRegisterCallbackForIdentifier (KrollCallback *callback, NSString *
  */
 static NSString* NSStringFromTiStringRef (TiContextRef ctx, TiStringRef string, TiValueRef *exception) {
 	CFStringRef str = TiStringCopyCFString(NULL, string);
-	NSString* __autoreleasing nsstring =  (__bridge NSString *)str;
+	NSString* nsstring = [NSString stringWithString: (__bridge NSString *)str];
+	CFRelease(str);
 	return nsstring;
 }
 

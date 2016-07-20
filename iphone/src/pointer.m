@@ -113,9 +113,11 @@ NSString *cleanEncoding (NSString *encoding) {
 				}
 			}
 		}
-		_pointer = malloc(_size);
-		memset(_pointer, '\0', _size);
-		memcpy(_pointer, pointer, _size);
+		if (_size) {
+			_pointer = malloc(_size);
+			memset(_pointer, '\0', _size);
+			memcpy(_pointer, pointer, _size);
+		}
 	}
 	REMEMBER(self);
 	return self;
@@ -480,21 +482,20 @@ NSString *cleanEncoding (NSString *encoding) {
 #if defined(DEALLOC_DEBUG) && DEALLOC_DEBUG == 1
 	NSLog(@"creating %lu bytes of memory with encoding %s", size, encoding);
 #endif
-	void *memory = malloc(size);
-	memset(memory, '\0', size);
+	NSMutableData *pointerData;
 	if (pointer) {
-		memcpy(memory, pointer, size);
-		char *t = (char *)memory;
-		t[size] = '\0';
+		pointerData = [NSMutableData dataWithBytes:pointer length:size];
 	}
-	return memory;
+	else {
+		pointerData = [NSMutableData dataWithLength:size];
+	}
+	return [pointerData mutableBytes];
 }
 
 -(void)setValue:(const void *)pointer encoding:(const char *)encoding assign:(BOOL)assign {
 	RELEASE_AND_CHECK(_value);
 	RELEASE_AND_CHECK(_structure);
 	if (_pointer) {
-		free(_pointer);
 		_pointer = nil;
 	}
 	id obj = nil;
@@ -646,7 +647,6 @@ if (strstr(encoding, @encode(type)) == encoding) { \
 	RELEASE_AND_CHECK(_nativeObject);
 #endif
 	if (_pointer) {
-		free(_pointer);
 		_pointer = nil;
 	}
 	FORGET(self);
@@ -852,6 +852,9 @@ case t: {\
 
 #define SETOBJECTAT(t, type, name) \
 case t: {\
+	if(len == 0) {\
+		return;\
+	}\
 	void *v = malloc(len);\
 	[_value getValue:v];\
 	NSUInteger i = 0, align = 0;\
