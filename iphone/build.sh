@@ -63,6 +63,7 @@ cp ../LICENSE.md build/zip/modules/iphone/hyperloop/$VERSION
 # package the metabase into the .zip
 cd ../metabase/ios
 ./build.sh >/dev/null
+rm *.tgz
 npm pack >/dev/null 2>&1
 mkdir -p $CWD/build/npm
 cp *.tgz $CWD/build/npm
