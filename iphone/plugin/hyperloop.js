@@ -670,6 +670,17 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var data = this.xcodeprojectdata;
 	var nativeModules = Object.keys(this.nativeModules);
 
+  // third party libraries won't have an entry in native modules so we explicitly
+  // check for those here
+  var thirdPartyFrameworksUsed = false;
+  if (this.hyperloopConfig.ios.thirdparty) {
+    var usedPackages = Object.keys(this.packages);
+    thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
+      return usedPackages.some(function (packageName) {
+        return packageName === thirdPartyFramework;
+      });
+    });
+  }
 	if (!nativeModules.length) {
 		return;
 	}
