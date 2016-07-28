@@ -17,8 +17,8 @@ var TI_MIN = '5.4.0';
 var IOS_SDK_MIN = '9.0';
 // enum for ios javascript core
 var coreLib = {
-    JSCore: 'libhyperloop-jscore.a',
-    TiCore: 'libhyperloop-ticore.a'
+		JSCore: 'libhyperloop-jscore.a',
+		TiCore: 'libhyperloop-ticore.a'
 };
 
 var path = require('path'),
@@ -455,7 +455,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}
 
 		this.metabase = metabase;
-    this.metabase.classes = this.metabase.classes || {};
+		this.metabase.classes = this.metabase.classes || {};
 
 		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
 			// if cached, skip generation
@@ -613,9 +613,9 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 			builder.unmarkBuildDirFiles(destFile);
 
 			builder.currentBuildManifest.files[rel] = {
-				hash:  contents === null && prev ? prev.hash  : hash || builder.hash(contents || ''),
+				hash: contents === null && prev ? prev.hash : hash || builder.hash(contents || ''),
 				mtime: contents === null && prev ? prev.mtime : srcMtime,
-				size:  contents === null && prev ? prev.size  : srcStat.size
+				size: contents === null && prev ? prev.size : srcStat.size
 			};
 
 			if (changed) {
@@ -670,17 +670,17 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var data = this.xcodeprojectdata;
 	var nativeModules = Object.keys(this.nativeModules);
 
-  // third party libraries won't have an entry in native modules so we explicitly
-  // check for those here
-  var thirdPartyFrameworksUsed = false;
-  if (this.hyperloopConfig.ios.thirdparty) {
-    var usedPackages = Object.keys(this.packages);
-    thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
-      return usedPackages.some(function (packageName) {
-        return packageName === thirdPartyFramework;
-      });
-    });
-  }
+	// third party libraries won't have an entry in native modules so we explicitly
+	// check for those here
+	var thirdPartyFrameworksUsed = false;
+	if (this.hyperloopConfig.ios.thirdparty) {
+		var usedPackages = Object.keys(this.packages);
+		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
+			return usedPackages.some(function (packageName) {
+				return packageName === thirdPartyFramework;
+			});
+		});
+	}
 	if (!nativeModules.length) {
 		return;
 	}
