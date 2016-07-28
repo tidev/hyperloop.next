@@ -455,6 +455,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}
 
 		this.metabase = metabase;
+    this.metabase.classes = this.metabase.classes || {};
 
 		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
 			// if cached, skip generation
@@ -1009,11 +1010,11 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		this.headers.forEach(function (header) {
 			addParam('HEADER_SEARCH_PATHS', header);
 		});
-		//For some reason, when using ticore and having custom headers, the original header search path goes missing. 
+		//For some reason, when using ticore and having custom headers, the original header search path goes missing.
 		//FIX ME
 		if(!this.builder.tiapp.ios['use-jscore-framework']) {
 			addParam('HEADER_SEARCH_PATHS', 'headers');
-		}		
+		}
 	}
 
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
