@@ -681,7 +681,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			});
 		});
 	}
-	if (!nativeModules.length) {
+	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
 		return;
 	}
 
