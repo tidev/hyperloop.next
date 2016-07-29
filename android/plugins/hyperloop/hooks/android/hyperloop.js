@@ -196,7 +196,44 @@ exports.cliVersion = '>=3.2';
 
 		cli.on('build.android.dexer', {
 			pre: function (data) {
+				var uniqueJars = [], // the args we're building back up, eliminating duplicate JARs
+					basenames = []; // basename to sha1
+				// Add hyperloop JARs
 				data.args[1] = data.args[1].concat(jars.slice(1));
+				// TIMOB-23697 Don't add duplicate jar entries
+				// http://tools.android.com/recent/dealingwithdependenciesinandroidprojects
+				// We need to ensure no two jars have the same name and sha1
+				for (var i = 0; i < data.args[1].length; i++) {
+					var jarFile = data.args[1][i],
+						basename = path.basename(jarFile),
+						extension = path.extname(basename);
+					if (extension == '.jar') {
+						if (basenames.indexOf(basename) == -1) {
+							uniqueJars.push(jarFile);
+							basenames.push(basename);
+						} else {
+							// TODO We should check to see if they each have the exact same size and sha1. If so, just ignore duplicate. Otherwise we should throw an error to the user.
+							logger.debug('skipping duplicate JAR: ' + jarFile);
+						}
+					} else {
+						// actually not a JAR, so just add it back
+						uniqueJars.push(jarFile);
+					}
+				}
+				// Special case for android-support-v4.jar and android-support-v13.jar
+				if (basenames.indexOf('android-support-v4.jar') != -1 && basenames.indexOf('android-support-v13.jar') != -1) {
+					var specialCase = [];
+					// Remove v4!
+					for (var i = 0; i < uniqueJars.length; i++) {
+						var jarFile = uniqueJars[i],
+							basename = path.basename(jarFile);
+						if (basename != 'android-support-v4.jar') {
+							specialCase.push(jarFile);
+						}
+					}
+					uniqueJars = specialCase;
+				}
+				data.args[1] = uniqueJars;
 			}
 		});
 
