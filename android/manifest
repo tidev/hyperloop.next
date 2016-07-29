@@ -2,9 +2,9 @@
 # this is your module manifest and used by Titanium
 # during compilation, packaging, distribution, etc.
 #
-version: VERSION
-apiversion: 2
-architectures: armeabi armeabi-v7a x86
+version: 2.0.0
+apiversion: 3
+architectures: armeabi-v7a x86
 description: hyperloop-android
 author: Appcelerator
 license: Appcelerator Commercial License
@@ -15,4 +15,4 @@ name: hyperloop-android
 moduleid: hyperloop
 guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
 platform: android
-minsdk: 5.2.1
+minsdk: 6.0.0
