@@ -304,6 +304,8 @@ exports.cliVersion = '>=3.2';
 		 * extracting like a zipfile
 		 * copying resources around
 		 *
+		 * http://tools.android.com/tech-docs/new-build-system/aar-format
+		 *
 		 * @returns {Array[String]} paths to JAR files we extracted
 		 **/
 		function handleAAR(aarFile, finished) {
@@ -339,7 +341,10 @@ exports.cliVersion = '>=3.2';
 						function (cb) {
 							var src = path.join(extractedDir, 'assets'),
 								dest = path.join(cli.argv['project-dir'], 'build', 'android', 'assets');
-
+							// assets is optional, skip if doesn't exist!
+							if (!afs.exists(src)) {
+								return cb();
+							}
 							afs.copyDirRecursive(src, dest, cb, {logger: logger});
 						},
 						// Find libs/*.jar
