@@ -13,6 +13,7 @@ import java.lang.reflect.Modifier;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
+import org.appcelerator.titanium.TiContext;
 
 import com.android.dx.stock.ProxyBuilder;
 
@@ -27,6 +28,10 @@ public class HyperloopModule extends KrollModule {
 
     public HyperloopModule() {
         super();
+    }
+
+    public HyperloopModule(TiContext tiContext) {
+        this();
     }
 
     /**
