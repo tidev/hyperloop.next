@@ -24,7 +24,7 @@ exports.cliVersion = '>=3.2';
 		metabase = require(path.join(__dirname, 'metabase'));
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '5.4.0';
+	var TI_MIN = '6.0.0';
 
 	/*
 	 State.
