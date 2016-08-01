@@ -596,9 +596,22 @@ function getCocoaPodsXCodeSettings (basedir) {
 function isPodInstalled (callback) {
 	var exec = require('child_process').exec;
 	return exec('which pod', function (err, stdout) {
-		if (err) {
-			return callback(new Error('CocoaPods not found in your PATH. You can install CocoaPods with: sudo gem install cocoapods'));
-		}
+	if (err) {
+		util.logger.info(chalk.green('Bundler') + ' installing CocoaPods gem since we cannot find it in your PATH');
+		var spawn = require('child_process').spawn;
+		var child = spawn('bundle', ['install'], {cwd:basedir});
+		createLogger(child.stdout, util.logger.trace);
+		createLogger(child.stderr, util.logger.warn);
+		child.on('error', callback);
+		child.on('exit', function (ec) {
+			if (ec !== 0) {
+				return callback(new Error("something went wrong with installing CocoaPods gem. Please check your environment"));
+			}
+			fs.writeFileSync(cacheFile, cacheToken);
+			return callback();
+		});
+		//return callback(new Error('CocoaPods not found in your PATH. You can install CocoaPods with: sudo gem install cocoapods'));
+	}
 		return callback(null, stdout.trim());
 	});
 }
@@ -617,7 +630,7 @@ function runPodInstallIfRequired(basedir, callback) {
 			util.logger.trace('found pod at ' +pod);
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
-			var child = spawn(pod, ['install', '--no-integrate'], {cwd:basedir});
+			var child = spawn('bundle', ['exec', ' pod install --no-integrate'], {cwd:basedir});
 			createLogger(child.stdout, util.logger.trace);
 			createLogger(child.stderr, util.logger.warn);
 			child.on('error', callback);
