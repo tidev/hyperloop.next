@@ -644,6 +644,16 @@ function getCocoaPodsVersion (callback) {
 	});
 }
 
+function validatePodfile (podfilePath, version, callback) {
+	var podfileContent = fs.readFileSync(podfilePath);
+	if (semver.gte(version, '1.0.0')) {
+		if (!/:integrate_targets\s*=>\s*false/.test(podfileContent)) {
+			callback(new Error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option. For more information please see https://guides.cocoapods.org/syntax/podfile.html#install_bang'));
+		}
+	}
+	return callback();
+}
+
 function runPodInstallIfRequired(basedir, callback) {
 	var Pods = path.join(basedir, 'Pods'),
 		Podfile = path.join(basedir, 'Podfile'),
@@ -657,6 +667,11 @@ function runPodInstallIfRequired(basedir, callback) {
 			isPodInstalled,
 			function (pod, callback) {
 				getCocoaPodsVersion(function(err, version) {
+					callback(err, pod, version);
+				});
+			},
+			function (pod, version, callback) {
+				validatePodfile(Podfile, version, function(err) {
 					callback(err, pod, version);
 				});
 			}
