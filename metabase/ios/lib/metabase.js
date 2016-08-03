@@ -664,7 +664,7 @@ function runPodInstallIfRequired(basedir, callback) {
 			if (err) { return callback(err); }
 			util.logger.trace('found pod ' + version + ' at ' + pod);
 			if (semver.lt(version, '1.0.0')) {
-				util.logger.info('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation.');
+				util.logger.info('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation with: sudo gem install cocoapods');
 			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
