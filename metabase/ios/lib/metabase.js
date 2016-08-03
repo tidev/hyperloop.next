@@ -538,14 +538,25 @@ function runCocoaPodsBuild (basedir, appDir, sdkType, sdkVersion, minSDKVersion,
 		var libs = [];
 		// find all the libraries that CocoaPods built (exclude its stub library)
 		// and copy any Resources
+		function addLibraryFileAndCopyResources(libraryFilename, cb) {
+			libs.push(libraryFilename);
+			var name = libraryFilename.substring(3).replace(/\.a$/, '').trim();
+			var dir = path.join(basedir, 'Pods', name, name);
+			if (fs.existsSync(dir)) {
+				return compileResources(dir, sdk, appDir, true, cb);
+			}
+		}
 		async.each(fs.readdirSync(buildOutDir), function (fn, cb) {
 			if (/\.a$/.test(fn) && fn.indexOf('libPods-') < 0) {
-				libs.push(fn);
-				var name = fn.substring(3).replace(/\.a$/, '').trim();
-				var dir = path.join(basedir, 'Pods', name, name);
-				if (fs.existsSync(dir)) {
-					return compileResources(dir, sdk, appDir, true, cb);
-				}
+				return addLibraryFileAndCopyResources(fn, cb);
+			} else if (fs.statSync(path.join(buildOutDir, fn)).isDirectory()) {
+				// Since CocoaPods 1.0 the libraries are contained in subfolders
+				async.each(fs.readdirSync(path.join(buildOutDir, fn)), function(fn, cb) {
+					if (/\.a$/.test(fn)) {
+						return addLibraryFileAndCopyResources(fn, cb);
+					}
+					cb();
+				});
 			}
 			cb();
 		});
@@ -561,7 +572,7 @@ function parseCocoaPodXCConfig (fn) {
 	var config = {};
 	fs.readFileSync(fn).toString().split('\n').forEach(function (line) {
 		var i = line.indexOf(' = ');
-		if (i) {
+		if (i > 0) {
 			var k = line.substring(0, i).trim();
 			var v = line.substring(i + 2).trim();
 			config[k] = v;
@@ -587,6 +598,21 @@ function getCocoaPodsXCodeSettings (basedir) {
 					// fix the PODS_ROOT to point to the absolute path
 					config.PODS_ROOT = path.resolve(podDir);
 				}
+				if (config.PODS_BUILD_DIR) {
+					// CocoaPods 1.0 introduced the PODS_BUILD_DIR variable which affects
+					// LIBRARY_SEARCH_PATHS. By default it's set to the current build dir,
+					// but the pods have their own build dir, so we change it here.
+					var podsBuildDir = fs.realpathSync(path.join(basedir, 'build'));
+					util.logger.debug('Changing PODS_BUILD_DIR to ' + podsBuildDir);
+					config.PODS_BUILD_DIR = podsBuildDir;
+				}
+				if (config.PODS_CONFIGURATION_BUILD_DIR) {
+					// We also need to overwrite PODS_CONFIGURATION_BUILD_DIR as we always
+					// build pods with the Release config.
+					var podsConfigurationBuildDir = '$PODS_BUILD_DIR/Release$(EFFECTIVE_PLATFORM_NAME)';
+					util.logger.debug('Changing PODS_CONFIGURATION_BUILD_DIR to ' + podsConfigurationBuildDir);
+					config.PODS_CONFIGURATION_BUILD_DIR = podsConfigurationBuildDir;
+				}
 				return config;
 			}
 		}
@@ -603,6 +629,21 @@ function isPodInstalled (callback) {
 	});
 }
 
+/**
+ * Determines the currently installed version of CocoaPods
+ *
+ * @param {Function} callback
+ */
+function getCocoaPodsVersion (callback) {
+	var exec = require('child_process').exec;
+	return exec('pod --version', function (err, stdout) {
+		if (err) {
+			return callback(new Error('CocoaPods not found in your PATH. You can install CocoaPods with: sudo gem install cocoapods'));
+		}
+		return callback(null, stdout.trim());
+	});
+}
+
 function runPodInstallIfRequired(basedir, callback) {
 	var Pods = path.join(basedir, 'Pods'),
 		Podfile = path.join(basedir, 'Podfile'),
@@ -612,12 +653,26 @@ function runPodInstallIfRequired(basedir, callback) {
 		wrench.mkdirSyncRecursive(path.dirname(cacheFile));
 	}
 	if (!fs.existsSync(Pods) || !fs.existsSync(cacheFile) || (fs.existsSync(cacheFile) && fs.readFileSync(cacheFile).toString() !== cacheToken)) {
-		isPodInstalled(function (err, pod) {
+		async.waterfall([
+			isPodInstalled,
+			function (pod, callback) {
+				getCocoaPodsVersion(function(err, version) {
+					callback(err, pod, version);
+				});
+			}
+		], function(err, pod, version) {
 			if (err) { return callback(err); }
-			util.logger.trace('found pod at ' +pod);
+			util.logger.trace('found pod ' + version + ' at ' + pod);
+			if (semver.lt(version, '1.0.0')) {
+				util.logger.info('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation.');
+			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
-			var child = spawn(pod, ['install', '--no-integrate'], {cwd:basedir});
+			var args = ['install'];
+			if (semver.lte(version, '0.39.0')) {
+				args.push('--no-integrate');
+			}
+			var child = spawn(pod, args, {cwd:basedir});
 			createLogger(child.stdout, util.logger.trace);
 			createLogger(child.stderr, util.logger.warn);
 			child.on('error', callback);
@@ -646,6 +701,7 @@ function generateCocoaPods (cachedir, basedir, appDir, sdkType, sdkVersion, minS
 			if (err) { return callback(err); }
 			var settings = getCocoaPodsXCodeSettings(basedir);
 			if (libs && libs.length) {
+				// This can be removed when we drop support for CocoaPods <1.0.0
 				settings.LIBRARY_SEARCH_PATHS = (settings.LIBRARY_SEARCH_PATHS  || '$(inherited)') + ' "' + libDir + '"';
 			}
 			util.logger.trace(chalk.green('CocoaPods') + ' xcode settings will', JSON.stringify(settings, null, 2));
