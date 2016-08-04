@@ -251,7 +251,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	var xcodeAppDir = this.builder.xcodeAppDir;
 	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
 	var builder = this.builder;
-	var allHeaders = this.headers = [];
+	var allHeaders = [];
 
 	function arrayifyAndResolve(it) {
 		if (it) {
