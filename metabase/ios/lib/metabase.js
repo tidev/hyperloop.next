@@ -648,7 +648,12 @@ function validatePodfile (podfilePath, version, callback) {
 	var podfileContent = fs.readFileSync(podfilePath);
 	if (semver.gte(version, '1.0.0')) {
 		if (!/:integrate_targets\s*=>\s*false/.test(podfileContent)) {
-			return callback(new Error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option. For more information please see https://guides.cocoapods.org/syntax/podfile.html#install_bang'));
+			util.logger.error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option:');
+			util.logger.error('');
+			util.logger.error('    install! \'cocoapods\', :integrate_targets => false');
+			util.logger.error('');
+			util.logger.error('For more information please see https://guides.cocoapods.org/syntax/podfile.html#install_bang');
+			return callback(new Error('Your Podfile requires changes to use it with Hyperloop. Please see the note above on how to fix it.'));
 		}
 	}
 	return callback();
@@ -677,9 +682,9 @@ function runPodInstallIfRequired(basedir, callback) {
 			}
 		], function(err, pod, version) {
 			if (err) { return callback(err); }
-			util.logger.trace('found pod ' + version + ' at ' + pod);
+			util.logger.trace('Found pod ' + version + ' at ' + pod);
 			if (semver.lt(version, '1.0.0')) {
-				util.logger.info('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation with: sudo gem install cocoapods');
+				util.logger.warn('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation with: sudo gem install cocoapods');
 			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
