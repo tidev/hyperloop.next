@@ -221,10 +221,13 @@ function installAndroidSDKComponents(androidSDKPath, next) {
 	}
 	console.log("Installing and configuring Android SDK + Tools");
 	prc = spawn('sh', ['-c', shellSyntaxCommand]);
-	prc.stdout.on('data', function(data){
+	prc.stdout.on('data', function(data) {
+		if (data.toString().indexOf('__FINISHED__') != -1) {
+			prc.kill();
+		}
 		console.log(data.toString());
 	})
-	prc.stderr.on('data', function(data){
+	prc.stderr.on('data', function(data) {
 		console.error(data.toString());
 	})
 	prc.on('close', function (code) {
