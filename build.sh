@@ -80,6 +80,10 @@ mkdir dist
 
 VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
 # Replace manifest with manifest.bak if it exists!
+if [ -f "./android/manifest.bak" ]
+then
+  git checkout android/manifest
+fi
 if [ -f "./android/build.properties.bak" ]
 then
   git checkout android/build.properties
@@ -95,8 +99,12 @@ fi
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
+cat ./android/build.properties
 sed -i.bak 's/6.0.0/'"$TISDK"'/g' ./android/build.properties
+cat ./android/build.properties
+cat ./iphone/titanium.xcconfig
 sed -i.bak 's/5.4.0/'"$TISDK"'/g' ./iphone/titanium.xcconfig
+cat ./iphone/titanium.xcconfig
 
 
 echo "Building Android module..."
