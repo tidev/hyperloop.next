@@ -22,7 +22,7 @@ var path = require('path'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
 	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.4.1-macosx.zip',
-	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
+	ANDROID_NDK_URL = 'http://dl.google.com/android/repository/android-ndk-r11c-darwin-x86_64.zip';
 
 function downloadURL(url, callback) {
 	console.log('Downloading %s', url.cyan);
@@ -130,10 +130,14 @@ function extract(filename, installLocation, keepFiles, callback) {
 	});
 }
 
-// Install 5_4_X branch Titanium SDK
-function installSDK(next) {
-	console.log('Checking for updated Ti SDK from 5_4_X'.green);
-	var args = ['sdk', 'install', '-b', '5_4_X', '-d', '--no-banner'],
+/**
+ * Installs the latest Titanium SDK from a given branch.
+ * @param  {String}   branch SDK branch to install from
+ * @param  {Function} next   callback
+ */
+function installSDK(branch, next) {
+	console.log(('Checking for updated Ti SDK from ' + branch).green);
+	var args = ['sdk', 'install', '-b', branch, '-d', '--no-banner'],
 		prc;
 	if (process.argv.indexOf('--no-progress-bars') != -1) {
 		args.push('--no-progress-bars');
@@ -141,7 +145,7 @@ function installSDK(next) {
 	prc = spawn(titanium, args, {stdio:'inherit'});
 	prc.on('exit', function (code) {
 		if (code !== 0) {
-			next("Failed to install 5_4_X SDK. Exit code: " + code);
+			next('Failed to install ' + branch + ' SDK. Exit code: ' + code);
 		} else {
 			next();
 		}
@@ -225,7 +229,7 @@ function installAndroidSDKComponents(androidSDKPath, next) {
 }
 
 function installAndroidNDK(next) {
-	var ndkHome = path.join(HOME, 'android-ndk-r8c');
+	var ndkHome = path.join(HOME, 'android-ndk-r11c');
 	if (fs.existsSync(ndkHome)) {
 		console.log("Android NDK already installed at", ndkHome);
 		process.env.ANDROID_NDK = ndkHome;
@@ -234,7 +238,7 @@ function installAndroidNDK(next) {
 
 	console.log("Installing Android NDK".green);
 	downloadURL(ANDROID_NDK_URL, function (filename) {
-		exec('tar xzf "' + filename + '" -C "' + HOME + '"', function (error, stdout, stderr) {
+		extract(filename, HOME, true, function() {
 			if (error !== null) {
 				return next('Failed to extract Android NDK: ' + error);
 			}
@@ -350,13 +354,13 @@ function writeAndroidPluginPackage (next) {
 }
 
 /**
- * The whole shebang. Installs latest and greatest Titanium SDK from 5_4_X,
+ * The whole shebang. Installs latest and greatest Titanium SDK from designated branch,
  * Android SDK/NDK, sets up the android/build.properties to point at them,
  * iphone/titanium.xcconfig, then runs the build.sh file in the root of the repo
  * If you already have dependencies installed, this is overkill. But useful for
  * clean CI environments.
  */
-function build(callback) {
+function build(branch, callback) {
 	var tiSDKPath,
 		androidSDKPath,
 		androidNDKPath;
@@ -372,8 +376,10 @@ function build(callback) {
 			wrench.mkdirSyncRecursive(buildTempDir);
 			next();
 		},
-		// Install latest Titanium SDK from 5_4_X
-		installSDK,
+		// Install latest Titanium SDK from target branch
+		function (next) {
+			installSDK(branch, next);
+		},
 		// Grab location it got installed
 		function (next) {
 			tiver.getActivePath(function (err, sdkPath, minVersion) {
@@ -462,14 +468,25 @@ exports.build = build;
 
 // When run as single script.
 if (module.id === ".") {
-	build(function (err, results) {
-		// unset after we run
-		delete process.env.CI;
-		if (err) {
-			console.error(err.toString().red);
-			process.exit(1);
-		} else {
-			process.exit(0);
-		}
-	});
+	(function () {
+		var program = require('commander'),
+			packageJson = require(path.join('..', 'package.json'));
+
+		program
+			.version(packageJson.version)
+			// TODO Allow choosing a URL or zipfile as SDK to install!
+			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', 'master')
+			.parse(process.argv);
+
+		build(program.branch, function (err, results) {
+			// unset after we run
+			delete process.env.CI;
+			if (err) {
+				console.error(err.toString().red);
+				process.exit(1);
+			} else {
+				process.exit(0);
+			}
+		});
+	})();
 }

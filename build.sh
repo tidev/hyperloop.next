@@ -17,7 +17,7 @@ onexit () {
 
 trap onexit 0 1 2 3 6 9 15
 
-TISDK_SEMVER=">=5.4.0"
+TISDK_SEMVER=">=6.0.0"
 CHECK="✓ "
 
 if [ "$ANDROID_SDK" = "" ];
@@ -95,7 +95,7 @@ fi
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
-sed -i.bak 's/5.2.1.GA/'"$TISDK"'/g' ./android/build.properties
+sed -i.bak 's/6.0.0/'"$TISDK"'/g' ./android/build.properties
 sed -i.bak 's/5.4.0/'"$TISDK"'/g' ./iphone/titanium.xcconfig
 
 
