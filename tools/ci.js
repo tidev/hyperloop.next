@@ -204,6 +204,7 @@ function installAndroidSDK(next) {
 }
 
 function installAndroidSDKComponents(androidSDKPath, next) {
+	// FIXME this doesn't seem to ever "finish" on Travis. Hangs after installing the last portion...
 	var androidBin = path.join(androidSDKPath, 'tools', 'android'),
 		buildToolsFolder = path.join(androidSDKPath, 'build-tools'),
 		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools;' +
@@ -211,14 +212,21 @@ function installAndroidSDKComponents(androidSDKPath, next) {
 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter build-tools-' + TITANIUM_ANDROID_API + '.0.1;' +
 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter extra-android-support;' + // FIXME Do we need this?
 		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-' + TITANIUM_ANDROID_API +';' +
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API,
+		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API + ';' +
+		"echo '__FINISHED__'",
 		prc;
 	if (fs.existsSync(buildToolsFolder)) {
 		console.log("Android SDK + Tools already installed at", androidBin);
 		return next();
 	}
 	console.log("Installing and configuring Android SDK + Tools");
-	prc = spawn('sh', ['-c', shellSyntaxCommand], { stdio: 'inherit' });
+	prc = spawn('sh', ['-c', shellSyntaxCommand]);
+	prc.stdout.on('data', function(data){
+		console.log(data.toString());
+	})
+	prc.stderr.on('data', function(data){
+		console.error(data.toString());
+	})
 	prc.on('close', function (code) {
 		if (code !== 0) {
 			next("Failed to build install Android SDK components. Exit code: " + code);
