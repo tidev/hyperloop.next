@@ -6,4 +6,4 @@ then
 	npm install
 fi
 cd $SCRIPT_PATH
-node ./ci.js -b 6_0_X
+node ./ci.js
