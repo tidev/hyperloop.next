@@ -251,9 +251,6 @@ function installAndroidNDK(next) {
 	console.log("Installing Android NDK".green);
 	downloadURL(ANDROID_NDK_URL, function (filename) {
 		extract(filename, HOME, true, function() {
-			if (error !== null) {
-				return next('Failed to extract Android NDK: ' + error);
-			}
 			exec('"' + titanium + '" config android.ndkPath ' + ndkHome, function (error, stdout, stderr) {
 				if (error !== null) {
 					return next('Failed to set path to Android NDK in titanium CLI config: ' + error);
