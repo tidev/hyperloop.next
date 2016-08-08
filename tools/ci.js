@@ -15,6 +15,7 @@ var path = require('path'),
 	spawn = require('child_process').spawn,
 	tiver = require('./tiver'),
 	afs = appc.fs,
+	progressBars = true,
 	HOME = process.env.HOME || process.env.USERPROFILE || process.env.APPDATA,
 	titanium = path.join(__dirname, '..', 'node_modules', 'titanium', 'bin', 'titanium'),
 	androidModuleDir = path.join(__dirname, '..', 'android'),
@@ -54,7 +55,7 @@ function downloadURL(url, callback) {
 			var total = parseInt(req.headers['content-length']),
 				bar;
 
-			if (!process.argv.indexOf('--quiet') && !process.argv.indexOf('--no-progress-bars')) {
+			if (progressBars) {
 				bar = new appc.progress('  :paddedPercent [:bar] :etas', {
 					complete: '='.cyan,
 					incomplete: '.'.grey,
@@ -78,7 +79,7 @@ function downloadURL(url, callback) {
 			// we don't know how big the file is, display a spinner
 			var busy;
 
-			if (!process.argv.indexOf('--quiet') && !process.argv.indexOf('--no-progress-bars')) {
+			if (progressBars) {
 				busy = new appc.busyindicator;
 				busy.start();
 			}
@@ -100,7 +101,7 @@ function extract(filename, installLocation, keepFiles, callback) {
 	appc.zip.unzip(filename, installLocation, {
 		visitor: function (entry, i, total) {
 			if (i == 0) {
-				if(!process.argv.indexOf('--quiet') && !process.argv.indexOf('--no-progress-bars')) {
+				if(progressBars) {
 					bar = new appc.progress('  :paddedPercent [:bar]', {
 						complete: '='.cyan,
 						incomplete: '.'.grey,
@@ -139,7 +140,7 @@ function installSDK(branch, next) {
 	console.log(('Checking for updated Ti SDK from ' + branch).green);
 	var args = ['sdk', 'install', '-b', branch, '-d', '--no-banner'],
 		prc;
-	if (process.argv.indexOf('--no-progress-bars') != -1) {
+	if (!progressBars) {
 		args.push('--no-progress-bars');
 	}
 	prc = spawn(titanium, args, {stdio:'inherit'});
@@ -476,7 +477,11 @@ if (module.id === ".") {
 			.version(packageJson.version)
 			// TODO Allow choosing a URL or zipfile as SDK to install!
 			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', 'master')
+			.option('-P, --no-progress-bars', 'disable progress bars')
 			.parse(process.argv);
+
+		// Set noProgressBars "globally" in this file
+		progressBars = program.progressBars;
 
 		build(program.branch, function (err, results) {
 			// unset after we run
