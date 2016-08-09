@@ -7,10 +7,10 @@ cd $SCRIPT_PATH
 
 onexit () {
 	cd $SCRIPT_PATH
-	git checkout android/manifest
-	git checkout android/build.properties
-	git checkout iphone/manifest
-	git checkout iphone/titanium.xcconfig
+	git checkout HEAD -- android/manifest
+	git checkout HEAD -- android/build.properties
+	git checkout HEAD -- iphone/manifest
+	git checkout HEAD -- iphone/titanium.xcconfig
 	rm -rf $SCRIPT_PATH/iphone/*.bak
 	rm -rf $SCRIPT_PATH/android/*.bak
 }
@@ -79,23 +79,12 @@ rm -rf dist
 mkdir dist
 
 VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
-# Replace manifest with manifest.bak if it exists!
-if [ -f "./android/manifest.bak" ]
-then
-  git checkout android/manifest
-fi
-if [ -f "./android/build.properties.bak" ]
-then
-  git checkout android/build.properties
-fi
-if [ -f "./iphone/manifest.bak" ]
-then
-  git checkout iphone/manifest
-fi
-if [ -f "./iphone/titanium.xcconfig.bak" ]
-then
-  git checkout iphone/titanium.xcconfig
-fi
+# Force reset the build settings files we change next
+git checkout HEAD -- android/manifest
+git checkout HEAD -- android/build.properties
+git checkout HEAD -- iphone/manifest
+git checkout HEAD -- iphone/titanium.xcconfig
+
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
