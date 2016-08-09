@@ -13,6 +13,7 @@ import java.lang.reflect.Modifier;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
+import org.appcelerator.titanium.TiApplication;
 
 import com.android.dx.stock.ProxyBuilder;
 
@@ -20,13 +21,76 @@ import android.content.Context;
 
 @Kroll.module(name="Hyperloop", id="hyperloop")
 public class HyperloopModule extends KrollModule {
+    private static final char[] ALPHA = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 
     private static final String TAG = "Ti.Hyperloop";
     // TODO Make this an instance field! need to clean up HyperloopUtil to be able to access it though...
     private static ProxyFactory fgProxyFactory = new ProxyFactory();
 
+    // Assume we're ok until we can actually check...
+    private volatile static boolean isPlatformGUID = true;
+
+    /**
+     * returns true if platform GUID, false if not (open source, legacy, invalid, etc)
+     *
+     * the platform guid is a special guid where it is a valid UUID v4 string but specifically
+     * encoded in a certain way so that we can determine predicitably if it's a platform generated
+     * GUID or one that wasn't generated with the platform.
+     *
+     * The GUID format is a generated random UUID v4 but where the following is changed:
+     *
+     * 9cba353d-81aa-4593-9111-2e83c0136c14
+     *                      ^
+     *                      +---- always 9
+     *
+     * 9cba353d-81aa-4593-9111-2e83c0136c14
+     *                       ^^^
+     *                       +---- the following 3 characters will be the same and will be
+     *                             one of 0-9a-f
+     *
+     * 9cba353d-81aa-4593-9111-2e83c0136c14
+     *                           ^
+     *                           +----- the last remaining string is a SHA1 encoding of
+     *                                  the org_id + app id (first 12 characters of the SHA1)
+     *
+     */
+    private static boolean isPlatformGUID(String guid) {
+        // UUID v4 is 36 characters long
+        if (guid.length() == 36) {
+            // example guid: 9cba353d-81aa-4593-9111-2e83c0136c14
+            // for org_id 14301, appid : com.tii
+            if (guid.charAt(19) == '9') {
+                char alpha = guid.charAt(20);
+                boolean found = false;
+                for (int c = 0; c < ALPHA.length; c++) {
+                    if (alpha == ALPHA[c]) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    String str = guid.substring(20, 3);
+                    if (str.equals(Character.toString(alpha) + Character.toString(alpha) + Character.toString(alpha))) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
     public HyperloopModule() {
         super();
+    }
+
+    @Kroll.onAppCreate
+    public static void onAppCreate(TiApplication app) {
+        // if not a valid platform GUID, we aren't going to enable Hyperloop
+        if (!isPlatformGUID(app.getAppGUID())) {
+            Log.e(HyperloopUtil.TAG, "Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");;
+            return;
+        }
+        isPlatformGUID = true;
     }
 
     /**
@@ -40,6 +104,7 @@ public class HyperloopModule extends KrollModule {
      */
     @Kroll.method
     public InstanceProxy cast(String className, Object object) {
+        if (!isPlatformGUID) return null;
         if (!(object instanceof InstanceProxy)) {
             Log.e(TAG,
                     "Cannot cast anything but native hyperloop proxies around instances of objects!");
@@ -63,6 +128,7 @@ public class HyperloopModule extends KrollModule {
      */
     @Kroll.method
     public ClassProxy getClass(String className) {
+        if (!isPlatformGUID) return null;
         return getProxyFactory().newClass(className);
     }
 
@@ -75,6 +141,7 @@ public class HyperloopModule extends KrollModule {
      */
     @Kroll.method
     public BaseProxy implement(String className) {
+        if (!isPlatformGUID) return null;
         if (className == null) {
             Log.e(TAG, "'class' value cannot be null.");
             return null;
@@ -99,6 +166,7 @@ public class HyperloopModule extends KrollModule {
      */
     @Kroll.method
     public BaseProxy extend(String className) {
+        if (!isPlatformGUID) return null;
         // This is the fully qualified name of the class we're extending
         if (className == null) {
             Log.e(TAG, "'class' value cannot be null.");
@@ -163,6 +231,7 @@ public class HyperloopModule extends KrollModule {
      * @return
      */
     static Class<?> getJavaClass(String className) {
+        if (!isPlatformGUID) return null;
         // TODO Should we generate a cache for name to class (including nulls)?
         if (className == null) {
             Log.e(HyperloopUtil.TAG, "Missing 'class' value");
