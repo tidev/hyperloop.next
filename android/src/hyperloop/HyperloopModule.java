@@ -10,10 +10,12 @@ package hyperloop;
 import java.io.IOException;
 import java.lang.reflect.Modifier;
 
+import org.appcelerator.kroll.runtime.v8.V8Runtime;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
+import org.appcelerator.titanium.util.TiUIHelper;
 
 import com.android.dx.stock.ProxyBuilder;
 
@@ -87,7 +89,11 @@ public class HyperloopModule extends KrollModule {
     public static void onAppCreate(TiApplication app) {
         // if not a valid platform GUID, we aren't going to enable Hyperloop
         if (!isPlatformGUID(app.getAppGUID())) {
-            Log.e(HyperloopUtil.TAG, "Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");;
+            final String msg = "Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import";
+            Log.e(HyperloopUtil.TAG, msg);
+            if (V8Runtime.isEmulator()) {
+                TiUIHelper.doOkDialog("Alert", msg, null);
+            }
             return;
         }
         isPlatformGUID = true;
