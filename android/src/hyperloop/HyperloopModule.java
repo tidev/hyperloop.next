@@ -13,6 +13,8 @@ import java.lang.reflect.Modifier;
 import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
+import org.appcelerator.titanium.TiApplication;
+import hyperloop.HyperloopUtil;
 
 import com.android.dx.stock.ProxyBuilder;
 
@@ -27,6 +29,12 @@ public class HyperloopModule extends KrollModule {
 
     public HyperloopModule() {
         super();
+
+    	if (!HyperloopUtil.isPlatformGUID(TiApplication.getInstance().getAppProperties().getString("guid"))) {
+            Log.e(TAG, "Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
+            
+            // TODO: Show alert in dev-environment and abort proxy-creation
+    	}
     }
 
     /**
