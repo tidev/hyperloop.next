@@ -79,22 +79,10 @@ rm -rf dist
 mkdir dist
 
 VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2`
-# Force reset the build settings files we change next
-git checkout HEAD -- android/manifest
-git checkout HEAD -- android/build.properties
-git checkout HEAD -- iphone/manifest
-git checkout HEAD -- iphone/titanium.xcconfig
 
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
-cat ./android/build.properties
-sed -i.bak 's/6.0.0/'"$TISDK"'/g' ./android/build.properties
-cat ./android/build.properties
-cat ./iphone/titanium.xcconfig
-sed -i.bak 's/5.4.0/'"$TISDK"'/g' ./iphone/titanium.xcconfig
-cat ./iphone/titanium.xcconfig
-
 
 echo "Building Android module..."
 cd android
