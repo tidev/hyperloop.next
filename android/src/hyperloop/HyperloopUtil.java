@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import android.os.Build;
 
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.titanium.proxy.ActivityProxy;
@@ -110,6 +111,22 @@ abstract class HyperloopUtil {
                 || item instanceof int[] || item instanceof double[]
                 || item instanceof float[] || item instanceof short[]
                 || item instanceof long[] || item instanceof boolean[];
+    }
+    
+    /**
+     * Validate whether or not the current device is a simulator.
+     *
+     * @return
+     */
+    public static boolean isEmulator() {
+    	return Build.FINGERPRINT.startsWith("generic")
+                || Build.FINGERPRINT.startsWith("unknown")
+                || Build.MODEL.contains("google_sdk")
+                || Build.MODEL.contains("Emulator")
+                || Build.MODEL.contains("Android SDK built for x86")
+                || Build.MANUFACTURER.contains("Genymotion")
+                || (Build.BRAND.startsWith("generic") && Build.DEVICE.startsWith("generic"))
+                || "google_sdk".equals(Build.PRODUCT);
     }
 
     /**
