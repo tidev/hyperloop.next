@@ -317,6 +317,13 @@ namespace hyperloop {
 		if (size > 0) {
 			bool unavailable = false;
 			for (int c = 0; c < size; c++) {
+				// We only care for ios, so skip this platform if it's anything else
+				auto platformNameCString = clang_getCString(availability[c].Platform);
+				std::string platformName = platformNameCString;
+				if (platformName.compare("ios") != 0) {
+					continue;
+				}
+
 				if (availability[c].Unavailable) {
 					unavailable = true;
 				}
