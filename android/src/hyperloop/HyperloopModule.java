@@ -71,7 +71,7 @@ public class HyperloopModule extends KrollModule {
                     }
                 }
                 if (found) {
-                    String str = guid.substring(20, 3);
+                    String str = guid.substring(20, 23);
                     if (str.equals(Character.toString(alpha) + Character.toString(alpha) + Character.toString(alpha))) {
                         return true;
                     }
