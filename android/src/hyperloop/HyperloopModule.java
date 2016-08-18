@@ -94,9 +94,8 @@ public class HyperloopModule extends KrollModule {
             if (HyperloopUtil.isEmulator()) {
                 TiUIHelper.doOkDialog("Alert", msg, null);
             }
-            return;
+            isPlatformGUID = false;
         }
-        isPlatformGUID = true;
     }
 
     /**
