@@ -10,7 +10,8 @@ function makeClass (json, cls, state) {
 		class: {
 			name: cls.name,
 			mangledName: cls.language === 'swift' ? swift.generateSwiftMangledClassName(state.appName, cls.name) : cls.name,
-			properties: [],
+			instance_properties: [],
+			class_properties: [],
 			instance_methods: [],
 			class_methods: []
 		},
@@ -21,7 +22,12 @@ function makeClass (json, cls, state) {
 		state: state
 	};
 	cls.properties && Object.keys(cls.properties).sort().forEach(function (k) {
-		var prop = util.generateProp(entry, json, cls.properties[k]);
+		var prop;
+		if (isClassProperty(cls.properties[k])) {
+			prop = util.generateClassProperty(entry, json, cls.properties[k]);
+		} else {
+			prop = util.generateProp(entry, json, cls.properties[k]);
+		}
 		if (!state.isGetterPropertyReferenced(k)) {
 			prop.getter = null;
 		}
@@ -29,7 +35,11 @@ function makeClass (json, cls, state) {
 			prop.setter = null;
 		}
 		if (prop.setter || prop.getter) {
-			entry.class.properties.push(prop);
+			if (isClassProperty(cls.properties[k])) {
+				entry.class.class_properties.push(prop);
+			} else {
+				entry.class.instance_properties.push(prop);
+			}
 		}
 	});
 	cls.methods && Object.keys(cls.methods).sort().forEach(function (k) {
@@ -51,6 +61,16 @@ function makeClass (json, cls, state) {
 	});
 	entry.imports = util.makeImports(json, entry.imports);
 	return entry;
+}
+
+/**
+ * Returns wether a property is a class property or not
+ *
+ * @param {Object} propertyMetadata
+ * @return {Boolean}
+ */
+function isClassProperty(propertyMetadata) {
+	return propertyMetadata.attributes && propertyMetadata.attributes.indexOf('class') !== -1;
 }
 
 /**
