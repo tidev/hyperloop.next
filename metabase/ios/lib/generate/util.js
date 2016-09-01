@@ -671,9 +671,9 @@ function generateProp (state, json, prop, readonly, name) {
  */
 function generateClassProperty(templateVariables, metabase, propertyMeta) {
 	var viewModel = {name: propertyMeta.name};
-	viewModel.getter = generateClassPropertyGetter();
+	viewModel.getter = generateClassPropertyGetter(templateVariables, metabase, propertyMeta);
 	if (!propertyMeta.attributes || propertyMeta.attributes.indexOf('readonly') < 0) {
-		viewModel.setter = generateClassPropertySetter();
+		viewModel.setter = generateClassPropertySetter(templateVariables, metabase, propertyMeta);
 	}
 	return viewModel;
 }
@@ -704,10 +704,10 @@ function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) 
  * @return {string} Code for the setter
  */
 function generateClassPropertySetter(templateVariables, metabase, propertyMeta) {
-	return repeat('\t', 4) + 'set: function (_' + prop.name + ') {\n' +
+	return repeat('\t', 4) + 'set: function (_' + propertyMeta.name + ') {\n' +
 		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
-		repeat('\t', 5) + 'this.$private.' + prop.name + ' = _' + prop.name + ';\n' +
-		repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(prop.name) + '\', _' + prop.name + ', true);\n' +
+		repeat('\t', 5) + 'this.$private.' + propertyMeta.name + ' = _' + propertyMeta.name + ';\n' +
+		repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(propertyMeta.name) + '\', _' + propertyMeta.name + ', true);\n' +
 		repeat('\t', 4) + '}';
 }
 
