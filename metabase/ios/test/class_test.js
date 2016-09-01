@@ -334,8 +334,8 @@ describe('class', function () {
 		});
 	});
 
-	it('should generate class with property', function (done) {
-		helper.generate(helper.getFixture('class_with_property.h'), helper.getTempFile('class_with_property.json'), function (err, json, sdk) {
+	it('should generate class with properties', function (done) {
+		helper.generate(helper.getFixture('class_with_properties.h'), helper.getTempFile('class_with_properties.json'), function (err, json, sdk) {
 			if (err) { return done(err); }
 			should(json).be.an.object;
 			should(sdk).be.an.object;
@@ -354,7 +354,7 @@ describe('class', function () {
 				A: {
 					framework: 'fixtures',
 					thirdparty: true,
-					filename: helper.getFixture('class_with_property.h'),
+					filename: helper.getFixture('class_with_properties.h'),
 					line: '1',
 					methods: {
 						a: {
@@ -368,6 +368,19 @@ describe('class', function () {
 							},
 							selector: 'a',
 							name: 'a'
+						},
+						b: {
+							arguments: [],
+							encoding: "f16@0:8",
+							instance: false,
+							name: "b",
+							returns:
+							{
+								encoding: "f",
+								type: "float",
+								value: "float"
+							},
+							selector: "b"
 						},
 						'setA:': {
 							arguments: [
@@ -388,6 +401,15 @@ describe('class', function () {
 					properties: {
 						a: {
 							name: 'a',
+							optional: false,
+							type: {
+								type: 'float',
+								value: 'float'
+							}
+						},
+						b: {
+							attributes: ["readonly", "class"],
+							name: 'b',
 							optional: false,
 							type: {
 								type: 'float',
