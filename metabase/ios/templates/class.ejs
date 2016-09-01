@@ -113,16 +113,16 @@ Object.defineProperty(<%= data.class.name %>, 'toString', {
 });
 
 <% if (data.class.class_properties.length) { -%>
-	// class properties
-	Object.defineProperties(<%= data.class.name %>, {
+// class properties
+Object.defineProperties(<%= data.class.name %>, {
 <% data.class.class_properties.forEach(function (p, index) { -%>
-		<%=p.name%>: {
-		<% if (p.getter) { -%><%- p.getter %>,<% } %>
-		<% if (p.setter) { -%><%- p.setter %>,<% } %>
-			enumerable: false
-		}<%=index + 1 < data.class.class_properties.length ? ',':''%>
+	<%=p.name%>: {
+	<% if (p.getter) { -%><%- p.getter %>,<% } %>
+	<% if (p.setter) { -%><%- p.setter %>,<% } %>
+		enumerable: false
+	}<%=index + 1 < data.class.class_properties.length ? ',':''%>
 <% }) -%>
-	});
+});
 <% } -%>
 
 <% if (data.class.class_methods.length) { -%>
