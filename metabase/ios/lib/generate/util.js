@@ -687,7 +687,7 @@ function generateClassProperty(templateVariables, metabase, propertyMeta) {
  * @return {string} Code for the getter
  */
 function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) {
-	var wrapper = getResultWrapper(templateVariables, metabase, propertyMeta, true);
+	var wrapper = getResultWrapper(templateVariables, metabase, propertyMeta, false);
 	var endsep = wrapper ? ')' : '';
 	return '\tget: function () {\n' +
 		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
