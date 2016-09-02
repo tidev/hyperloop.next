@@ -682,7 +682,7 @@ function runPodInstallIfRequired(basedir, callback) {
 			}
 		], function(err, pod, version) {
 			if (err) { return callback(err); }
-			util.logger.trace('Found pod ' + version + ' at ' + pod);
+			util.logger.trace('Found CocoaPods ' + version + ' (' + pod + ')');
 			if (semver.lt(version, '1.0.0')) {
 				util.logger.warn('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation with: sudo gem install cocoapods');
 			}
@@ -714,7 +714,15 @@ function generateCocoaPods (cachedir, basedir, appDir, sdkType, sdkVersion, minS
 	if (!fs.existsSync(Podfile)) {
 		util.logger.debug('No CocoaPods file found');
 		return callback();
+	} else {
+		var content = fs.readFileSync(Podfile).toString();
+		
+		if (content.length && content.indexOf('pod ') == -1) {
+			util.logger.warn('Podfile found, but no pod\'s specified. Skipping ...');
+			return callback();
+		}
 	}
+	
 	runPodInstallIfRequired(basedir, function (err) {
 		if (err) { return callback(err); }
 		runCocoaPodsBuild(basedir, appDir, sdkType, sdkVersion, minSDKVersion, xcodesettings, function (err, libs, libDir) {
