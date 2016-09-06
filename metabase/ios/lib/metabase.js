@@ -717,7 +717,7 @@ function generateCocoaPods (cachedir, basedir, appDir, sdkType, sdkVersion, minS
 	} else {
 		var content = fs.readFileSync(Podfile).toString();
 		
-		if (content.length && content.indexOf('pod ') == -1) {
+		if (content.length && content.indexOf('pod ') === -1) {
 			util.logger.warn('Podfile found, but no pod\'s specified. Skipping ...');
 			return callback();
 		}
