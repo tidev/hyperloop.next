@@ -29,7 +29,7 @@ fi
 
 echo "Building ..."
 
-mkdir -p build/zip/modules/iphone/hyperloop/versions/$VERSION
+mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 mkdir -p build/zip/plugins/hyperloop/versions/$VERSION/hooks/ios
 mkdir -p build/zip/plugins/hyperloop/versions/$VERSION/node_modules/hyperloop-metabase
 cd build/zip/plugins/hyperloop/versions/$VERSION
