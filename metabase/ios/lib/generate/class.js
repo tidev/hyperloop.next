@@ -26,7 +26,6 @@ function makeClass (json, cls, state) {
 
 		// Skip properties declared because of UIKIT_DEFINE_AS_PROPERTIES being set
 		if (isPropertyBecauseOfMacros(cls.framework, cls.name, cls.properties[k].name)) {
-			console.log('Skipping property ' + k + ' in favor of getter method');
 			return;
 		}
 
@@ -297,7 +296,6 @@ function shouldSkipMethodIfPropertyAvailable(methodKey, classMetadata) {
 	}
 
 	if (isPropertyBecauseOfMacros(classMetadata.framework, classMetadata.name, matchingPropertyMetadata.name)) {
-		console.log('Should not skip method ' + methodKey + ', matching property is UIKIT_DEFINE_AS_PROPERTIES');
 		return false;
 	}
 
