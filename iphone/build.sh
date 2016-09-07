@@ -3,7 +3,7 @@
 # Script buid building and packaging the Hyperloop iOS package
 #
 CWD=`pwd`
-METABASE=$CWD/build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
+METABASE=$CWD/build/zip/plugins/hyperloop/versions/$VERSION/node_modules/hyperloop-metabase
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
@@ -29,10 +29,10 @@ fi
 
 echo "Building ..."
 
-mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
-mkdir -p build/zip/plugins/hyperloop/hooks/ios
-mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
-cd build/zip/plugins/hyperloop
+mkdir -p build/zip/modules/iphone/hyperloop/versions/$VERSION
+mkdir -p build/zip/plugins/hyperloop/versions/$VERSION/hooks/ios
+mkdir -p build/zip/plugins/hyperloop/versions/$VERSION/node_modules/hyperloop-metabase
+cd build/zip/plugins/hyperloop/versions/$VERSION
 npm install findit --production >/dev/null 2>&1
 rm -rf node_modules/findit/test
 cd $CWD
@@ -52,12 +52,12 @@ lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperl
 
 echo "Packaging ..."
 # make sure to update the plugin with the latest version in it's package.json
-node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/package.json
+node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/versions/$VERSION/package.json
 
-cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/hooks/hyperloop.js
-cp plugin/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
-cp plugin/filter.sh build/zip/plugins/hyperloop/hooks/ios
-cp ../LICENSE.md build/zip/plugins/hyperloop
+cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/versions/$VERSION/hooks/hyperloop.js
+cp plugin/hyperloop.js build/zip/plugins/hyperloop/versions/$VERSION/hooks/ios
+cp plugin/filter.sh build/zip/plugins/hyperloop/versions/$VERSION/hooks/ios
+cp ../LICENSE.md build/zip/plugins/hyperloop/versions/$VERSION
 cp ../LICENSE.md build/zip/modules/iphone/hyperloop/$VERSION
 
 # package the metabase into the .zip

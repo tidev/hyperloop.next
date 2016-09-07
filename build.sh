@@ -118,7 +118,14 @@ echo "Unzipping Android zipfile..."
 cd dist
 unzip hyperloop-android-$VERSION.zip
 rm hyperloop-android-$VERSION.zip
+mkdir -p temp
+cp -R plugins/hyperloop/* temp
+rm -rf plugins
+mkdir -p plugins/hyperloop/versions/$VERSION
+cp -R temp/* plugins/hyperloop/versions/$VERSION
+rm -rf temp
 cd ..
+
 
 echo "Building iOS module..."
 cd iphone
