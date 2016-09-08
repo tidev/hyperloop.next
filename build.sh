@@ -134,6 +134,12 @@ cd ..
 
 echo "Creating combined zip with iOS and Android"
 cd dist
+mkdir -p temp
+cp -R plugins/hyperloop/* temp
+rm -rf plugins
+mkdir -p plugins/hyperloop/$VERSION
+cp -R temp/* plugins/hyperloop/$VERSION
+rm -rf temp
 zip -q -r hyperloop-$VERSION.zip *
 rm -rf modules
 rm -rf plugins
