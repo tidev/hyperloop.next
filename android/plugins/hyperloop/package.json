@@ -1,6 +1,6 @@
 {
   "name": "hyperloop",
-  "version": "1.1.2",
+  "version": "1.2.7",
   "description": "Access native Android and Java APIs from within Titanium.",
   "author": "Chris Williams",
   "license": "Appcelerator Software Subscription",
