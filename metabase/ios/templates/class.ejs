@@ -112,6 +112,18 @@ Object.defineProperty(<%= data.class.name %>, 'toString', {
 	writable: true
 });
 
+<% if (data.class.class_properties.length) { -%>
+// class properties
+Object.defineProperties(<%= data.class.name %>, {
+<% data.class.class_properties.forEach(function (p, index) { -%>
+	<%=p.name%>: {
+	<% if (p.getter) { -%><%- p.getter %>,<% } %>
+	<% if (p.setter) { -%><%- p.setter %>,<% } %>
+		enumerable: false
+	}<%=index + 1 < data.class.class_properties.length ? ',':''%>
+<% }) -%>
+});
+<% } -%>
 
 <% if (data.class.class_methods.length) { -%>
 // class methods
@@ -149,15 +161,15 @@ function $initialize () {
 <% }) %>
 <% } -%>
 
-<% if (data.class.properties.length) { -%>
-	// properties
+<% if (data.class.instance_properties.length) { -%>
+	// instance properties
 	Object.defineProperties(<%= data.class.name %>.prototype, {
-<% data.class.properties.forEach(function (p, index) { -%>
+<% data.class.instance_properties.forEach(function (p, index) { -%>
 		<%=p.name%>: {
 		<% if (p.getter) { -%><%- p.getter %>,<% } %>
 		<% if (p.setter) { -%><%- p.setter %>,<% } %>
 			enumerable: false
-		}<%=index + 1 < data.class.properties.length ? ',':''%>
+		}<%=index + 1 < data.class.instance_properties.length ? ',':''%>
 <% }) -%>
 	});
 <% } -%>
@@ -170,7 +182,7 @@ function $initialize () {
  */
 Object.setPrototypeOf = Object.setPrototypeOf || function(obj, proto) {
   obj.__proto__ = proto;
-  return obj; 
+  return obj;
 }
 
 module.exports = <%= data.class.name %>;

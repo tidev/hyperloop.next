@@ -653,11 +653,62 @@ function generatePropSetter (state, json, prop, name) {
 function generateProp (state, json, prop, readonly, name) {
 	var result = {name:prop.name};
 	result.getter = generatePropGetter(state, json, prop, name);
-	var sep = repeat('\t', 4);
 	if (!readonly && (!prop.attributes || prop.attributes.indexOf('readonly') < 0)) {
+		var sep = repeat('\t', 4);
 		result.setter = '\n' + sep + generatePropSetter(state, json, prop, name);
 	}
 	return result;
+}
+
+/**
+ * Generates a view model used in the class template to generate soure
+ * code for class level properties
+ *
+ * @param {Object} templateVariables Holds all variable later used in the template
+ * @param {Object} metabase The complete metabase object
+ * @param {Object} propertyMeta Meta info for the current property
+ * @return {Object} View model used inside the class tempalte
+ */
+function generateClassProperty(templateVariables, metabase, propertyMeta) {
+	var viewModel = {name: propertyMeta.name};
+	viewModel.getter = generateClassPropertyGetter(templateVariables, metabase, propertyMeta);
+	if (!propertyMeta.attributes || propertyMeta.attributes.indexOf('readonly') < 0) {
+		viewModel.setter = generateClassPropertySetter(templateVariables, metabase, propertyMeta);
+	}
+	return viewModel;
+}
+
+/**
+ * Generates the code for a class property getter
+ *
+ * @param {Object} templateVariables Holds all variable later used in the template
+ * @param {Object} metabase The complete metabase object
+ * @param {Object} propertyMeta Meta info for the current property
+ * @return {string} Code for the getter
+ */
+function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) {
+	var wrapper = getResultWrapper(templateVariables, metabase, propertyMeta, false);
+	var endsep = wrapper ? ')' : '';
+	return '\tget: function () {\n' +
+		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
+		repeat('\t', 5) + 'return ' + wrapper + '$dispatch($class, \'' + (propertyMeta.selector || propertyMeta.name) + '\', null, true)' + endsep + ';\n' +
+		repeat('\t', 4) + '}';
+}
+
+/**
+ * Generates the code for a class property setter
+ *
+ * @param {Object} templateVariables Holds all variable later used in the template
+ * @param {Object} metabase The complete metabase object
+ * @param {Object} propertyMeta Meta info for the current property
+ * @return {string} Code for the setter
+ */
+function generateClassPropertySetter(templateVariables, metabase, propertyMeta) {
+	return repeat('\t', 4) + 'set: function (_' + propertyMeta.name + ') {\n' +
+		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
+		repeat('\t', 5) + 'this.$private.' + propertyMeta.name + ' = _' + propertyMeta.name + ';\n' +
+		repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(propertyMeta.name) + '\', _' + propertyMeta.name + ', true);\n' +
+		repeat('\t', 4) + '}';
 }
 
 function createFakeFieldStruct (prop) {
@@ -1173,6 +1224,7 @@ exports.generateObjCResult = generateObjCResult;
 exports.generateFieldGetter = generateFieldGetter;
 exports.generateFieldSetter = generateFieldSetter;
 exports.generateProp = generateProp;
+exports.generateClassProperty = generateClassProperty;
 exports.generateInstanceMethod = generateInstanceMethod;
 exports.generateClassMethod = generateClassMethod;
 exports.setLog = setLog;

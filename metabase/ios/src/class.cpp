@@ -41,6 +41,9 @@ namespace hyperloop {
 				if ((attributes & CXObjCPropertyAttr_readwrite) == CXObjCPropertyAttr_readwrite) {
 					attrs.push_back("readwrite");
 				}
+                if ((attributes & CXObjCPropertyAttr_class) == CXObjCPropertyAttr_class) {
+                    attrs.push_back("class");
+                }
 				auto returnType = clang_getCursorType(cursor);
 				auto returnTypeValue = CXStringToString(clang_getTypeSpelling(returnType));
 				auto prop = new Property(displayName, new Type(classDef->getContext(), returnType, returnTypeValue), attrs, clang_Cursor_isObjCOptional(cursor));
