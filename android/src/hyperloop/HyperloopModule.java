@@ -14,6 +14,7 @@ import org.appcelerator.kroll.KrollModule;
 import org.appcelerator.kroll.annotations.Kroll;
 import org.appcelerator.kroll.common.Log;
 import org.appcelerator.titanium.TiApplication;
+import org.appcelerator.titanium.TiContext;
 import org.appcelerator.titanium.util.TiUIHelper;
 import hyperloop.HyperloopUtil;
 
@@ -83,6 +84,10 @@ public class HyperloopModule extends KrollModule {
 
     public HyperloopModule() {
         super();
+    }
+
+    public HyperloopModule(TiContext tiContext) {
+        this();
     }
 
     @Kroll.onAppCreate
