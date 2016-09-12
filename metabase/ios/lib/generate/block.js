@@ -113,7 +113,7 @@ function generateBlockWrapper (state, json, block) {
 		});
 		code.push('\t\t\targs = @[' + argnames.join(', ') + '];');
 	}
-	code.push('\t\t\t[HyperloopUtils invokeCallback:callback args:nil thisObject:callback];');
+	code.push('\t\t\t[HyperloopUtils invokeCallback:callback args:' + (args.length ? 'args' : 'nil') + ' thisObject:callback];');
 	code.push('\t\t};');
 	code.push('\t\tif ([NSThread isMainThread]) {');
 	code.push('\t\t\tCallback();');
