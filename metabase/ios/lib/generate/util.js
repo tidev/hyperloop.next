@@ -369,7 +369,7 @@ function generateMethodBody (state, json, method, preamble, instance, thisobj, a
 				process.exit(1);
 			}
 			block.arguments.forEach(function (ba, i) {
-				preamble.push('\t\tif (arguments.length > ' +i + ' && arguments[' + i + ']) {');
+				preamble.push('\t\tif (arguments.length > ' +i + ' && arguments[' + i + '] !== null) {');
 				var wrapper = getResultWrapper(state, json, ba, instance);
 				preamble.push('\t\t\targs.push(' +  wrapper + 'arguments[' + i + ']' + (wrapper ? ')': '') + ');');
 				preamble.push('\t\t} else {');
