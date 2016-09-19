@@ -132,7 +132,6 @@ function extract(filename, installLocation, keepFiles, callback) {
 }
 
 /**
-<<<<<<< HEAD
  * Installs the latest Titanium SDK from a given branch.
  * @param  {String}   branch SDK branch to install from
  * @param  {Function} next   callback
