@@ -7,9 +7,9 @@ import Foundation
 import UIKit
 
 
-public class TestView : UIView {
+open class TestView : UIView {
 	
-	public func foo (x : CGFloat, y : CGFloat) -> CGFloat {
+	open func foo (_ x : CGFloat, y : CGFloat) -> CGFloat {
 		return x + y;
 	}
 }
