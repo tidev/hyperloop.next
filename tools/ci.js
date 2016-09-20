@@ -22,7 +22,8 @@ var path = require('path'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
 	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.4.1-macosx.zip',
-	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
+	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2',
+	tiSDKBranch = '5_5_X';
 
 function downloadURL(url, callback) {
 	console.log('Downloading %s', url.cyan);
@@ -137,7 +138,6 @@ function extract(filename, installLocation, keepFiles, callback) {
  */
 function installAndSelectLatestTiSDK(next) {
 	var hyperloopVersion = require(path.join(__dirname, '..', 'package.json')).version;
-	var tiSDKBranch = '5_5_X';
 	var isUpToDate = false;
 	var installedVersion;
 	console.log(('Checking for updated Ti SDK from ' + tiSDKBranch + ' branch.').green);
