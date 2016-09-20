@@ -22,7 +22,8 @@ var path = require('path'),
 	buildTempDir = path.join(__dirname, '..', 'build'),
 	TITANIUM_ANDROID_API = 21, // This is required right now by the module building scripts, as it's set as the default there. I don't see a way to override it!
 	ANDROID_SDK_URL = 'http://dl.google.com/android/android-sdk_r24.4.1-macosx.zip',
-	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2';
+	ANDROID_NDK_URL = 'http://dl.google.com/android/ndk/android-ndk-r8c-darwin-x86.tar.bz2',
+	tiSDKBranch = '5_5_X';
 
 function downloadURL(url, callback) {
 	console.log('Downloading %s', url.cyan);
@@ -130,23 +131,61 @@ function extract(filename, installLocation, keepFiles, callback) {
 	});
 }
 
-// Install 5_4_X branch Titanium SDK
-function installSDK(next) {
-	console.log('Checking for updated Ti SDK from 5_4_X'.green);
-	var args = ['sdk', 'install', '-b', '5_4_X', '-d', '--no-banner'],
-		prc;
+/**
+ * Installs latest Ti SDK required by the Hyperloop version we are about to build
+ *
+ * @param {Function} next
+ */
+function installAndSelectLatestTiSDK(next) {
+	var hyperloopVersion = require(path.join(__dirname, '..', 'package.json')).version;
+	var isUpToDate = false;
+	var installedVersion;
+	console.log(('Checking for updated Ti SDK from ' + tiSDKBranch + ' branch.').green);
+	var args = ['sdk', 'install', '-b', tiSDKBranch, '-d', '--no-banner'];
 	if (process.argv.indexOf('--no-progress-bars') != -1) {
 		args.push('--no-progress-bars');
 	}
-	prc = spawn(titanium, args, {stdio:'inherit'});
-	prc.on('exit', function (code) {
+	var child = spawn(titanium, args);
+	child.stdout.on('data', function(buffer) {
+		var message = buffer.toString();
+		if (message.indexOf('You\'re up-to-date') !== -1) {
+			isUpToDate = true;
+			versionMatch = message.match(/Version\s([\d\.v]+)/);
+			installedVersion = versionMatch[1];
+		}
+	});
+	child.on('exit', function (code) {
 		if (code !== 0) {
-			next("Failed to install 5_4_X SDK. Exit code: " + code);
+			next('Failed to install latest ' + tiSDKBranch + ' SDK. Exit code: ' + code);
 		} else {
+			if (isUpToDate && installedVersion) {
+				console.log('Latest version ' + installedVersion + ' already installed, select it!');
+				return selectTiSDKVersion(installedVersion, next);
+			}
+			console.log('Installed and selected latest Ti SDK build from branch ' + tiSDKBranch + '.');
 			next();
 		}
 	});
-	prc.on('error', next);
+	child.on('error', next);
+}
+
+/**
+ * Selects a specific Ti SDK version
+ *
+ * @param {String} version The version to select
+ * @param {Function} next
+ */
+function selectTiSDKVersion(version, next) {
+	var child = spawn(titanium, ['sdk', 'select', version, '--no-banner']);
+	child.on('exit', function (code) {
+		if (code !== 0) {
+			next(new Error('Failed to select SDK ' + version + '. Exit code: ' + code));
+		} else {
+			console.log('Selected Ti SDK ' + version);
+			next();
+		}
+	});
+	child.on('error', next);
 }
 
 // Grab the Android home location
@@ -359,7 +398,8 @@ function writeAndroidPluginPackage (next) {
 function build(callback) {
 	var tiSDKPath,
 		androidSDKPath,
-		androidNDKPath;
+		androidNDKPath,
+		preBuildSelectedTiSDKVersion;
 
 	// set the environment variable CI during build
 	process.env.CI = 1;
@@ -372,11 +412,22 @@ function build(callback) {
 			wrench.mkdirSyncRecursive(buildTempDir);
 			next();
 		},
-		// Install latest Titanium SDK from 5_4_X
-		installSDK,
+		// Install latest Titanium SDK
+		function (next) {
+			async.waterfall([
+				tiver.getActivePath,
+				function savePreviouslySelectedTiSDKVersion(sdkPath, version, callback) {
+					preBuildSelectedTiSDKVersion = version;
+					callback();
+				},
+				installAndSelectLatestTiSDK
+			], function(err) {
+				next(err);
+			});
+		},
 		// Grab location it got installed
 		function (next) {
-			tiver.getActivePath(function (err, sdkPath, minVersion) {
+			tiver.getActivePath(function (err, sdkPath, version) {
 				if (err) {
 					return next(err);
 				}
@@ -452,8 +503,15 @@ function build(callback) {
 		function (next) {
 			wrench.rmdirSyncRecursive(buildTempDir);
 			next();
-		}
+		},
 		// TODO Remove the Titanium SDK we installed to avoid cluttering up HDD?
+		function (next) {
+			if (!preBuildSelectedTiSDKVersion) {
+				return next();
+			}
+			console.log('Switching back to Ti SDK that was selected before our build.');
+			selectTiSDKVersion(preBuildSelectedTiSDKVersion, next);
+		}
 	], callback);
 }
 
