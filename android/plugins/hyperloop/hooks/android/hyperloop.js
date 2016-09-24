@@ -403,7 +403,7 @@ exports.cliVersion = '>=3.2';
 						// Native .so files
 						function (cb) {
 							var jniDir = path.join(extractedDir, 'jni'),
-								buildLibs = path.join(cli.argv['project-dir'], 'build', 'libs');
+								buildLibs = path.join(cli.argv['project-dir'], 'build', 'android', 'libs');
 
 							// directory is optional
 							if (!afs.exists(jniDir)) {
