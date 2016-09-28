@@ -1,7 +1,8 @@
-Hyperloop Package
+Hyperloop
 =================
-travis-ci: [![Build Status](https://travis-ci.com/appcelerator/hyperloop.next.svg?token=8dQAhgYRzHhMCNjormPs&branch=master)](https://travis-ci.com/appcelerator/hyperloop.next)
-jenkins: [![Build Status](https://jenkins.appcelerator.org/buildStatus/icon?job=hyperloop-next)](https://jenkins.appcelerator.org/job/hyperloop-next/)
+| Travis CI  | Jenkins CI |
+|------------|------------|
+| [![Build Status](https://travis-ci.com/appcelerator/hyperloop.next.svg?token=8dQAhgYRzHhMCNjormPs&branch=master)](https://travis-ci.com/appcelerator/hyperloop.next) | [![Build Status](https://jenkins.appcelerator.org/buildStatus/icon?job=hyperloop-next)](https://jenkins.appcelerator.org/job/hyperloop-next/) |
 
 This repo contains source code for the Hyperloop&reg; product.
 
