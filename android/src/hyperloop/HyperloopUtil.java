@@ -15,13 +15,17 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import android.os.Build;
 
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Build;
+import android.util.Log;
+
+import org.appcelerator.kroll.KrollDict;
 import org.appcelerator.kroll.KrollProxy;
 import org.appcelerator.titanium.proxy.ActivityProxy;
+import org.appcelerator.titanium.proxy.IntentProxy;
 import org.appcelerator.titanium.proxy.TiViewProxy;
-
-import android.util.Log;
 
 abstract class HyperloopUtil {
     // TODO This is a hack. We should move all this stuff into the BaseProxy or
@@ -112,14 +116,14 @@ abstract class HyperloopUtil {
                 || item instanceof float[] || item instanceof short[]
                 || item instanceof long[] || item instanceof boolean[];
     }
-    
+
     /**
      * Validate whether or not the current device is a simulator.
      *
      * @return
      */
     public static boolean isEmulator() {
-    	return Build.FINGERPRINT.startsWith("generic")
+        return Build.FINGERPRINT.startsWith("generic")
                 || Build.FINGERPRINT.startsWith("unknown")
                 || Build.MODEL.contains("google_sdk")
                 || Build.MODEL.contains("Emulator")
@@ -170,6 +174,16 @@ abstract class HyperloopUtil {
         if (object instanceof ActivityProxy) {
             ActivityProxy ap = (ActivityProxy) object;
             return ap.getActivity();
+        }
+        if (object instanceof IntentProxy) {
+            IntentProxy ip = (IntentProxy) object;
+            Intent i = ip.getIntent();
+            // Because our SDK is lame, if you supply not creation dictionary, the wrapped Intent object may be null!
+            if (i != null) {
+                return i;
+            }
+            ip.handleCreationDict(new KrollDict());
+            return ip.getIntent();
         }
         // Convert Ti.UI.View subclasses
         if (object instanceof TiViewProxy) {
@@ -302,7 +316,14 @@ abstract class HyperloopUtil {
                 return converted;
             }
         }
-        // Not a primitive or array... So, just hope it's the right type?
+
+        // Special case proxy conversions
+        if (IntentProxy.class.equals(target) && (newValue instanceof Intent)) {
+            return new IntentProxy((Intent) newValue);
+        } else if (ActivityProxy.class.equals(target) && (newValue instanceof Activity)) {
+            return new ActivityProxy((Activity) newValue);
+        }
+        // Not a primitive or array, or special proxy conversion... So, just hope it's the right type?
         return newValue;
     }
 
@@ -678,12 +699,25 @@ abstract class HyperloopUtil {
         }
 
         // Non-primitives
-        if (!target.isAssignableFrom(argument)) {
+        if (!isAssignable(target, argument, arg)) {
             return Match.NO_MATCH;
         }
 
         // How far are the two types in the type hierarchy?
         return 100 * hops(argument, target, 0);
+    }
+
+    private static boolean isAssignable(Class<?> target, Class<?> fromType, Object object) {
+        if (target.isAssignableFrom(fromType)) {
+            return true;
+        }
+        // FIXME Handle converting com.android.view.View -> org.appcelerator.titanium.proxy.TiViewProxy
+        if (ActivityProxy.class.equals(target)) {
+            return (object instanceof Activity);
+        } else if (IntentProxy.class.equals(target)) {
+            return (object instanceof Intent);
+        }
+        return false;
     }
 
     /**
@@ -708,6 +742,13 @@ abstract class HyperloopUtil {
         // they're the same class, no hops up the hierarchy
         if (target.equals(src)) {
             return hops;
+        }
+
+        // return 100 hops when converting between Activity <-> ActivityProxy, Intent <-> IntentProxy
+        if (ActivityProxy.class.equals(target) && Activity.class.isAssignableFrom(src)) {
+            return 100;
+        } else if (IntentProxy.class.equals(target) && Intent.class.isAssignableFrom(src)) {
+            return 100;
         }
 
         // Take the least hops of traversing the parent type...
