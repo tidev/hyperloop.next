@@ -600,7 +600,7 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 }
 
 function generateImport (name, fp) {
-	return '\t$imports.' + name + ' = require(\'hyperloop/' + fp.toLowerCase() + '\');';
+	return '\t$imports.' + name + ' = require(\'/hyperloop/' + fp.toLowerCase() + '\');';
 }
 
 function makeImports (json, imports) {
