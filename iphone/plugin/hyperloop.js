@@ -418,7 +418,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(file, cb) {
 			}
 
 			// replace the require to point to our generated file path
-			return "require('" + ref + "')";
+			return "require('/" + ref + "')";
 		}.bind(this));
 
 		if (contents === newContents) {
