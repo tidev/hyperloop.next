@@ -22,6 +22,7 @@ var coreLib = {
 };
 
 var path = require('path'),
+	exec = require('child_process').exec,
 	hm = require('hyperloop-metabase'),
 	fs = require('fs'),
 	crypto = require('crypto'),
@@ -62,6 +63,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.systemFrameworks = {};
 	this.includes = [];
 	this.swiftSources = [];
+	this.swiftVersion = '3.0';
 	this.jsFiles = {};
 	this.references = {};
 	this.packages = {};
@@ -92,7 +94,8 @@ HyperloopiOSBuilder.prototype.init = function init(callback) {
 		'wireupBuildHooks',
 		'getSystemFrameworks',
 		'generateCocoaPods',
-		'processThirdPartyFrameworks'
+		'processThirdPartyFrameworks',
+		'detectSwiftVersion'
 	], callback);
 };
 
@@ -327,6 +330,21 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			}
 		], next);
 	}, callback);
+};
+
+/**
+ * Detects the configured swift version
+ */
+HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(callback) {
+	var that = this;
+ 	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
+ 		if (err) { return callback(err); }
+		var versionMatch = stdout.match(/version\s(\d.\d)/);
+		if (versionMatch !== null) {
+			that.swiftVersion = versionMatch[1];
+		}
+		callback();
+ 	});
 };
 
 /**
@@ -855,12 +873,17 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 
 	// if we have any swift files, enable swift support
 	if (containsSwift) {
+		var that = this;
 		Object.keys(xobjs.PBXNativeTarget).forEach(function (targetUuid) {
 			var target = xobjs.PBXNativeTarget[targetUuid];
 			if (target && typeof target === 'object') {
 				xobjs.XCConfigurationList[target.buildConfigurationList].buildConfigurations.forEach(function (buildConf) {
 					var buildSettings = xobjs.XCBuildConfiguration[buildConf.value].buildSettings;
 					buildSettings.EMBEDDED_CONTENT_CONTAINS_SWIFT = 'YES';
+
+					if (!buildSettings.SWIFT_VERSION) {
+						buildSettings.SWIFT_VERSION = that.swiftVersion;
+					}
 
 					// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
 					var searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
