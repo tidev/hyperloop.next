@@ -355,7 +355,7 @@ Parser.write = function (dir, state, metabase) {
 				}
 			};
 			classgen.generate(dir, metabase, cls, state);
-			mappings[cls.name] = 'hyperloop/' + (cls.framework + '/' + cls.name).toLowerCase();
+			mappings[cls.name] = '/hyperloop/' + (cls.framework + '/' + cls.name).toLowerCase();
 		});
 	}
 
