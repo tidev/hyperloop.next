@@ -15,7 +15,7 @@ var sanitizedName = packageDefinition.safeName,
  * @module <%= packageDefinition.name %>
  */
 <% if (parts.length > 1) { -%>
-var parent = require('<%= parent %>') || {};
+var parent = require('./<%= parent %>') || {};
 <% } else { -%>
 var parent = global;
 <% } -%>
@@ -39,7 +39,7 @@ if (packageDefinition.classes) {
 -%>
 Object.defineProperty(<%= sanitizedName %>, '<%= baseClassName %>', {
 	get: function() {
-		return require('<%= className %>');
+		return require('./<%= className %>');
 	},
 	enumerable: true
 });

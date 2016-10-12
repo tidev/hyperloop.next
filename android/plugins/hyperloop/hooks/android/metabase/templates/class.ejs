@@ -24,13 +24,13 @@ if (isInnerClass) {
 	// it's a nested class. Load up the parent, then just hang our class off of that.
 	parent = classDefinition.name.slice(0, classDefinition.name.indexOf('$'));
 -%>
-var EnclosingClass = require('<%= parent %>');
+var EnclosingClass = require('./<%= parent %>');
 <%
 } else if (parts.length > 1) {
 	// hang off the package
 	parent = parts.slice(0, parts.length - 1).join('.');
 -%>
-var parentPackage = require('<%= parent %>');
+var parentPackage = require('./<%= parent %>');
 <% } -%>
 
 /**
@@ -65,7 +65,7 @@ global.<%= baseName %> = <%= sanitizedName %>;
 <% if (classDefinition.superClass) {
 	// This is a subclass, let's extend the superclass!
 -%>
-var SuperClass = require('<%- classDefinition.superClass %>');
+var SuperClass = require('./<%- classDefinition.superClass %>');
 <%= sanitizedName %>.prototype = Object.create(SuperClass.prototype);
 <%= sanitizedName %>.prototype.constructor = <%= sanitizedName %>;
 
@@ -124,7 +124,7 @@ if (classDefinition.attributes.indexOf('final') == -1 &&
 
 		function _wrapArg(arg) {
 			if (arg.apiName && arg.isNativeProxy && arg.isInstanceProxy) { // Assume hyperloop proxy, wrap in JS wrapper
-				var other = require(arg.apiName);
+				var other = require('./' + arg.apiName);
 				return new other(arg);
 			}
 			return arg;
@@ -197,7 +197,7 @@ if (classDefinition.innerClasses) {
 -%>
 Object.defineProperty(<%= sanitizedName %>, '<%= baseInnerClassName %>', {
 	get: function() {
-		return require('<%= innerClassName %>');
+		return require('./<%= innerClassName %>');
 	},
 	enumerable: true
 });
@@ -227,7 +227,7 @@ Object.defineProperty(<%= sanitizedName %>, '<%= propertyName %>', {
 			if (result.apiName === '<%= classDefinition.name %>') {
 				return new <%= sanitizedName %>(result);
 			} else {
-				var ctor = require(result.apiName);
+				var ctor = require('./' + result.apiName);
 				return new ctor(result);
 			}
 		}
@@ -271,7 +271,7 @@ Object.defineProperty(<%= sanitizedName %>.prototype, '<%= propertyName %>', {
 			if (result.apiName === '<%= classDefinition.name %>') {
 				return new <%= sanitizedName %>(result);
 			} else {
-				var ctor = require(result.apiName);
+				var ctor = require('./' + result.apiName);
 				return new ctor(result);
 			}
 		}
@@ -342,7 +342,7 @@ for (var methodName in classDefinition.methods) {
 		if (result.apiName === '<%= classDefinition.name %>') {
 			return new <%= sanitizedName %>(result);
 		} else {
-			var ctor = require(result.apiName);
+			var ctor = require('./' + result.apiName);
 			return new ctor(result);
 		}
 	}
@@ -405,7 +405,7 @@ for (var methodName in classDefinition.methods) {
 		if (result.apiName === '<%= classDefinition.name %>') {
 			return new <%= sanitizedName %>(result);
 		} else {
-			var ctor = require(result.apiName);
+			var ctor = require('./' + result.apiName);
 			return new ctor(result);
 		}
 	}
