@@ -56,7 +56,7 @@ public class ClassProxy extends BaseProxy {
         } else {
             // Handle converting JS arguments object from HashMap to Object[]
             if (initArgs != null && initArgs.length == 1 && initArgs[0] instanceof Map) {
-                initArgs = convertArgumentsMapToArray((Map<Integer, Object>) initArgs[0]);
+                initArgs = convertArgumentsMapToArray((Map<String, Object>) initArgs[0]);
             }
         }
 
@@ -109,26 +109,27 @@ public class ClassProxy extends BaseProxy {
     }
 
     /**
-     * When we receive a JS arguments object, it comes in as a Map<Integer,
-     * Object>. This converts that to an Object[]. If no entry exists for an
+     * When we receive a JS arguments object, it comes in as a Map<String,
+     * Object> (where the String key is an integer). This converts that to an Object[]. If no entry exists for an
      * index, we place null in the array.
      *
      * @param object
      * @return
      */
-    private Object[] convertArgumentsMapToArray(Map<Integer, Object> arguments) {
+    private Object[] convertArgumentsMapToArray(Map<String, Object> arguments) {
         if (arguments == null || arguments.size() == 0) {
             return new Object[0];
         }
         // find the highest index
         int highest = 0;
-        for (Integer current : arguments.keySet()) {
-            highest = Math.max(highest, current);
+        for (String current : arguments.keySet()) {
+            Integer currentInt = Integer.valueOf(current);
+            highest = Math.max(highest, currentInt);
         }
         // create an array to hold proper amount of elements
         Object[] array = new Object[highest + 1];
-        for (Map.Entry<Integer, Object> entry : arguments.entrySet()) {
-            array[entry.getKey()] = entry.getValue();
+        for (Map.Entry<String, Object> entry : arguments.entrySet()) {
+            array[Integer.valueOf(entry.getKey())] = entry.getValue();
         }
         return array;
     }
