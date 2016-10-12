@@ -24,13 +24,13 @@ if (isInnerClass) {
 	// it's a nested class. Load up the parent, then just hang our class off of that.
 	parent = classDefinition.name.slice(0, classDefinition.name.indexOf('$'));
 -%>
-var EnclosingClass = require('<%= parent %>');
+var EnclosingClass = require('./<%= parent %>');
 <%
 } else if (parts.length > 1) {
 	// hang off the package
 	parent = parts.slice(0, parts.length - 1).join('.');
 -%>
-var parentPackage = require('<%= parent %>');
+var parentPackage = require('./<%= parent %>');
 <% } -%>
 
 /**
@@ -52,7 +52,7 @@ var <%= sanitizedName %> = function() {
 
 		function _wrapArg(arg) {
 			if (arg.apiName && arg.isNativeProxy && arg.isInstanceProxy) { // Assume hyperloop proxy, wrap in JS wrapper
-				var other = require(arg.apiName);
+				var other = require('./' + arg.apiName);
 				return new other(arg);
 			}
 			return arg;
