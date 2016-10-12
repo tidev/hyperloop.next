@@ -1,6 +1,6 @@
 {
   "name": "hyperloop",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
     "appcelerator",
@@ -22,6 +22,12 @@
     },
     {
       "name": "Dawson Toth"
+    },
+    {
+      "name": "Hans Knoechel"
+    },
+    {
+      "name": "Jan Vennemann"
     }
   ],
   "license": "UNLICENSED",
