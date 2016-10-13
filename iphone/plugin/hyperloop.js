@@ -1010,15 +1010,44 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
  * @param {Object} data - The hook payload.
  */
 HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
-	var params = {};
+	var args = data.args[1];
+	var quotesRegExp = /^\"(.*)\"$/;
+	var substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
+
+	function splitValue(value) {
+		var part, parts = [];
+		while ((part = substrRegExp.exec(value)) !== null) {
+			parts.push(part[0].replace(quotesRegExp, '$1'));
+		}
+		return parts;
+	}
+
+	function mixValues(dest, src) {
+		dest = splitValue(dest.replace(quotesRegExp, '$1'));
+
+		splitValue(src).forEach(function (value) {
+			if (dest.indexOf(value) === -1) {
+				dest.push(value);
+			}
+		});
+
+		return dest.map(function (value) {
+			value = String(value);
+			return value.indexOf(' ') !== -1 && !quotesRegExp.test(value) ? ('"' + value.replace(/(\\)?"/g, '\\"') + '"') : value;
+		}).join(' ');
+	}
 
 	function addParam(key, value) {
-		if (!params[key]) {
-			params[key] = [];
+		for (var i = 0; i < args.length; i++) {
+			if (args[i].indexOf(key + '=') === 0) {
+				// already exists
+				args[i] = key + '=' + mixValues(args[i].substring(args[i].indexOf('=') + 1), value);
+				return;
+			}
 		}
-		if (params[key].indexOf(value) === -1) {
-			params[key].push(value);
-		}
+
+		// add it
+		args.push(key + '=' + value);
 	}
 
 	// speed up the build by only building the target architecture
@@ -1052,32 +1081,6 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	}
 
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
-
-	// inject the params into the xcodebuild args
-	var args = data.args[1];
-	var quotesRegExp = /^\".*\"$/;
-	Object.keys(params).forEach(function (key) {
-		var value = params[key];
-		if (value.indexOf(' ') !== -1 && !quotesRegExp.test(value)) {
-			value = '"' + value + '"';
-		}
-		value.forEach(function (value) {
-			// check if the param is already in the xcodebuild arguments
-			args.forEach(function (arg) {
-				var parts = arg.split('=');
-				if (parts.length > 1 && parts[0] === key) {
-					// yes, so merge the values
-					var values = parts[1].match(/(?:[^\s"]+|"[^"]*")+/g);
-					if (values.indexOf(value) === -1) {
-						arg = key + '=' + parts[1] + ' ' + value;
-					}
-					return;
-				}
-			});
-			// param does not exist, so just add it
-			args.push(key + '=' + params[key]);
-		});
-	});
 };
 
 /**
