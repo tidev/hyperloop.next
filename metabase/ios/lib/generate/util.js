@@ -1214,6 +1214,21 @@ function resolveArg (metabase, imports, arg) {
 	}
 }
 
+function getMethodTableForMigration() {
+	if (getMethodTableForMigration.cachedTable) {
+		return getMethodTableForMigration.cachedTable;
+	}
+
+	var migrationPathAndFilename = path.resolve(__dirname, '../../data/migration-20161014143619.json');
+	if (fs.existsSync(migrationPathAndFilename)) {
+		getMethodTableForMigration.cachedTable = JSON.parse(fs.readFileSync(migrationPathAndFilename).toString());
+	} else {
+		getMethodTableForMigration.cachedTable = {};
+	}
+
+	return getMethodTableForMigration.cachedTable;
+}
+
 exports.repeat = repeat;
 exports.generateTemplate = generateTemplate;
 exports.makeImports = makeImports;
@@ -1239,6 +1254,7 @@ exports.camelCase = camelCase;
 exports.resolveArg = resolveArg;
 exports.toValueDefault = toValueDefault;
 exports.isPrimitive = isPrimitive;
+exports.getMethodTableForMigration = getMethodTableForMigration;
 
 Object.defineProperty(exports, 'logger', {
 	get: function () {

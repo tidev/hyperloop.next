@@ -487,10 +487,87 @@ function addSymbolReference (state, node, key) {
 }
 
 /**
+ * Checks for methods that require refactoring and adds them to a list we
+ * use later on to show migration instructions.
+ *
+ * This can be removed with Hyperloop 3.0 or propably even earlier.
+ *
+ * @param {Object} state Parser state object
+ * @param {Object} node Node in the AST to inspect
+ */
+function addMigrationHelpIfNeeded(state, node) {
+	state.needMigration = state.needMigration || [];
+	var migrationTable = utillib.getMethodTableForMigration();
+
+	if (['CallExpression', 'MemberExpression'].indexOf(node.type) === -1) {
+		return;
+	}
+
+	var migratableMethod = traverseUpAndFindMigratableMethod(node, migrationTable);
+	if (migratableMethod !== null) {
+	 	var entryExists = state.needMigration.some(function (m) {
+			return m.label === migratableMethod.label && m.line === migratableMethod.line;
+		});
+		if (!entryExists) {
+			state.needMigration.push(migratableMethod);
+		}
+	}
+}
+
+/**
+ * Traverse up in the AST to find all possible method calls that may require
+ * a migration note.
+ *
+ * Only handles nested Call- and MemberExpressions so we can detect stuff
+ * like this:
+ *
+ *   var path1 = UIBundle.mainBundle().bundlePath
+ *   var path2 = UIBundle.mainBundle().pathForImageResource()
+ *
+ * @param {Object} node Node in the AST to inspect
+ * @param {Object} migrationTable Object with mapping of class name and methods that need migration
+ * @return {Object|null} Object with info about matching call expression or null if none found
+ */
+function traverseUpAndFindMigratableMethod(node, migrationTable) {
+	if (!node) {
+		return null;
+	}
+
+	if (['CallExpression', 'MemberExpression'].indexOf(node.type) === -1) {
+		return null;
+	}
+
+	if (node.type === 'MemberExpression') {
+		return traverseUpAndFindMigratableMethod(node.object, migrationTable);
+	}
+
+	var callee = node.callee;
+	if (callee.type !== 'MemberExpression') {
+		return null;
+	}
+
+	if (callee.object.type !== 'Identifier') {
+		return traverseUpAndFindMigratableMethod(callee.object, migrationTable);
+	}
+
+	var objectName = callee.object.name;
+	var methods = migrationTable.hasOwnProperty(objectName) ? migrationTable[objectName] : [];
+	var methodName = callee.property.name;
+	if (methods.indexOf(methodName) === -1) {
+		return null;
+	}
+
+	return {
+		objectName: objectName,
+		methodName: methodName,
+		line: node.loc.start.line
+	};
+}
+
+/**
  * parse a buf of JS into a state object
  */
 Parser.prototype.parse = function (buf, fn, state) {
-
 	if (!buf || !buf.length) {
 		return null;
 	}
@@ -507,6 +584,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// reset these per module
 	state.classesByVariable = {};
 	state.referencedClasses = {};
+	state.needMigration = [];
 
 	// these are symbol references found in our source code.
 	// this is a little brute force and sloppy but gets
@@ -552,6 +630,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 					prop = node.callee.name;
 					isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
 				}
+				addMigrationHelpIfNeeded(state, node);
 				break;
 			}
 			case 'VariableDeclaration': {
@@ -566,6 +645,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 			case 'MemberExpression': {
 				if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(node.parentNode.type)) {
 					addSymbolReference(state, node, 'getter');
+					addMigrationHelpIfNeeded(state, node);
 				}
 				break;
 			}
@@ -598,7 +678,6 @@ Parser.prototype.parse = function (buf, fn, state) {
 	});
 
 	var code;
-
 	// re-generate if it changed, otherwise we can skip and use original content
 	if (mutated) {
 		code = escodegen.generate(ast);
