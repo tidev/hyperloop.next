@@ -1036,7 +1036,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  */
 +(void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[HYPERLOOP] willStartNewContext %@", kroll);
+	NSLog(@"[DEBUG][HYPERLOOP] willStartNewContext %@", kroll);
 #endif
 
 	// if not a valid platform GUID, we aren't going to enable Hyperloop
