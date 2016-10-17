@@ -1017,24 +1017,24 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
 		return;
 	}
 
-	that.logger.error();
+	that.logger.error('');
 	that.logger.error('!!! CODE MIGRATION REQUIRED !!!');
-	that.logger.error();
+	that.logger.error('');
 	that.logger.error('Due to changes introduced in iOS 10 and Hyperloop 2.0.0 some method calls need');
 	that.logger.error('to be changed to property access. It seems like you used some of the affected');
 	that.logger.error('methods.');
-	that.logger.error();
-	that.logger.error('We tried to fix most of these automatically during our Copy Resources build step.');
-	that.logger.error('However, we did not touch your original source files. Please see the list bellow');
-	that.logger.error('to help you migrate your code.');
-	that.logger.error();
-	that.logger.error('NOTE: Some line numbers and filenames shown here are from your compiled alloy files');
-	that.logger.error('and may differ from your original source file.');
+	that.logger.error('');
+	that.logger.error('We tried to fix most of these automatically during compile time. However, we did');
+	that.logger.error('not touch your original source files. Please see the list below to help you');
+	that.logger.error('migrate your code.');
+	that.logger.error('');
+	that.logger.error('NOTE: Some line numbers and file names shown here are from your compiled Alloy');
+	that.logger.error('source code and may differ from your original source code.');
 
 	Object.keys(this.needMigration).forEach(function (pathAndFilename) {
 		var tokens = that.needMigration[pathAndFilename];
-		that.logger.error();
 		var shortPathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources');
+		that.logger.error('');
 		that.logger.error('  File: ' + shortPathAndFilename);
 		tokens.forEach(function (token) {
 			var memberExpression = token.objectName + '.' + token.methodName;
@@ -1043,7 +1043,7 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
 		});
 	});
 
-	that.logger.error();
+	that.logger.error('');
 };
 
 /**
