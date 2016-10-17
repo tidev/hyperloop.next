@@ -1,6 +1,6 @@
 // define this is running locally but don't check in your change
 // The 5.4.0 is required on iOS because it contains core-changes that are necessary
-TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/5.4.0
+TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/6.0.0
 TITANIUM_BASE_SDK = "$(TITANIUM_SDK)/iphone/include"
 TITANIUM_BASE_SDK2 = "$(TITANIUM_SDK)/iphone/include/TiCore"
 TITANIUM_BASE_SDK3 = "$(TITANIUM_SDK)/iphone/include/JavaScriptCore"
