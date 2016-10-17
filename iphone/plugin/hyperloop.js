@@ -109,8 +109,7 @@ HyperloopiOSBuilder.prototype.run = function run(builder, callback) {
 		'compileResources',
 		'generateStubs',
 		'copyHyperloopJSFiles',
-		'updateXcodeProject',
-		'displayMigrationInstructions'
+		'updateXcodeProject'
 	], function (err) {
 		this.logger.info('Finished ' + HL + ' assembly in ' + (Math.round((Date.now() - start) / 10) / 100) + ' seconds');
 		callback(err);
@@ -682,6 +681,10 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 	this.cli.on('build.ios.xcodebuild', {
 		pre: this.hookXcodebuild.bind(this)
 	});
+
+	this.cli.on('build.post.build', {
+		post: this.displayMigrationInstructions.bind(this)
+	});
 };
 
 /**
@@ -1033,9 +1036,9 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
 
 	Object.keys(this.needMigration).forEach(function (pathAndFilename) {
 		var tokens = that.needMigration[pathAndFilename];
-		var shortPathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources');
+		var relativePathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources').replace(/^Resources\/iphone\/alloy\//, 'app/');
 		that.logger.error('');
-		that.logger.error('  File: ' + shortPathAndFilename);
+		that.logger.error('  File: ' + relativePathAndFilename);
 		tokens.forEach(function (token) {
 			var memberExpression = token.objectName + '.' + token.methodName;
 			var callExpression = memberExpression + '()';
