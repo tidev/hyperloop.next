@@ -71,6 +71,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.nativeModules = {};
 	this.buildSettings = {};
 	this.headers = null;
+	this.needMigration = {};
 
 	// set our CLI logger
 	hm.util.setLog(builder.logger);
@@ -80,7 +81,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
  * called for each JS resource to process them
  */
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
-	this.patchJSFile(builder.args[1], callback);
+	this.patchJSFile(builder.args[0], builder.args[1], callback);
 };
 
 /**
@@ -350,9 +351,9 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
 /**
  * Re-write generated JS source
  */
-HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(file, cb) {
+HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename, destinationFilename, cb) {
 	// look for any require which matches our hyperloop system frameworks
-	var contents = fs.readFileSync(file).toString();
+	var contents = fs.readFileSync(destinationFilename).toString();
 
 	// skip empty content
 	if (!contents.length) {
@@ -361,14 +362,14 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(file, cb) {
 
 	// parse the contents
 	// TODO: move all the regex require stuff into the parser
-	this.parserState = hm.generate.parseFromBuffer(contents, file, this.parserState || undefined);
+	this.parserState = hm.generate.parseFromBuffer(contents, destinationFilename, this.parserState || undefined);
 
 	// empty AST
 	if (!this.parserState) {
 		return cb();
 	}
 
-	var relPath = path.relative(this.resourcesDir, file);
+	var relPath = path.relative(this.resourcesDir, destinationFilename);
 
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
@@ -439,12 +440,21 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(file, cb) {
 			return "require('/" + ref + "')";
 		}.bind(this));
 
+		var needMigration = this.parserState.state.needMigration;
+		if (needMigration.length > 0) {
+			this.needMigration[sourceFilename] = needMigration;
+
+			needMigration.forEach(function(token) {
+				newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
+			});
+		}
+
 		if (contents === newContents) {
-			this.logger.debug('No change, skipping ' + chalk.cyan(file));
+			this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
 			cb();
 		} else {
-			this.logger.debug('Writing ' + chalk.cyan(file));
-			fs.writeFile(file, newContents, cb);
+			this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
+			fs.writeFile(destinationFilename, newContents, cb);
 		}
 };
 
@@ -670,6 +680,10 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 
 	this.cli.on('build.ios.xcodebuild', {
 		pre: this.hookXcodebuild.bind(this)
+	});
+
+	this.cli.on('build.post.build', {
+		post: this.displayMigrationInstructions.bind(this)
 	});
 };
 
@@ -991,6 +1005,48 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		this.logger.trace(__('No change, skipping %s', dest.cyan));
 	}
 
+};
+
+/**
+ * Displays migration instructions for certain methods that changed with iOS 10
+ * and Hyperloop 2.0.0
+ *
+ * Can be removed in a later version of Hyperloop
+ */
+HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMigrationInstructions() {
+	var that = this;
+
+	if (Object.keys(this.needMigration).length === 0) {
+		return;
+	}
+
+	that.logger.error('');
+	that.logger.error('!!! CODE MIGRATION REQUIRED !!!');
+	that.logger.error('');
+	that.logger.error('Due to changes introduced in iOS 10 and Hyperloop 2.0.0 some method calls need');
+	that.logger.error('to be changed to property access. It seems like you used some of the affected');
+	that.logger.error('methods.');
+	that.logger.error('');
+	that.logger.error('We tried to fix most of these automatically during compile time. However, we did');
+	that.logger.error('not touch your original source files. Please see the list below to help you');
+	that.logger.error('migrate your code.');
+	that.logger.error('');
+	that.logger.error('NOTE: Some line numbers and file names shown here are from your compiled Alloy');
+	that.logger.error('source code and may differ from your original source code.');
+
+	Object.keys(this.needMigration).forEach(function (pathAndFilename) {
+		var tokens = that.needMigration[pathAndFilename];
+		var relativePathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources').replace(/^Resources\/iphone\/alloy\//, 'app/');
+		that.logger.error('');
+		that.logger.error('  File: ' + relativePathAndFilename);
+		tokens.forEach(function (token) {
+			var memberExpression = token.objectName + '.' + token.methodName;
+			var callExpression = memberExpression + '()';
+			that.logger.error('    Line ' + token.line + ': ' + callExpression + ' -> ' + memberExpression);
+		});
+	});
+
+	that.logger.error('');
 };
 
 /**
