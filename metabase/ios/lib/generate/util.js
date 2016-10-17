@@ -1214,12 +1214,32 @@ function resolveArg (metabase, imports, arg) {
 	}
 }
 
+/**
+ * Gets a mapping of all classes and their properties that are affected by
+ * the UIKIT_DEFINE_AS_PROPERTIES or FOUNDATION_SWIFT_SDK_EPOCH_AT_LEAST
+ * macros.
+ *
+ * UIKIT_DEFINE_AS_PROPERTIES and FOUNDATION_SWIFT_SDK_EPOCH_AT_LEAST introduce
+ * new readonly properties in favor of methods with the same name. This changes
+ * how one would access them in Hyperloop.
+ *
+ * For example:
+ *
+ *  // < Hyperloop 2.0.0, as method
+ *  var color = UIColor.redColor();
+ *  // >= Hyperloop 2.0.0, as property (note the missing parenthesis)
+ *  var color = UIColor.redColor;
+ *
+ * @return {Object} Contains a mapping of class names and their affected properties
+ */
 function getMethodTableForMigration() {
+	var migrationFilename = 'migration-20161014143619.json';
+
 	if (getMethodTableForMigration.cachedTable) {
 		return getMethodTableForMigration.cachedTable;
 	}
 
-	var migrationPathAndFilename = path.resolve(__dirname, '../../data/migration-20161014143619.json');
+	var migrationPathAndFilename = path.resolve(__dirname, path.join('../../data', migrationFilename));
 	if (fs.existsSync(migrationPathAndFilename)) {
 		getMethodTableForMigration.cachedTable = JSON.parse(fs.readFileSync(migrationPathAndFilename).toString());
 	} else {
