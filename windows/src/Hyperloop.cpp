@@ -47,32 +47,42 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 	TITANIUM_ASSERT(!functionName__.empty());
 
 	const auto argumentCount = js_arguments.size();
-	const auto methods = Method::GetMethods(type__, ConvertString(functionName__), argumentCount);
-
-	if (methods->Size == 0) {
-		detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", apiName__ + " is not found with the given argument list" );
-	}
-
 	const auto ctx = get_context();
 
 	if (argumentCount == 0) {
-		return Hyperloop::Convert(ctx, methods->GetAt(0)->Invoke(instance__, nullptr));
+		return Hyperloop::Convert(ctx, Method::GetMethod(type__, ConvertString(functionName__), nullptr)->Invoke(instance__, nullptr));
 	} else {
+		const auto functionName = ConvertString(functionName__);
 
-		// TODO:
-		// Search for overloaded methods
-		std::size_t index = 0;
-		for (std::size_t i = 0; i < methods->Size; i++) {
-			
+		// First, try to get a method with expected parameter types.
+		// This could return null when method is not found with given types
+		const auto expectedParams = ref new Platform::Array<TypeName>(argumentCount);
+		const TypeName nullType;
+		for (std::size_t i = 0; i < argumentCount; i++) {
+			expectedParams[i] = Hyperloop::Convert(ctx, js_arguments[i], nullType)->NativeType;
 		}
 
-		const auto method = methods->GetAt(index);
+		auto method = Method::GetMethod(type__, functionName, expectedParams);
+		if (method == nullptr) {
+			// When method is not found with given types, then try to get the method with matched argument count
+			// TODO: More precise method overloading detection with derived types etc
+			const auto methods = Method::GetMethods(type__, functionName, argumentCount);
+			if (methods->Size == 0) {
+				detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", apiName__ + " is not found with the given argument list");
+			}
+			method = methods->GetAt(0);
+		}
 		const auto types = method->GetParameters();
 		const auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(argumentCount);
 		for (std::size_t i = 0; i < argumentCount; i++) {
 			args[i] = Hyperloop::Convert(ctx, js_arguments[i], types[i]);
 		}
-		return Hyperloop::Convert(ctx, method->Invoke(instance__, args));
+		try {
+			return Hyperloop::Convert(ctx, method->Invoke(instance__, args));
+		} catch (Platform::COMException^ e) {
+			TITANIUM_MODULE_LOG_ERROR("HyperloopFunction::CallAsFunction: Failed to call " + apiName__ + " - " + ConvertString(e->Message));
+			detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", "Failed to call " +apiName__);
+		}
 	}
 
 	return ctx.CreateUndefined();
@@ -215,7 +225,7 @@ JSValue Hyperloop::Convert(const JSContext& js_context, HyperloopInvocation::Ins
 		return js_context.CreateNumber(instance->ConvertToNumber());
 	} else if (instance->IsString()) {
 		return js_context.CreateString(ConvertUTF8String(static_cast<Platform::String^>(instance->NativeObject)));
-	} else if (instance->IsBoolean) {
+	} else if (instance->IsBoolean()) {
 		return js_context.CreateBoolean(static_cast<bool>(instance->NativeObject));
 	} else {
 		Titanium::detail::ThrowRuntimeError("Hyperloop::Convert", "Can't convert native type: " + ConvertString(instance->NativeType.Name));

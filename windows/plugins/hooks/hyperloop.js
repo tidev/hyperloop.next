@@ -9,7 +9,6 @@ exports.init = function(logger, config, cli, nodeappc) {
      * CLI Hook for Hyperloop build dependencies
      */
     cli.on('build.module.pre.compile', function (data, callback) {
-
         var dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation'),
             tasks = [];
 
@@ -17,7 +16,7 @@ exports.init = function(logger, config, cli, nodeappc) {
             ['Debug', 'Release'].forEach(function(buildConfig) {
                 tasks.push(
                     function(next) {
-                        runMSBuild(data, dest, platform, buildConfig, next);
+                        buildSolution(data, dest, platform, buildConfig, next);
                     }
                 );
             });
@@ -49,10 +48,44 @@ exports.init = function(logger, config, cli, nodeappc) {
     });
 };
 
-function runMSBuild(data, dest, platform, buildConfig, callback) {
+function buildSolution(data, dest, platform, buildConfig, callback) {
+    var slnFile = path.join(dest, platform, 'HyperloopInvocation.sln');
+    runNuGet(data, slnFile, function(err) {
+        if (err) throw err;
+        runMSBuild(data, slnFile, buildConfig, callback);
+    });
+}
+
+function runNuGet(data, slnFile, callback) {
+    var logger = data.logger;
+    // Make sure project dependencies are installed via NuGet
+    var p = spawn('nuget.exe', ['restore', slnFile]);
+    p.stdout.on('data', function (data) {
+        var line = data.toString().trim();
+        if (line.indexOf('error ') >= 0) {
+            logger.error(line);
+        } else if (line.indexOf('warning ') >= 0) {
+            logger.warn(line);
+        } else if (line.indexOf(':\\') === -1) {
+            logger.debug(line);
+        } else {
+            logger.trace(line);
+        }
+    });
+    p.stderr.on('data', function (data) {
+        logger.warn(data.toString().trim());
+    });
+    p.on('close', function (code) {
+        if (code != 0) {
+            process.exit(1); // Exit with code from nuget?
+        }
+        callback();
+    });
+}
+
+function runMSBuild(data, slnFile, buildConfig, callback) {
     var logger = data.logger, 
         windowsInfo = data.windowsInfo,
-        slnFile = path.join(dest, platform, 'HyperloopInvocation.sln'),
         vsInfo  = windowsInfo.selectedVisualStudio;
 
     if (!vsInfo) {

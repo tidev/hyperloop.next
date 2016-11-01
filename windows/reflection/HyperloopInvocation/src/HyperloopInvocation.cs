@@ -42,23 +42,7 @@ namespace HyperloopInvocation
         }
         public static object Convert(Type nativeType, double number)
         {
-            if (nativeType == typeof(System.Byte))
-            {
-                return (byte)number;
-            }
-            if (nativeType == typeof(System.SByte))
-            {
-                return (sbyte)number;
-            }
-            if (nativeType == typeof(System.Double))
-            {
-                return number;
-            }
-            if (nativeType == typeof(System.Int32))
-            {
-                return (System.Int32)number;
-            }
-            return number;
+            return System.Convert.ChangeType(number, nativeType);
         }
 
         /*
@@ -155,6 +139,17 @@ namespace HyperloopInvocation
                 types[i] = parameters[i].ParameterType;
             }
             return types;
+        }
+        public static Method GetMethod(Type type, string name, [ReadOnlyArray()] Type[] parameters)
+        {
+            MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
+            if (methodInfo == null)
+            {
+                return null;
+            }
+            Method method = new Method(name);
+            method.methodInfo = methodInfo;
+            return method;
         }
         public static IList<Method> GetMethods(Type type, string name, int expectedCount)
         {
