@@ -19,9 +19,8 @@ endif()
 
 project(Hyperloop)
 
-set(Hyperloop_VERSION 0.1.0)
-
-set(WINDOWS_SOURCE_DIR "C:/ProgramData/Titanium/mobilesdk/win32/6.1.0.v20161019130507/windows")
+set(Hyperloop_VERSION <%= version %>)
+set(WINDOWS_SOURCE_DIR "<%= windowsSrcDir %>")
 
 SET(CMAKE_FIND_LIBRARY_PREFIXES "")
 SET(CMAKE_FIND_LIBRARY_SUFFIXES ".lib" ".dll")
