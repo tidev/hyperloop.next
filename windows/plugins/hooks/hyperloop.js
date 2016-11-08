@@ -104,7 +104,7 @@ function runCmake(data, platform, arch, sdkVersion, next) {
         fs.mkdirSync(cmakeWorkDir);
     }
 
-    var p = spawn('cmake.exe',
+    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','cmake','bin','cmake.exe'),
         [
             '-G', generatorName,
             '-DCMAKE_SYSTEM_NAME=' + platform,
@@ -144,7 +144,7 @@ function buildSolution(data, dest, platform, buildConfig, callback) {
 function runNuGet(data, slnFile, callback) {
     var logger = data.logger;
     // Make sure project dependencies are installed via NuGet
-    var p = spawn('nuget.exe', ['restore', slnFile]);
+    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore', slnFile]);
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
