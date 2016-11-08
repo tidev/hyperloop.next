@@ -509,19 +509,36 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
 }
 
 /**
- * run CocoaPods to build any requires libraries
+ * Runs CocoaPods to build any required libraries
+ *
+ * @param basedir {String}
+ * @param builder {iOSBuilder}
+ * @param callback {Function}
  */
-function runCocoaPodsBuild (basedir, appDir, sdkType, sdkVersion, minSDKVersion, xcodesettings, callback) {
-	var spawn = require('child_process').spawn,
+function runCocoaPodsBuild (basedir, builder, callback) {
+	var appDir = builder.xcodeAppDir,
+		sdkType = builder.xcodeTargetOS,
+		sdkVersion = builder.iosSdkVersion,
+		minSDKVersion = builder.minIosVer,
+		xcodesettings = builder.xcodeEnv.executables,
+		spawn = require('child_process').spawn,
 		sdk = sdkType + sdkVersion,
+		productsDirectory = path.join(basedir, 'build/iphone/build/Products'),
+		buildConfigurationName = builder.xcodeTarget,
 		args = [
+			'-configuration', buildConfigurationName,
 			'-alltargets',
 			'IPHONEOS_DEPLOYMENT_TARGET=' + minSDKVersion,
-			'-sdk', sdk
-		],
-		buildOutDir = path.join(basedir, 'build', 'Release-' + sdkType),
+			'-sdk', sdk,
+			'SYMROOT=' + productsDirectory
+		];
+	if (builder.simHandle) {
+		// Manually set the arch for simulator builds since we cannot use -destination
+		// because the Pods project has no scheme.
+		args.push('-arch', process.arch === 'x64' ? 'x86_64' : 'i386');
+	}
+	var buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
 		runDir = path.join(basedir, 'Pods'),
-		basename = path.basename(basedir),
 		child = spawn(xcodesettings.xcodebuild, args, {cwd:runDir});
 	util.logger.debug('running ' + xcodesettings.xcodebuild + ' ' + args.join(' ') + ' ' + runDir);
 	util.logger.info('Building ' + chalk.green('CocoaPods') + ' dependencies');
@@ -597,21 +614,6 @@ function getCocoaPodsXCodeSettings (basedir) {
 				if (config.PODS_ROOT) {
 					// fix the PODS_ROOT to point to the absolute path
 					config.PODS_ROOT = path.resolve(podDir);
-				}
-				if (config.PODS_BUILD_DIR) {
-					// CocoaPods 1.0 introduced the PODS_BUILD_DIR variable which affects
-					// LIBRARY_SEARCH_PATHS. By default it's set to the current build dir,
-					// but the pods have their own build dir, so we change it here.
-					var podsBuildDir = fs.realpathSync(path.join(basedir, 'build'));
-					util.logger.debug('Changing PODS_BUILD_DIR to ' + podsBuildDir);
-					config.PODS_BUILD_DIR = podsBuildDir;
-				}
-				if (config.PODS_CONFIGURATION_BUILD_DIR) {
-					// We also need to overwrite PODS_CONFIGURATION_BUILD_DIR as we always
-					// build pods with the Release config.
-					var podsConfigurationBuildDir = '$PODS_BUILD_DIR/Release$(EFFECTIVE_PLATFORM_NAME)';
-					util.logger.debug('Changing PODS_CONFIGURATION_BUILD_DIR to ' + podsConfigurationBuildDir);
-					config.PODS_CONFIGURATION_BUILD_DIR = podsConfigurationBuildDir;
 				}
 				return config;
 			}
@@ -709,23 +711,24 @@ function runPodInstallIfRequired(basedir, callback) {
 	}
 }
 
-function generateCocoaPods (cachedir, basedir, appDir, sdkType, sdkVersion, minSDKVersion, xcodesettings, callback) {
+function generateCocoaPods (cachedir, builder, callback) {
+	var basedir = builder.projectDir;
 	var Podfile = path.join(basedir, 'Podfile');
 	if (!fs.existsSync(Podfile)) {
 		util.logger.debug('No CocoaPods file found');
 		return callback();
 	} else {
 		var content = fs.readFileSync(Podfile).toString();
-		
+
 		if (content.length && content.indexOf('pod ') === -1) {
 			util.logger.warn('Podfile found, but no pod\'s specified. Skipping ...');
 			return callback();
 		}
 	}
-	
+
 	runPodInstallIfRequired(basedir, function (err) {
 		if (err) { return callback(err); }
-		runCocoaPodsBuild(basedir, appDir, sdkType, sdkVersion, minSDKVersion, xcodesettings, function (err, libs, libDir) {
+		runCocoaPodsBuild(basedir, builder, function (err, libs, libDir) {
 			if (err) { return callback(err); }
 			var settings = getCocoaPodsXCodeSettings(basedir);
 			if (libs && libs.length) {
