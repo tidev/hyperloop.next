@@ -69,7 +69,8 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.packages = {};
 	this.metabase = {};
 	this.nativeModules = {};
-	this.buildSettings = {};
+	this.hasCocoaPods = false;
+	this.cocoaPodsBuildSettings = {};
 	this.headers = null;
 	this.needMigration = {};
 
@@ -229,7 +230,8 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 	// attempt to handle cocoapods for third-party frameworks
 	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, symbols) {
 		if (!err) {
-			this.buildSettings = settings;
+			this.hasCocoaPods = symbols && Object.keys(symbols).length > 0;
+			this.cocoaPodsBuildSettings = settings;
 			symbols && Object.keys(symbols).forEach(function (k) {
 				this.frameworks[k] = symbols[k];
 			}, this);
@@ -987,6 +989,24 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		});
 	});
 
+	if (this.hasCocoaPods) {
+		var copyPodsResourcesBuildPhaseId = generateUuid();
+		var copyPodsResourcesBuildPhase = {
+			isa: 'PBXShellScriptBuildPhase',
+			buildActionMask: 2147483647,
+			files: [],
+			inputPaths: [],
+			name: '"[CP] Copy Pods Resources"',
+			outputPaths: [],
+			runOnlyForDeploymentPostprocessing: 0,
+			shellPath: '/bin/sh',
+			shellScript: '"\\"${PODS_ROOT}/Target Support Files/Pods-' + appName + '/Pods-' + appName + '-resources.sh\\""',
+			showEnvVarsInLog: 0
+		};
+		xobjs.PBXShellScriptBuildPhase[copyPodsResourcesBuildPhaseId] = copyPodsResourcesBuildPhase;
+		mainTarget.buildPhases.push(copyPodsResourcesBuildPhaseId);
+	}
+
 	var contents = xcodeProject.writeSync(),
 		dest = xcodeProject.filepath,
 		parent = path.dirname(dest),
@@ -1119,8 +1139,8 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	}
 
 	// add any build settings from the generate cocoapods phase
-	this.buildSettings && Object.keys(this.buildSettings).forEach(function (key) {
-		addParam(key, this.buildSettings[key]);
+	this.cocoaPodsBuildSettings && Object.keys(this.cocoaPodsBuildSettings).forEach(function (key) {
+		addParam(key, this.cocoaPodsBuildSettings[key]);
 	}, this);
 
 	// add our header include paths if we have custom ones
