@@ -553,24 +553,16 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 			return callback(new Error('xcodebuild did not produce the expected CocoaPods libraries at ' + buildOutDir));
 		}
 		var libs = [];
-		// find all the libraries that CocoaPods built (exclude its stub library)
-		// and copy any Resources
-		function addLibraryFileAndCopyResources(libraryFilename, cb) {
-			libs.push(libraryFilename);
-			var name = libraryFilename.substring(3).replace(/\.a$/, '').trim();
-			var dir = path.join(basedir, 'Pods', name, name);
-			if (fs.existsSync(dir)) {
-				return compileResources(dir, sdk, appDir, true, cb);
-			}
-		}
+		// Find all the libraries that CocoaPods built. Can be removed when we drop
+		// support for CocoaPods < 1.0
 		async.each(fs.readdirSync(buildOutDir), function (fn, cb) {
 			if (/\.a$/.test(fn) && fn.indexOf('libPods-') < 0) {
-				return addLibraryFileAndCopyResources(fn, cb);
+				libs.push(fn);
 			} else if (fs.statSync(path.join(buildOutDir, fn)).isDirectory()) {
 				// Since CocoaPods 1.0 the libraries are contained in subfolders
 				async.each(fs.readdirSync(path.join(buildOutDir, fn)), function(fn, cb) {
 					if (/\.a$/.test(fn)) {
-						return addLibraryFileAndCopyResources(fn, cb);
+						libs.push(fn);
 					}
 					cb();
 				});
