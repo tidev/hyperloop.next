@@ -1,0 +1,19 @@
+#
+# this is your module manifest and used by Titanium
+# during compilation, packaging, distribution, etc.
+#
+version: 1.0.0
+apiversion: 2
+architectures: ARM x86
+description: hyperloop
+author: Appcelerator
+license: Appcelerator Commercial License
+copyright: Copyright (c) 2016 Appcelerator, Inc.
+
+# these should not be edited
+name: hyperloop
+moduleid: hyperloop
+moduleIdAsIdentifier: Hyperloop
+guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
+platform: windows
+minsdk: 6.1.0
