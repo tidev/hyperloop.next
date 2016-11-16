@@ -16,6 +16,27 @@ using namespace TitaniumWindows::Utility;
 using namespace TitaniumWindows_Hyperloop;
 using namespace HyperloopInvocation;
 
+namespace Hyperloop
+{
+	/*
+	 * @class
+	 * @discussion
+	 *
+	 *   Don't remove this class because Windows Store submission process requires
+	 *   at least one C++/CX class in winmd. (TIMOB-20192)
+	 * 
+	 */
+	[Windows::Foundation::Metadata::WebHostHidden]
+	public ref class HyperloopRef sealed
+	{
+	public:
+		void Run()
+		{
+			/* DO NOTHING */	
+		}
+	};
+}
+
 HyperloopBase::HyperloopBase(const JSContext& js_context) TITANIUM_NOEXCEPT
 	: Titanium::Module(js_context, "HyperloopBase")
 {
@@ -50,7 +71,7 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 	const auto ctx = get_context();
 
 	if (argumentCount == 0) {
-		return Hyperloop::Convert(ctx, Method::GetMethod(type__, ConvertString(functionName__), nullptr)->Invoke(instance__, nullptr));
+		return HyperloopModule::Convert(ctx, Method::GetMethod(type__, ConvertString(functionName__), nullptr)->Invoke(instance__, nullptr));
 	} else {
 		const auto functionName = ConvertString(functionName__);
 
@@ -59,7 +80,7 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 		const auto expectedParams = ref new Platform::Array<TypeName>(argumentCount);
 		const TypeName nullType;
 		for (std::size_t i = 0; i < argumentCount; i++) {
-			expectedParams[i] = Hyperloop::Convert(ctx, js_arguments[i], nullType)->NativeType;
+			expectedParams[i] = HyperloopModule::Convert(ctx, js_arguments[i], nullType)->NativeType;
 		}
 
 		auto method = Method::GetMethod(type__, functionName, expectedParams);
@@ -75,10 +96,10 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 		const auto types = method->GetParameters();
 		const auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(argumentCount);
 		for (std::size_t i = 0; i < argumentCount; i++) {
-			args[i] = Hyperloop::Convert(ctx, js_arguments[i], types[i]);
+			args[i] = HyperloopModule::Convert(ctx, js_arguments[i], types[i]);
 		}
 		try {
-			return Hyperloop::Convert(ctx, method->Invoke(instance__, args));
+			return HyperloopModule::Convert(ctx, method->Invoke(instance__, args));
 		} catch (Platform::COMException^ e) {
 			TITANIUM_MODULE_LOG_ERROR("HyperloopFunction::CallAsFunction: Failed to call " + apiName__ + " - " + ConvertString(e->Message));
 			detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", "Failed to call " +apiName__);
@@ -131,7 +152,7 @@ JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
 	} else if (Property::HasProperty(type__, rt_name)) {
 		// Property
 		const auto prop = Property::GetProperty(type__, rt_name);
-		return Hyperloop::Convert(get_context(), prop->GetValue(instance__));
+		return HyperloopModule::Convert(get_context(), prop->GetValue(instance__));
 	}
 
 	return get_context().CreateUndefined();
@@ -164,7 +185,7 @@ void HyperloopInstance::postCallAsConstructor(const JSContext& js_context, const
 			if (expectedParams->Length > i) {
 				parameterType = expectedParams[i];
 			}
-			args[i] = Hyperloop::Convert(js_context, js_arguments[i], parameterType);
+			args[i] = HyperloopModule::Convert(js_context, js_arguments[i], parameterType);
 		}
 		instance__ = HyperloopInvocation::Instance::New(type, args);
 		type__     = type;
@@ -175,35 +196,47 @@ void HyperloopInstance::postCallAsConstructor(const JSContext& js_context, const
 	}
 }
 
-Hyperloop::Hyperloop(const JSContext& js_context) TITANIUM_NOEXCEPT
+HyperloopModule::HyperloopModule(const JSContext& js_context) TITANIUM_NOEXCEPT
 	: Titanium::Module(js_context, "hyperloop")
 {
 	TITANIUM_LOG_DEBUG("Hyperloop ctor");
 }
 
-void Hyperloop::JSExportInitialize()
+void HyperloopModule::JSExportInitialize()
 {
-	JSExport<Hyperloop>::SetClassVersion(1);
-	JSExport<Hyperloop>::SetParent(JSExport<Titanium::Module>::Class());
-	TITANIUM_ADD_FUNCTION(Hyperloop, exists);
-	TITANIUM_ADD_FUNCTION(Hyperloop, require);
+	JSExport<HyperloopModule>::SetClassVersion(1);
+	JSExport<HyperloopModule>::SetParent(JSExport<Titanium::Module>::Class());
+	TITANIUM_ADD_PROPERTY(HyperloopModule, debug);
+	TITANIUM_ADD_FUNCTION(HyperloopModule, exists);
+	TITANIUM_ADD_FUNCTION(HyperloopModule, require);
 }
 
-TITANIUM_FUNCTION(Hyperloop, exists)
+TITANIUM_PROPERTY_READWRITE(HyperloopModule, bool, debug)
+TITANIUM_PROPERTY_SETTER_BOOL(HyperloopModule, debug)
+TITANIUM_PROPERTY_GETTER_BOOL(HyperloopModule, debug)
+
+TITANIUM_FUNCTION(HyperloopModule, exists)
 {
+	ENSURE_STRING_AT_INDEX(moduleId, 0);
 	try {
-		ENSURE_STRING_AT_INDEX(moduleId, 0);
 		const auto module = TypeHelper::GetType(ConvertUTF8String(moduleId));
 		return get_context().CreateBoolean(module.Name != nullptr);
+	} catch (Platform::COMException^ e) {
+		if (debug__) {
+			detail::ThrowRuntimeError("HyperloopModule::exists", "Unable to find " + moduleId + ": " + TitaniumWindows::Utility::ConvertString(e->Message));
+		} else {
+			return get_context().CreateBoolean(false);
+		}
 	} catch (...) {
-		return get_context().CreateBoolean(false);
+		TITANIUM_LOG_WARN("Unable to find ", moduleId);
 	}
+	return get_context().CreateBoolean(false);
 }
 
-TITANIUM_FUNCTION(Hyperloop, require)
+TITANIUM_FUNCTION(HyperloopModule, require)
 {
+	ENSURE_STRING_AT_INDEX(moduleId, 0);
 	try {
-		ENSURE_STRING_AT_INDEX(moduleId, 0);
 		const auto ctx  = get_context();
 
 		const auto module = TypeHelper::GetType(ConvertUTF8String(moduleId));
@@ -213,13 +246,20 @@ TITANIUM_FUNCTION(Hyperloop, require)
 		ctor_ptr->set_type(module);
 
 		return ctor;
+	} catch (Platform::COMException^ e) {
+		if (debug__) {
+			detail::ThrowRuntimeError("HyperloopModule::require", "Unable to require " + moduleId + ": " + TitaniumWindows::Utility::ConvertString(e->Message));
+		} else {
+			return get_context().CreateBoolean(false);
+		}
 	} catch (...) {
-		return get_context().CreateNull();
+		TITANIUM_LOG_WARN("Unable to require ", moduleId);
 	}
+	return get_context().CreateNull();
 }
 
 // Convert native object to JSValue
-JSValue Hyperloop::Convert(const JSContext& js_context, HyperloopInvocation::Instance^ instance)
+JSValue HyperloopModule::Convert(const JSContext& js_context, HyperloopInvocation::Instance^ instance)
 {
 	if (instance->IsNumber()) {
 		return js_context.CreateNumber(instance->ConvertToNumber());
@@ -228,13 +268,13 @@ JSValue Hyperloop::Convert(const JSContext& js_context, HyperloopInvocation::Ins
 	} else if (instance->IsBoolean()) {
 		return js_context.CreateBoolean(static_cast<bool>(instance->NativeObject));
 	} else {
-		Titanium::detail::ThrowRuntimeError("Hyperloop::Convert", "Can't convert native type: " + ConvertString(instance->NativeType.Name));
+		Titanium::detail::ThrowRuntimeError("HyperloopModule::Convert", "Can't convert native type: " + ConvertString(instance->NativeType.Name));
 	}
 
 	return js_context.CreateUndefined();
 }
 
-HyperloopInvocation::Instance^ Hyperloop::Convert(const JSContext& js_context, const JSValue& value, const TypeName expected)
+HyperloopInvocation::Instance^ HyperloopModule::Convert(const JSContext& js_context, const JSValue& value, const TypeName expected)
 {	
 	if (value.IsBoolean()) {
 		return ref new HyperloopInvocation::Instance(TypeName(bool::typeid), static_cast<bool>(value));

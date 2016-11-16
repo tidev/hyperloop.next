@@ -107,25 +107,30 @@ public:
 	static void JSExportInitialize();
 };
 
-class HYPERLOOP_EXPORT Hyperloop : public Titanium::Module, public JSExport<Hyperloop>
+class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExport<HyperloopModule>
 {
 	public:
-		Hyperloop(const JSContext&) TITANIUM_NOEXCEPT;
+		HyperloopModule(const JSContext&) TITANIUM_NOEXCEPT;
 
-		virtual ~Hyperloop()                   = default;
-		Hyperloop(const Hyperloop&)            = default;
-		Hyperloop& operator=(const Hyperloop&) = default;
+		virtual ~HyperloopModule()                   = default;
+		HyperloopModule(const HyperloopModule&)            = default;
+		HyperloopModule& operator=(const HyperloopModule&) = default;
 #ifdef TITANIUM_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
-		Hyperloop(Hyperloop&&)                 = default;
-		Hyperloop& operator=(Hyperloop&&)      = default;
+		HyperloopModule(HyperloopModule&&)                 = default;
+		HyperloopModule& operator=(HyperloopModule&&)      = default;
 #endif
 
 		static void JSExportInitialize();
 
 		static JSValue Convert(const JSContext&, HyperloopInvocation::Instance^);
 		static HyperloopInvocation::Instance^ Convert(const JSContext&, const JSValue&, const Windows::UI::Xaml::Interop::TypeName);
+		
+		TITANIUM_PROPERTY_IMPL_DEF(bool, debug);
 
+		TITANIUM_PROPERTY_DEF(debug);
 		TITANIUM_FUNCTION_DEF(exists);
 		TITANIUM_FUNCTION_DEF(require);
+	private:
+		bool debug__{ false };
 };
 #endif // _HYPERLOOP_HPP_
