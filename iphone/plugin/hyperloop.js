@@ -71,6 +71,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.nativeModules = {};
 	this.hasCocoaPods = false;
 	this.cocoaPodsBuildSettings = {};
+	this.cocoaPodsProducts = [];
 	this.headers = null;
 	this.needMigration = {};
 
@@ -234,6 +235,7 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 			this.cocoaPodsBuildSettings = settings;
 			symbols && Object.keys(symbols).forEach(function (k) {
 				this.frameworks[k] = symbols[k];
+				this.cocoaPodsProducts.push(k);
 			}, this);
 		}
 		callback(err);
@@ -1078,6 +1080,12 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
 		wrench.rmdirSyncRecursive(frameworksDir);
+	}
+	if (this.hasCocoaPods) {
+		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
+		this.cocoaPodsProducts.forEach(function(product) {
+			this.builder.unmarkBuildDirFiles(path.join(productsDirectory, product));
+		}.bind(this));
 	}
 };
 
