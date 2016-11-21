@@ -1007,6 +1007,29 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		mainTarget.buildPhases.push(copyPodsResourcesBuildPhaseId);
 	}
 
+	if (this.hasCustomShellScriptBuildPhases()) {
+		this.hyperloopConfig.ios.xcodebuild.scripts.forEach(function(buildPhaseOptions) {
+			if (!buildPhaseOptions.name || !buildPhaseOptions.shellScript) {
+				throw new Error('Your appc.js contains an invalid shell script build phase. Please specify at least a "name" and the "shellScript" to run.');
+			}
+			var scriptBuildPhaseId = generateUuid();
+			var scriptBuildPhase = {
+				isa: 'PBXShellScriptBuildPhase',
+				buildActionMask: 2147483647,
+				files: [],
+				inputPaths: buildPhaseOptions.inputPaths || [],
+				name: '"' + buildPhaseOptions.name + '"',
+				outputPaths: buildPhaseOptions.outputPaths || [],
+				runOnlyForDeploymentPostprocessing: buildPhaseOptions.runOnlyWhenInstalling ? 1 : 0,
+				shellPath: buildPhaseOptions.shellPath || '/bin/sh',
+				shellScript: '"' + buildPhaseOptions.shellScript.replace(/"/g, '\\"') + '"',
+				showEnvVarsInLog: buildPhaseOptions.showEnvVarsInLog ? 1 : 0
+			};
+			xobjs.PBXShellScriptBuildPhase[scriptBuildPhaseId] = scriptBuildPhase;
+			mainTarget.buildPhases.push(scriptBuildPhaseId);
+		});
+	}
+
 	var contents = xcodeProject.writeSync(),
 		dest = xcodeProject.filepath,
 		parent = path.dirname(dest),
@@ -1025,6 +1048,17 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		this.logger.trace(__('No change, skipping %s', dest.cyan));
 	}
 
+};
+
+/**
+ * Checks wether the config in appc.json contains custom shell script build phases
+ * that should be added to the Xcode project
+ *
+ * @return {Boolean} True if shell script build phases are defined, false if not
+ */
+HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCustomShellScriptBuildPhases() {
+	var config = this.hyperloopConfig;
+	return config.ios && config.ios.xcodebuild && config.ios.xcodebuild.scripts;
 };
 
 /**
@@ -1157,6 +1191,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	}
 
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
+	addParam('APPC_PROJECT_DIR', this.builder.projectDir);
 };
 
 /**
