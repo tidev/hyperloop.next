@@ -98,10 +98,13 @@ global.<%= baseName %> = <%= sanitizedName %>;
 };
 
 <%= sanitizedName %>.prototype.toString = function() {
-	if (this._hasPointer) {
-		return "[object " + this.className + "]";
-	}
-	return null;
+	if (!this._hasPointer) return null;
+
+	var result = this.$native.callNativeFunction({
+		func: 'toString',
+		instanceMethod: true
+	});
+	return result;
 };
 
 <%= sanitizedName %>.isInstanceOf = function (self, cls) {
