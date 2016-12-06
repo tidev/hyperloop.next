@@ -40,9 +40,35 @@ namespace HyperloopInvocation
                 NativeType == typeof(System.SByte) ||
                 NativeType == typeof(System.Byte));
         }
+        public bool IsObject()
+        {
+            return NativeObject is object;
+        }
+        public bool IsNull()
+        {
+            return NativeObject == null;
+        }
         public static object Convert(Type nativeType, double number)
         {
             return System.Convert.ChangeType(number, nativeType);
+        }
+
+        public object addEventListener(string name, object target, Type helper)
+        {
+            string methodName = String.Format("add_{0}_{1}", name, NativeType.FullName.Replace(".", "_"));
+            Type[] types = { typeof(object) };
+            MethodInfo method = helper.GetRuntimeMethod(methodName, types);
+            object[] args = { target };
+            return method.Invoke(null, args);
+        }
+
+        public object removeEventListener(string name, object evt, object target, Type helper)
+        {
+            string methodName = String.Format("remove_{0}_{1}", name, NativeType.FullName.Replace(".", "_"));
+            Type[] types = { typeof(object), typeof(object) };
+            MethodInfo method = helper.GetRuntimeMethod(methodName, types);
+            object[] args = { evt, target };
+            return method.Invoke(null, args);
         }
 
         /*
@@ -142,14 +168,21 @@ namespace HyperloopInvocation
         }
         public static Method GetMethod(Type type, string name, [ReadOnlyArray()] Type[] parameters)
         {
-            MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
-            if (methodInfo == null)
+            try
+            {
+                MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
+                if (methodInfo == null)
+                {
+                    return null;
+                }
+                Method method = new Method(name);
+                method.methodInfo = methodInfo;
+                return method;
+            }
+            catch
             {
                 return null;
             }
-            Method method = new Method(name);
-            method.methodInfo = methodInfo;
-            return method;
         }
         public static IList<Method> GetMethods(Type type, string name, int expectedCount)
         {
@@ -158,7 +191,7 @@ namespace HyperloopInvocation
             var methods = type.GetRuntimeMethods();
             foreach (MethodInfo methodInfo in methods)
             {
-                if (methodInfo.Name == name && methodInfo.GetParameters().Length == expectedCount)
+                if (methodInfo.Name.Equals(name) && methodInfo.GetParameters().Length == expectedCount)
                 {
                     Method method = new Method(name);
                     method.methodInfo = methodInfo;
@@ -173,7 +206,7 @@ namespace HyperloopInvocation
             var methods = type.GetRuntimeMethods();
             foreach (MethodInfo methodInfo in methods)
             {
-                if (methodInfo.Name == name)
+                if (methodInfo.Name.Equals(name))
                 {
                     return true;
                 }
@@ -203,9 +236,13 @@ namespace HyperloopInvocation
             object value = propertyInfo.GetValue(obj);
             return new Instance(propertyInfo.PropertyType, value);
         }
-        public void SetValue(Instance instance, object value)
+        public void SetValue(Instance instance, Instance value)
         {
-            propertyInfo.SetValue(instance.NativeObject, value);
+            propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+        }
+        public Type GetPropertyType()
+        {
+            return propertyInfo.PropertyType;
         }
 
         public static Property GetProperty(Type type, string name)
