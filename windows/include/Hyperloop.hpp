@@ -12,10 +12,43 @@
 #include "Hyperloop_EXPORT.h"
 #include "Titanium/detail/TiBase.hpp"
 #include "Titanium/Module.hpp"
+#include <collection.h>
 
 using namespace HAL;
 
-class HYPERLOOP_EXPORT HyperloopBase : public Titanium::Module, public JSExport<HyperloopBase>
+namespace TitaniumWindows
+{
+	class HYPERLOOP_EXPORT Platform_Object : public Titanium::Module, public JSExport<Platform_Object>
+	{
+	public:
+		Platform_Object(const JSContext& ctx) TITANIUM_NOEXCEPT
+			: Titanium::Module(ctx, "Platform.Object")
+		{
+		}
+
+		virtual ~Platform_Object() = default;
+		Platform_Object(const Platform_Object&) = default;
+		Platform_Object& operator=(const Platform_Object&) = default;
+#ifdef TITANIUM_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
+		Platform_Object(Platform_Object&&) = default;
+		Platform_Object& operator=(Platform_Object&&) = default;
+#endif
+
+		::Platform::Object^ get_native_object() const TITANIUM_NOEXCEPT
+		{
+			return native_object__;
+		}
+
+		void set_native_object(::Platform::Object^ obj)
+		{
+			native_object__ = obj;
+		}
+	protected:
+		::Platform::Object^ native_object__{ nullptr };
+	};
+}
+
+class HYPERLOOP_EXPORT HyperloopBase : public TitaniumWindows::Platform_Object, public JSExport<HyperloopBase>
 {
 public:
 	HyperloopBase(const JSContext& js_context) TITANIUM_NOEXCEPT;
@@ -40,6 +73,7 @@ public:
 		instance__ = object;
 		if (instance__ != nullptr) {
 			type__ = instance__->NativeType;
+			native_object__ = instance__->NativeObject;
 		}
 	}
 
@@ -95,8 +129,9 @@ public:
 
 	bool HasProperty(const JSString& property_name) const;
 	JSValue GetProperty(const JSString& property_name) const;
+	bool SetProperty(const JSString& property_name, const JSValue&);
 
-	virtual ~HyperloopInstance() = default;
+	virtual ~HyperloopInstance();
 	HyperloopInstance(const HyperloopInstance&) = default;
 	HyperloopInstance& operator=(const HyperloopInstance&) = default;
 #ifdef TITANIUM_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
@@ -105,6 +140,13 @@ public:
 #endif
 
 	static void JSExportInitialize();
+
+	TITANIUM_FUNCTION_DEF(addEventListener);
+	TITANIUM_FUNCTION_DEF(removeEventListener);
+
+private:
+	Windows::Foundation::Collections::IMap<::Platform::String^, Windows::Foundation::EventRegistrationToken>^ tokens;
+	Windows::Foundation::Collections::IMap<::Platform::String^, TitaniumWindows_Hyperloop::Event^>^ events;
 };
 
 class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExport<HyperloopModule>
@@ -124,6 +166,7 @@ class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExpor
 
 		static JSValue Convert(const JSContext&, HyperloopInvocation::Instance^);
 		static HyperloopInvocation::Instance^ Convert(const JSContext&, const JSValue&, const Windows::UI::Xaml::Interop::TypeName);
+		static JSObject CreateObject(const JSContext&, HyperloopInvocation::Instance^);
 		
 		TITANIUM_PROPERTY_IMPL_DEF(bool, debug);
 
