@@ -284,7 +284,7 @@ exports.cliVersion = '>=3.2';
 						if (err) {
 							return cb(err);
 						}
-						jars.push(foundJars);
+						jars = jars.concat(foundJars);
 						cb();
 					});
 				}, next);
