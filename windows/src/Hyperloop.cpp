@@ -80,7 +80,7 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 		const auto expectedParams = ref new Platform::Array<TypeName>(argumentCount);
 		const TypeName nullType;
 		for (std::size_t i = 0; i < argumentCount; i++) {
-			expectedParams[i] = HyperloopModule::Convert(ctx, js_arguments[i], nullType)->NativeType;
+			expectedParams[i] = HyperloopModule::Convert(js_arguments[i], nullType)->NativeType;
 		}
 
 		auto method = Method::GetMethod(type__, functionName, expectedParams);
@@ -88,7 +88,7 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 			// When method is not found with given types, then try to get the method with matched argument count
 			// TODO: More precise method overloading detection with derived types etc
 			const auto methods = Method::GetMethods(type__, functionName, argumentCount);
-			if (methods->Size == 0) {
+			if (methods == nullptr || methods->Size == 0) {
 				detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", apiName__ + " is not found with the given argument list");
 			}
 			method = methods->GetAt(0);
@@ -96,7 +96,7 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 		const auto types = method->GetParameters();
 		const auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(argumentCount);
 		for (std::size_t i = 0; i < argumentCount; i++) {
-			args[i] = HyperloopModule::Convert(ctx, js_arguments[i], types[i]);
+			args[i] = HyperloopModule::Convert(js_arguments[i], types[i]);
 		}
 		try {
 			return HyperloopModule::Convert(ctx, method->Invoke(instance__, args));
@@ -131,8 +131,28 @@ void HyperloopInstance::JSExportInitialize()
 	JSExport<HyperloopInstance>::AddHasPropertyCallback(std::mem_fn(&HyperloopInstance::HasProperty));
 	JSExport<HyperloopInstance>::AddGetPropertyCallback(std::mem_fn(&HyperloopInstance::GetProperty));
 	JSExport<HyperloopInstance>::AddSetPropertyCallback(std::mem_fn(&HyperloopInstance::SetProperty));
+	TITANIUM_ADD_FUNCTION(HyperloopInstance, cast);
 	TITANIUM_ADD_FUNCTION(HyperloopInstance, addEventListener);
 	TITANIUM_ADD_FUNCTION(HyperloopInstance, removeEventListener);
+}
+
+TITANIUM_FUNCTION(HyperloopInstance, cast)
+{
+	if (arguments.size() == 0) {
+		return get_context().CreateNull();
+	}
+	const auto _0 = arguments.at(0);
+	if (_0.IsObject()) {
+		const auto obj = static_cast<JSObject>(_0);
+		const auto obj_ptr = obj.GetPrivate<HyperloopInstance>();
+		if (obj_ptr) {
+			obj_ptr->set_type(type__);
+		}
+		return obj;
+	} else {
+		return HyperloopModule::CreateObject(get_context(), HyperloopModule::Convert(_0, type__));
+	}
+	return _0;
 }
 
 TITANIUM_FUNCTION(HyperloopInstance, addEventListener)
@@ -146,8 +166,7 @@ TITANIUM_FUNCTION(HyperloopInstance, addEventListener)
 		const auto evt = static_cast<Event^>(instance__->addEventListener(name, instance__->NativeObject, TypeName(EventHelper::typeid)));
 		const auto token = evt->GotEvent += ref new HyperloopEventHandler([this](Event^ evt, Platform::Object^ e) {
 			const auto name = TitaniumWindows::Utility::ConvertString(evt->Name);
-			const auto type = TitaniumWindows_Hyperloop::TypeHelper::GetType(e->GetType()->FullName);
-			const auto object = HyperloopModule::CreateObject(get_context(), ref new HyperloopInvocation::Instance(type, e));
+			const auto object = HyperloopModule::CreateObject(get_context(), ref new HyperloopInvocation::Instance(e->GetType(), e));
 
 			fireEvent(name, object);
 		});
@@ -230,7 +249,7 @@ bool HyperloopInstance::SetProperty(const JSString& js_property_name, const JSVa
 	} else if (Property::HasProperty(type__, rt_name)) {
 		const auto prop = Property::GetProperty(type__, rt_name);
 		const auto expected = prop->GetPropertyType();
-		prop->SetValue(instance__, HyperloopModule::Convert(get_context(), value, expected));
+		prop->SetValue(instance__, HyperloopModule::Convert(value, expected));
 		return true;
 	}
 
@@ -264,7 +283,7 @@ void HyperloopInstance::postCallAsConstructor(const JSContext& js_context, const
 			if (expectedParams->Length > i) {
 				parameterType = expectedParams[i];
 			}
-			args[i] = HyperloopModule::Convert(js_context, js_arguments[i], parameterType);
+			args[i] = HyperloopModule::Convert(js_arguments[i], parameterType);
 		}
 		set_instance(HyperloopInvocation::Instance::New(type, args));
 	} catch (Platform::COMException^ e) {
@@ -367,14 +386,14 @@ JSValue HyperloopModule::Convert(const JSContext& js_context, HyperloopInvocatio
 	return js_context.CreateUndefined();
 }
 
-HyperloopInvocation::Instance^ HyperloopModule::Convert(const JSContext& js_context, const JSValue& value, const TypeName expected)
+HyperloopInvocation::Instance^ HyperloopModule::Convert(const JSValue& value, const TypeName expected)
 {	
 	if (value.IsBoolean()) {
 		return ref new HyperloopInvocation::Instance(TypeName(bool::typeid), static_cast<bool>(value));
 	} else if (value.IsNumber()) {
 		// When you have a clue about expected type
 		if (expected.Name != nullptr) {
-			return ref new HyperloopInvocation::Instance(expected, Instance::Convert(expected, static_cast<double>(value)));
+			return ref new HyperloopInvocation::Instance(expected, Instance::ConvertNumber(expected, static_cast<double>(value)));
 		}
 		return ref new HyperloopInvocation::Instance(TypeName(double::typeid), static_cast<double>(value));
 	} else if (value.IsString()) {

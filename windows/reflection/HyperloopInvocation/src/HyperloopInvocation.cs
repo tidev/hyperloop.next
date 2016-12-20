@@ -48,7 +48,7 @@ namespace HyperloopInvocation
         {
             return NativeObject == null;
         }
-        public static object Convert(Type nativeType, double number)
+        public static object ConvertNumber(Type nativeType, double number)
         {
             return System.Convert.ChangeType(number, nativeType);
         }
@@ -127,8 +127,17 @@ namespace HyperloopInvocation
      */
     public sealed class Method
     {
+        public static int HitCount { get; set;  }
+        public static int MissedCount { get; set; }
+        public static int CacheCount { get { return methodCache.Size(); } }
+        private static LRUCache<Type, LRUCache<string, LRUCache<int, IList<Method>>>> methodCache;
         public string Name { get; set; }
         private MethodInfo methodInfo;
+
+        static Method() {
+            methodCache = new LRUCache<Type, LRUCache<string, LRUCache<int, IList<Method>>>>();
+        }
+
         public Method(string name)
         {
             Name = name;
@@ -184,9 +193,67 @@ namespace HyperloopInvocation
                 return null;
             }
         }
+        private static bool TryGetCachedMethod(Type type, string name, int expectedCount, out IList<Method> cachedMethods)
+        {
+            LRUCache<string, LRUCache<int, IList<Method>>> cachedNames;
+            if (methodCache.TryGetValue(type, out cachedNames))
+            {
+                // Match method name
+                LRUCache<int, IList<Method>> cachedParams;
+                if (cachedNames.TryGetValue(name, out cachedParams))
+                {
+                    HitCount++;
+                    if (cachedParams == null)
+                    {
+                        // cachedParams can be null when we know there's no such method
+                        cachedMethods = null;
+                        return false;
+                    }
+
+                    // Match parameter count
+                    if (cachedParams.TryGetValue(expectedCount, out cachedMethods))
+                    {
+                        return true;
+                    }
+                }
+            }
+            MissedCount++;
+            cachedMethods = null;
+            return false;
+        }
+        private static void UpdateCache(Type type, string name, int expectedCount, IList<Method> methodList)
+        {
+            LRUCache<string, LRUCache<int, IList<Method>>> cachedNames;
+            LRUCache<int, IList<Method>> cachedParams = null;
+            if (methodCache.TryGetValue(type, out cachedNames))
+            {
+                cachedNames.TryGetValue(name, out cachedParams);
+                if (cachedParams == null)
+                {
+                    cachedParams = new LRUCache<int, IList<Method>>();
+                }
+            }
+            else
+            {
+                cachedNames  = new LRUCache<string, LRUCache<int, IList<Method>>>();
+                cachedParams = new LRUCache<int, IList<Method>>();
+            }
+
+            cachedParams.Add(expectedCount, methodList);
+            cachedNames.Add(name, cachedParams);
+            methodCache.Add(type, cachedNames);
+        }
         public static IList<Method> GetMethods(Type type, string name, int expectedCount)
         {
-            // TODO: Cache
+            //
+            // Check method cache first
+            //
+            IList<Method> cachedMethods;
+            if (TryGetCachedMethod(type, name, expectedCount, out cachedMethods))
+            {
+                return cachedMethods;
+            }
+
             IList<Method> methodList = new List<Method>();
             var methods = type.GetRuntimeMethods();
             foreach (MethodInfo methodInfo in methods)
@@ -198,11 +265,27 @@ namespace HyperloopInvocation
                     methodList.Add(method);
                 }
             }
+
+            UpdateCache(type, name, expectedCount, methodList);
+
             return methodList;
         }
         public static bool HasMethod(Type type, string name)
         {
-            // TODO: Cache
+            //
+            // Check method cache first
+            //
+            LRUCache<string, LRUCache<int, IList<Method>>> cached = null;
+            if (methodCache.TryGetValue(type, out cached))
+            {
+                LRUCache<int, IList<Method>> mCached;
+                if (cached.TryGetValue(name, out mCached))
+                {
+                    // This can be null when we know this method does not exist
+                    return mCached != null;
+                }
+            }
+
             var methods = type.GetRuntimeMethods();
             foreach (MethodInfo methodInfo in methods)
             {
@@ -211,6 +294,14 @@ namespace HyperloopInvocation
                     return true;
                 }
             }
+
+            // We can't find the method, then we marks it as "not available"
+            if (cached == null)
+            {
+                cached = new LRUCache<string, LRUCache<int, IList<Method>>>();
+            }
+            cached.Add(name, null);
+            methodCache.Add(type, cached);
             return false;
         }
     }
@@ -261,4 +352,109 @@ namespace HyperloopInvocation
             return GetProperty(type, name) != null;
         }
     }
+
+    class LRUCache<K, V>
+    {
+        public int Capacity { get; set; }
+        private Dictionary<K, Node> cache   = new Dictionary<K, Node>();
+        private LinkedList<Node>    lruList = new LinkedList<Node>();
+
+        public LRUCache()
+        {
+            Capacity = 100;
+        }
+
+        public LRUCache(int capacity)
+        {
+            Capacity = capacity;
+        }
+
+        public int Size()
+        {
+            return cache.Count;
+        }
+
+        public void Verify()
+        {
+            if (cache.Count != lruList.Count)
+            {
+                throw new Exception("HyperloopInvocation.LRUCache has invalid state.");
+            }
+        }
+
+        public bool ContainsKey(K key)
+        {
+            lock(cache)
+            {
+                return cache.ContainsKey(key);
+            }
+        }
+
+        public bool TryGetValue(K key, out V value)
+        {
+            lock (cache)
+            {
+                Verify();
+                Node node;
+                value = default(V);
+
+                if (!cache.TryGetValue(key, out node))
+                {
+                    return false;
+                }
+
+                value = node.Value;
+
+                lruList.Remove(node);
+                lruList.AddLast(node);
+                Verify();
+            }
+
+            return true;
+        }
+
+        public void Add(K key, V value)
+        {
+            lock (cache)
+            {
+                if (cache.Count >= Capacity)
+                {
+                    Purge();
+                }
+
+                Node node;
+                if (cache.TryGetValue(key, out node))
+                {
+                    // Remove existing value in case we already cached it
+                    lruList.Remove(node);
+                    cache.Remove(key);
+                }
+
+                node = new Node(key, value);
+                LinkedListNode<Node> lruNode = new LinkedListNode<Node>(node);
+                lruList.AddLast(lruNode);
+                cache.Add(key, node);
+            }
+        }
+
+        private void Purge()
+        {
+            var node = lruList.First;
+            cache.Remove(node.Value.Key);
+            lruList.RemoveFirst();
+        }
+
+        private class Node
+        {
+            public V Value   { get; set; }
+            public K Key     { get; set; }
+
+            public Node(K key, V value)
+            {
+                Key   = key;
+                Value = value;
+            }
+        }
+    }
+
 }
