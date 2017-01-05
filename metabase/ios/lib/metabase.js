@@ -557,12 +557,12 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 		// support for CocoaPods < 1.0
 		async.each(fs.readdirSync(buildOutDir), function (fn, cb) {
 			if (/\.a$/.test(fn) && fn.indexOf('libPods-') < 0) {
-				libs.push(libraryFilename);
+				libs.push(fn);
 			} else if (fs.statSync(path.join(buildOutDir, fn)).isDirectory()) {
 				// Since CocoaPods 1.0 the libraries are contained in subfolders
 				async.each(fs.readdirSync(path.join(buildOutDir, fn)), function(fn, cb) {
 					if (/\.a$/.test(fn)) {
-						libs.push(libraryFilename);
+						libs.push(fn);
 					}
 					cb();
 				});
