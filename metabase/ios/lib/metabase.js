@@ -178,6 +178,16 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 	var header = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.h');
 	var outfile = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.json');
 
+	// Foundation header always needs to be included
+	var absoluteFoundationHeaderRegex = /Foundation\.framework\/Headers\/Foundation\.h$/;
+	var systemFoundationHeaderRegex = /^[<"]Foundation\/Foundation\.h[<"]$/;
+	var isFoundationIncluded = includes.some(function(header) {
+		return systemFoundationHeaderRegex.test(header) || absoluteFoundationHeaderRegex.test(header);
+	});
+	if (!isFoundationIncluded) {
+		includes.unshift(path.join(sdkPath, 'System/Library/Frameworks/Foundation.framework/Headers/Foundation.h'));
+	}
+
 	// check for cached version and attempt to return if found
 	if (!force && fs.existsSync(header) && fs.existsSync(outfile)) {
 		try {
