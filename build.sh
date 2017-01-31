@@ -90,7 +90,6 @@ cd android
 mkdir -p ./lib
 rm -rf build/*
 rm -rf libs/*
-rm -rf dist
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
