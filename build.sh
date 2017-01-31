@@ -88,6 +88,9 @@ echo "Building Android module..."
 cd android
 #These dirs need to exist for TRAVIS CI. Only create if doesn't exist
 mkdir -p ./lib
+rm -rf build/*
+rm -rf libs/*
+rm -rf dist
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
@@ -107,6 +110,7 @@ cd ..
 
 echo "Building iOS module..."
 cd iphone
+rm -rf build
 rm -rf hyperloop-iphone-*.zip
 ./build.sh
 if [ $? -ne 0 ];
