@@ -615,7 +615,7 @@ GETVALUEFMT(NSString *, SEL, selector, nil, NSStringFromSelector);
 	if ([_encoding characterAtIndex:0] == '^') {
 		return _pointer;
 	}
-	void *ptr;
+	void *ptr = NULL;
 	[_value getValue:ptr];
 	return ptr;
 }
