@@ -9,6 +9,8 @@ VERSION=`grep "^version:" manifest | cut -c 10-`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
 
 XC=`which xcpretty`
+CHECK="✓ "
+
 if [ $? -eq 1 ];
 then
 	gem install xcpretty
@@ -27,8 +29,6 @@ then
 	fi
 fi
 
-echo "Building ..."
-
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 mkdir -p build/zip/plugins/hyperloop/hooks/ios
 mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
@@ -39,18 +39,20 @@ cd $CWD
 cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 
 # Build for the Apple JavaScriptCore built-in
+echo "\nBuilding for JSCore ..."
 xcodebuild clean >/dev/null
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a >/dev/null 2>&1
 
 # Build for the Titanium custom JavaScriptCore
+echo "\nBuilding for TiCore ..."
 xcodebuild clean >/dev/null
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
 
-echo "Packaging ..."
+echo "\nPackaging iOS module..."
 # make sure to update the plugin with the latest version in it's package.json
 node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/package.json
 
@@ -85,5 +87,5 @@ zip -q -r $CWD/hyperloop-iphone-$VERSION.zip * --exclude=*test* --exclude=*.DS_S
 
 unset TITANIUM_SDK
 
-echo "Done...!"
+echo "$CHECK Done packaging iOS module!\n"
 exit 0

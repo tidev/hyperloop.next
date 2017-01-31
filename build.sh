@@ -117,7 +117,7 @@ cp -R build/zip/modules/ ../dist/modules
 cp -R build/zip/plugins/ ../dist/plugins/
 cd ..
 
-echo "Creating combined zip with iOS and Android"
+echo "Creating combined zip with iOS and Android ..."
 cd dist
 mkdir -p temp
 cp -R plugins/hyperloop/* temp
