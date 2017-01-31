@@ -180,7 +180,7 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 
 	// Foundation header always needs to be included
 	var absoluteFoundationHeaderRegex = /Foundation\.framework\/Headers\/Foundation\.h$/;
-	var systemFoundationHeaderRegex = /^[<"]Foundation\/Foundation\.h[<"]$/;
+	var systemFoundationHeaderRegex = /^[<"]Foundation\/Foundation\.h[>"]$/;
 	var isFoundationIncluded = includes.some(function(header) {
 		return systemFoundationHeaderRegex.test(header) || absoluteFoundationHeaderRegex.test(header);
 	});

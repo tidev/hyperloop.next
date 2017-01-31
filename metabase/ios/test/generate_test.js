@@ -276,7 +276,7 @@ describe('generate', function () {
 				should(instance.className).be.equal('NSString');
 				should(instance.$native).be.an.object;
 
-				// ... and if INPreferences is genreated correctly, which does not work without
+				// ... and if INPreferences is generated correctly, which does not work without
 				// explicitly including Foundation framework
 				var INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
 				should(INPreferences).be.a.function;
