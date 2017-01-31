@@ -141,6 +141,7 @@ public:
 
 	static void JSExportInitialize();
 
+	TITANIUM_FUNCTION_DEF(cast);
 	TITANIUM_FUNCTION_DEF(addEventListener);
 	TITANIUM_FUNCTION_DEF(removeEventListener);
 
@@ -165,7 +166,7 @@ class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExpor
 		static void JSExportInitialize();
 
 		static JSValue Convert(const JSContext&, HyperloopInvocation::Instance^);
-		static HyperloopInvocation::Instance^ Convert(const JSContext&, const JSValue&, const Windows::UI::Xaml::Interop::TypeName);
+		static HyperloopInvocation::Instance^ Convert(const JSValue&, const Windows::UI::Xaml::Interop::TypeName);
 		static JSObject CreateObject(const JSContext&, HyperloopInvocation::Instance^);
 		
 		TITANIUM_PROPERTY_IMPL_DEF(bool, debug);
