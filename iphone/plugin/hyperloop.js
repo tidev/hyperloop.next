@@ -520,6 +520,24 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}.bind(this), callback);
 	}
 
+	var extraHeaderSearchPaths = null;
+	if (this.hasCocoaPods) {
+		extraHeaderSearchPaths = [];
+		if (this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS) {
+			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
+			var paths = this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS.split(" ");
+			paths.forEach(function(path) {
+				if (path === '$(inherited)') {
+					return;
+				}
+
+				var headerSearchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				headerSearchPath = headerSearchPath.replace(/"/g, '');
+				extraHeaderSearchPaths.push(headerSearchPath);
+			});
+		}
+	}
+
 	// generate the metabase from our includes
 	hm.metabase.generateMetabase(
 		this.hyperloopBuildDir,
@@ -529,7 +547,8 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		Object.keys(this.includes),
 		false, // don't exclude system libraries
 		generateMetabaseCallback.bind(this),
-		this.builder.forceCleanBuild || this.forceMetabase
+		this.builder.forceCleanBuild || this.forceMetabase,
+		extraHeaderSearchPaths
 	);
 };
 
