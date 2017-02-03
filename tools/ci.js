@@ -3,12 +3,11 @@
  * Copyright (c) 2015 by Appcelerator, Inc. All Rights Reserved.
  */
 var path = require('path'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	async = require('async'),
 	http = require('http'),
 	request = require('request'),
 	colors = require('colors'),
-	wrench = require('wrench'),
 	temp = require('temp'),
 	appc = require('node-appc'),
 	exec = require('child_process').exec,
@@ -30,7 +29,7 @@ function downloadURL(url, callback) {
 
 	var tempName = temp.path({ suffix: '.zip' }),
 		tempDir = path.dirname(tempName);
-	fs.existsSync(tempDir) || wrench.mkdirSyncRecursive(tempDir);
+	fs.existsSync(tempDir) || fs.removeSync(tempDir);
 
 	var tempStream = fs.createWriteStream(tempName),
 		req = request({ url: url });
@@ -414,9 +413,9 @@ function build(branch, callback) {
 	async.series([
 		function (next) {
 			if (fs.existsSync(buildTempDir)) {
-				wrench.rmdirSyncRecursive(buildTempDir);
+				fs.removeSync(buildTempDir);
 			}
-			wrench.mkdirSyncRecursive(buildTempDir);
+			fs.mkdirsSync(buildTempDir);
 			next();
 		},
 		// Install latest Titanium SDK
@@ -510,7 +509,7 @@ function build(branch, callback) {
 		writeAndroidPluginPackage,
 		runBuildScript,
 		function (next) {
-			wrench.rmdirSyncRecursive(buildTempDir);
+			fs.removeSync(buildTempDir);
 			next();
 		},
 		// TODO Remove the Titanium SDK we installed to avoid cluttering up HDD?

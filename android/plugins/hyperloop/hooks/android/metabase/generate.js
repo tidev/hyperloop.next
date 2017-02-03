@@ -2,8 +2,7 @@
  * Android hyperloop JS proxy generation.
  */
 var metabase = require('./metabase'),
-	fs = require('fs'),
-	wrench = require('wrench'),
+	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
 	ejs = require('ejs'),
@@ -170,7 +169,7 @@ function generateFromJSON(dir, metabaseJSON, classes, callback) {
 		packages = {};
 
 	if (fs.existsSync(dir)) {
-		wrench.rmdirSyncRecursive(dir);
+		fs.removeSync(dir);
 	}
 	fs.mkdirSync(dir);
 

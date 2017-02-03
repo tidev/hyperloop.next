@@ -5,12 +5,11 @@
 var spawn = require('child_process').spawn,
 	exec = require('child_process').exec,
 	path = require('path'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	plist = require('plist'),
 	async = require('async'),
 	semver = require('semver'),
 	crypto = require('crypto'),
-	wrench = require('wrench'),
 	chalk = require('chalk'),
 	util = require('./generate/util'),
 	swiftlilb = require('./swift'),
@@ -504,10 +503,10 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
 						var buf = fs.readFileSync(file);
 						var out = path.join(appDir, rel);
 						var d = path.dirname(out);
-						if (!fs.existsSync(d)) {
-							wrench.mkdirSyncRecursive(d);
-						}
+						
+						fs.ensureDirSync(d);
 						util.logger.trace('Copying Resource', chalk.cyan(file), 'to', chalk.cyan(out));
+						
 						return fs.writeFile(out, buf, cb);
 					}
 				}
@@ -668,9 +667,9 @@ function runPodInstallIfRequired(basedir, callback) {
 		Podfile = path.join(basedir, 'Podfile'),
 		cacheToken =  crypto.createHash('md5').update(fs.readFileSync(Podfile)).digest('hex'),
 		cacheFile = path.join(basedir, 'build', '.podcache');
-	if (!fs.existsSync(path.dirname(cacheFile))) {
-		wrench.mkdirSyncRecursive(path.dirname(cacheFile));
-	}
+
+	fs.ensureDirSync(path.dirname(cacheFile));
+
 	if (!fs.existsSync(Pods) || !fs.existsSync(cacheFile) || (fs.existsSync(cacheFile) && fs.readFileSync(cacheFile).toString() !== cacheToken)) {
 		async.waterfall([
 			isPodInstalled,

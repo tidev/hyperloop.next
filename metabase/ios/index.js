@@ -5,7 +5,7 @@
 module.exports = require('./lib');
 
 // map these so that the plugin can use them
-['chalk', 'wrench', 'async'].forEach(function (k) {
+['chalk', 'async'].forEach(function (k) {
 	Object.defineProperty(module.exports, k, {
 		get: function () {
 			return require(k);
