@@ -6,6 +6,7 @@ var should = require('should'),
 	generator = require('../lib/generate/index'),
 	util = require('../lib/generate/util'),
 	nodePath = require('path'),
+	wrench = require('wrench'),
 	buildDir = nodePath.join(__dirname, '..', 'build', 'hyperloop');
 
 function Hyperloop () {
@@ -71,13 +72,14 @@ describe('generate', function () {
 	beforeEach(function () {
 		global.Hyperloop = Hyperloop;
 		global.HyperloopObject = HyperloopObject;
+
+		if (fs.existsSync(buildDir)) {
+			wrench.rmdirSyncRecursive(buildDir);
+		}
+		wrench.mkdirSyncRecursive(buildDir);
 	});
 
 	before(function () {
-
-		!fs.existsSync(nodePath.dirname(buildDir)) && fs.mkdir(nodePath.dirname(buildDir));
-		!fs.existsSync(buildDir) && fs.mkdir(buildDir);
-
 		var proxyCount = 0;
 		var Module = require('module').Module;
 		var old_nodeModulePaths = Module._nodeModulePaths;
@@ -158,6 +160,14 @@ describe('generate', function () {
 
 		// setup the node path to resolve files that we generated
 		addPath(nodePath.dirname(buildDir));
+
+		var originalRequire = Module.prototype.require;
+		Module.prototype.require = function(path) {
+			if (/^\/hyperloop/.test(path)) {
+				path = path.slice(1);
+			}
+			return originalRequire.call(this, path);
+		};
 	});
 
 	it('should generate UIView', function (done) {
@@ -239,6 +249,38 @@ describe('generate', function () {
 						true
 					]
 				});
+				done();
+			});
+		});
+	});
+
+	it('should always generate Foundation', function (done) {
+		var includes = [
+			'<Intents/INPreferences.h>'
+		];
+		generateMetabase(includes, function (err, json, outfile) {
+			should(err).not.be.ok;
+			should(json).be.ok;
+			var state = generator.generateState();
+			generator.generate('Foundation', buildDir, outfile, state, function (err) {
+				should(err).not.be.ok;
+				// Check some Foundation basics...
+				var Foundation = require(nodePath.join(buildDir, 'foundation/foundation.js'));
+				should(Foundation).be.a.function;
+				should(Foundation.NSUTF8StringEncoding).be.a.number;
+				var NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
+				should(NSString).be.a.function;
+				should(NSString.name).be.equal('NSString');
+				var instance = new NSString();
+				should(instance).be.an.object;
+				should(instance.className).be.equal('NSString');
+				should(instance.$native).be.an.object;
+
+				// ... and if INPreferences is generated correctly, which does not work without
+				// explicitly including Foundation framework
+				var INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
+				should(INPreferences).be.a.function;
+				should(INPreferences.siriAuthorizationStatus).be.a.function;
 				done();
 			});
 		});
