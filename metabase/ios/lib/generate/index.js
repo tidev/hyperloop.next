@@ -43,16 +43,25 @@ function merge (src, dest) {
 	}
 }
 
-function superClassImplementsProxy (json, cls, proto) {
-	var prev;
-	while (cls && cls.superclass) {
-		prev = cls;
-		cls = cls.superclass;
-		if (cls) {
-			cls = json.classes[cls];
+/**
+ * Checks if a parent class in the inheritance path already implemented
+ * the given protocol.
+ *
+ * @param {Object} json Native code metabase
+ * @param {Object} cls Class to traverse upwards from
+ * @param {String} proto The protocoll to look for in parent classes
+ * @return {bool} True if protocol already implemented in a parent class, false otherwise.
+ */
+function isProtocolImplementedBySuperClass (json, cls, proto) {
+	var currentClass = cls.superclass;
+	while (currentClass) {
+		if (currentClass.protocols && currentClass.protocols.indexOf(proto) !== -1) {
+			return true;
 		}
+		currentClass = json.classes[currentClass.superclass];
 	}
-	return (prev && prev.protocols && prev.protocols.indexOf(proto) !== -1);
+
+	return false;
 }
 
 function generateBuiltins (json, callback) {
@@ -155,7 +164,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 			// add protocols
 			if (cls.protocols && cls.protocols.length) {
 				cls.protocols.forEach(function (p) {
-					if (superClassImplementsProxy(json, cls, p)) {
+					if (isProtocolImplementedBySuperClass(json, cls, p)) {
 						return;
 					}
 					var protocol = json.protocols[p];
