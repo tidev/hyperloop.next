@@ -49,16 +49,16 @@ function merge (src, dest) {
  *
  * @param {Object} json Native code metabase
  * @param {Object} cls Class to traverse upwards from
- * @param {String} proto The protocoll to look for in parent classes
+ * @param {String} proto The protocol to look for in parent classes
  * @return {bool} True if protocol already implemented in a parent class, false otherwise.
  */
 function isProtocolImplementedBySuperClass (json, cls, proto) {
-	var currentClass = cls.superclass;
-	while (currentClass) {
-		if (currentClass.protocols && currentClass.protocols.indexOf(proto) !== -1) {
+	var parentClass = cls && cls.superclass;
+	while (parentClass) {
+		if (parentClass.protocols && parentClass.protocols.indexOf(proto) !== -1) {
 			return true;
 		}
-		currentClass = json.classes[currentClass.superclass];
+		parentClass = parentClass.superclass ? json.classes[parentClass.superclass] : null;
 	}
 
 	return false;
