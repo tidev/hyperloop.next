@@ -46,7 +46,7 @@ xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITION
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a >/dev/null 2>&1
 
 # Build for the Titanium custom JavaScriptCore
-echo "\nBuilding for TiCore ..."
+echo "\nBuilding for TiJSCore ..."
 xcodebuild clean >/dev/null
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
