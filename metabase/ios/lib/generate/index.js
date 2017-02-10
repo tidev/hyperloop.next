@@ -64,6 +64,65 @@ function isProtocolImplementedBySuperClass (json, cls, proto) {
 	return false;
 }
 
+/**
+ * Iterates over all given protocols, incorporating one protocol into another by
+ * merging their methods and properties.
+ *
+ * @param {Object} protocols Object with protocols from the metabase
+ */
+function processIncorporatedProtocols (protocols) {
+	var mergedProtocols = [];
+	/**
+	 * Recursively merges a protocol with all the protocols that it incorporates
+	 *
+	 * @param {Object} protocol A protocol
+	 * @param {Number} logIntendationLevel Intendation level for debugging messages
+	 */
+	function mergeWithParentProtocols(protocol, logIntendationLevel) {
+		var logIntendationCharacter = "  ";
+		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
+		var parentProtocols = protocol.protocols;
+		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
+		util.logger.trace(logIntendation + 'Processing incorporated protocols for ' + protocolSignature);
+		logIntendation = logIntendationCharacter.repeat(logIntendationLevel);
+
+		if (mergedProtocols.indexOf(protocol.name) !== -1) {
+			util.logger.trace(logIntendation + protocol.name + ' was already merged with all protocols it incorporates.');
+			return;
+		}
+		if (!parentProtocols) {
+			util.logger.trace(logIntendation + protocol.name + ' does not incoporates any other protocols.');
+			mergedProtocols.push(protocol.name);
+			return;
+		}
+
+		util.logger.trace(logIntendation + 'Iterating over incoporated protocols of ' + protocol.name);
+		logIntendationLevel++;
+		protocol.protocols.forEach(function (parentProtocolName) {
+			if (protocol.name === parentProtocolName) {
+				util.logger.trace(logIntendation + 'Invalid protocol meta information. ' + protocol.name.red + ' cannot have itself as parent, skipping.');
+				return;
+			}
+			var parentProtocol = protocols[parentProtocolName];
+			mergeWithParentProtocols(parentProtocol, logIntendationLevel);
+
+			util.logger.trace(logIntendation + 'Merging ' + parentProtocol.name.cyan + ' => ' + protocol.name.cyan);
+			protocol.properties = protocol.properties || {};
+			protocol.methods = protocol.methods || {};
+			merge(parentProtocol.properties, protocol.properties);
+			merge(parentProtocol.methods, protocol.methods);
+		});
+
+		mergedProtocols.push(protocol.name);
+	}
+
+	Object.keys(protocols).forEach(function (protocolName) {
+		var protocol = protocols[protocolName];
+		var logIntendationLevel = 0;
+		mergeWithParentProtocols(protocol, logIntendationLevel);
+	});
+}
+
 function generateBuiltins (json, callback) {
 	var dir = path.join(__dirname, '..', '..', 'templates', 'builtins');
 	fs.readdir(dir, function (err, files) {
@@ -155,6 +214,8 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 			}
 		}
 
+		processIncorporatedProtocols(json.protocols);
+
 		// classes
 		Object.keys(json.classes).forEach(function (k) {
 			var cls = json.classes[k];
@@ -169,6 +230,8 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 					}
 					var protocol = json.protocols[p];
 					if (protocol) {
+						cls.properties = cls.properties || {};
+						cls.methods = cls.methods || {};
 						merge(protocol.properties, cls.properties);
 						merge(protocol.methods, cls.methods);
 					}
