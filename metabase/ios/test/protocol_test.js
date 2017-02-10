@@ -246,25 +246,25 @@ describe('protocol', function () {
 				thirdparty: true
 			};
 			should(json).have.property('protocols', {
-		    BaseProtocol: baseProtocol,
-		    MyProtocol: {
-		      filename: helper.getFixture('protocol_inheritance.h'),
-		      framework: 'fixtures',
-		      line: '8',
-		      methods: {
-		        c: {
-		          arguments: [],
-		          encoding: 'v16@0:8',
-		          instance: true,
-		          name: 'c',
-		          returns: { encoding: 'v', type: 'void', value: 'void' },
-		          selector: 'c'
-		        }
-		      },
-		      name: 'MyProtocol',
-		      protocols: [ 'BaseProtocol' ],
-		      thirdparty: true
-		    }
+				BaseProtocol: baseProtocol,
+				MyProtocol: {
+					filename: helper.getFixture('protocol_inheritance.h'),
+					framework: 'fixtures',
+					line: '8',
+					methods: {
+						c: {
+							arguments: [],
+							encoding: 'v16@0:8',
+							instance: true,
+							name: 'c',
+							returns: { encoding: 'v', type: 'void', value: 'void' },
+							selector: 'c'
+						}
+					},
+					name: 'MyProtocol',
+					protocols: [ 'BaseProtocol' ],
+					thirdparty: true
+				}
 			});
 
 			var generate = rewire('../lib/generate/index');
@@ -273,56 +273,56 @@ describe('protocol', function () {
 			should(json).have.property('protocols', {
 				BaseProtocol: baseProtocol,
 				MyProtocol: {
-		      filename: helper.getFixture('protocol_inheritance.h'),
-		      framework: 'fixtures',
-		      line: '8',
+					filename: helper.getFixture('protocol_inheritance.h'),
+					framework: 'fixtures',
+					line: '8',
 					methods: {
-			      a: {
-			        arguments: [],
-			        encoding: 'f16@0:8',
-			        instance: true,
-			        name: 'a',
-			        returns: { encoding: 'f', type: 'float', value: 'float' },
-			        selector: 'a'
-			      },
-			      b: {
-			        arguments: [],
-			        encoding: 'v16@0:8',
-			        instance: true,
-			        name: 'b',
-			        returns: { encoding: 'v', type: 'void', value: 'void' },
-			        selector: 'b'
-			      },
-			      c: {
-			        arguments: [],
-			        encoding: 'v16@0:8',
-			        instance: true,
-			        name: 'c',
-			        returns: { encoding: 'v', type: 'void', value: 'void' },
-			        selector: 'c'
-			      },
-			      'setA:': {
-			        arguments: [
-			          { encoding: 'f', name: 'a', type: 'float', value: 'float' }
-			        ],
-			        encoding: 'v20@0:8f16',
-			        instance: true,
-			        name: 'setA',
-			        returns: { encoding: 'v', type: 'void', value: 'void' },
-			        selector: 'setA:'
-			      }
-			    },
-			    name: 'MyProtocol',
-			    properties: {
-			      a: {
-			        name: 'a',
-			        optional: false,
-			        type: { type: 'float', value: 'float' }
-			      }
-			    },
-			    protocols: [ 'BaseProtocol' ],
-			    thirdparty: true
-		    }
+						a: {
+							arguments: [],
+							encoding: 'f16@0:8',
+							instance: true,
+							name: 'a',
+							returns: { encoding: 'f', type: 'float', value: 'float' },
+							selector: 'a'
+						},
+						b: {
+							arguments: [],
+							encoding: 'v16@0:8',
+							instance: true,
+							name: 'b',
+							returns: { encoding: 'v', type: 'void', value: 'void' },
+							selector: 'b'
+						},
+						c: {
+							arguments: [],
+							encoding: 'v16@0:8',
+							instance: true,
+							name: 'c',
+							returns: { encoding: 'v', type: 'void', value: 'void' },
+							selector: 'c'
+						},
+						'setA:': {
+							arguments: [
+								{ encoding: 'f', name: 'a', type: 'float', value: 'float' }
+							],
+							encoding: 'v20@0:8f16',
+							instance: true,
+							name: 'setA',
+							returns: { encoding: 'v', type: 'void', value: 'void' },
+							selector: 'setA:'
+						}
+					},
+					name: 'MyProtocol',
+					properties: {
+						a: {
+							name: 'a',
+							optional: false,
+							type: { type: 'float', value: 'float' }
+						}
+					},
+					protocols: [ 'BaseProtocol' ],
+					thirdparty: true
+				}
 			});
 
 			done();
