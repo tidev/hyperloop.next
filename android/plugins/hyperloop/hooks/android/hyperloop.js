@@ -97,9 +97,7 @@ exports.cliVersion = '>=3.2';
 
 		// create a temporary hyperloop directory
 		hyperloopBuildDir = path.join(buildDir, 'hyperloop', 'android');
-		if (!afs.exists(hyperloopBuildDir)) {
-			fs.mkdirsSync(hyperloopBuildDir);
-		}
+		fs.ensureDirSync(hyperloopBuildDir);
 
 		// check to make sure the hyperloop module is actually configured
 		var moduleFound = builder.modules.map(function (i) {

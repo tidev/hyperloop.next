@@ -29,7 +29,8 @@ function downloadURL(url, callback) {
 
 	var tempName = temp.path({ suffix: '.zip' }),
 		tempDir = path.dirname(tempName);
-	fs.existsSync(tempDir) || fs.removeSync(tempDir);
+	
+	fs.ensureDirSync(tempDir);
 
 	var tempStream = fs.createWriteStream(tempName),
 		req = request({ url: url });
@@ -415,7 +416,7 @@ function build(branch, callback) {
 			if (fs.existsSync(buildTempDir)) {
 				fs.removeSync(buildTempDir);
 			}
-			fs.mkdirsSync(buildTempDir);
+			fs.emptyDirSync(buildTempDir);
 			next();
 		},
 		// Install latest Titanium SDK

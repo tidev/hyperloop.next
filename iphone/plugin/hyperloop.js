@@ -472,7 +472,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		return callback();
 	}
 
-	fs.existsSync(this.hyperloopJSDir) || fs.mkdirsSync(this.hyperloopJSDir);
+	fs.ensureDirSync(this.hyperloopJSDir);
 
 	if (this.builder.forceCleanBuild || this.forceMetabase) {
 		this.logger.trace('Forcing a metabase rebuild');

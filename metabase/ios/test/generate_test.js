@@ -72,10 +72,7 @@ describe('generate', function () {
 		global.Hyperloop = Hyperloop;
 		global.HyperloopObject = HyperloopObject;
 
-		if (fs.existsSync(buildDir)) {
-			fs.removeSync(buildDir);
-		}
-		fs.mkdirsSync(buildDir);
+		fs.emptyDirSync(buildDir);
 	});
 
 	before(function () {
