@@ -521,22 +521,29 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	}
 
 	var extraHeaderSearchPaths = [];
+	var extraFrameworkSearchPaths = [];
 	if (this.hasCocoaPods) {
-		if (this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS) {
+		var addSearchPathsFromCocoaPods = function (target, source) {
+			if (!source) {
+				return;
+			}
+
 			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
-			var paths = this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS.split(" ");
+			var paths = source.split(" ");
 			paths.forEach(function(path) {
 				if (path === '$(inherited)') {
 					return;
 				}
 
-				var headerSearchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
-				headerSearchPath = headerSearchPath.replace(/"/g, '');
-				extraHeaderSearchPaths.push(headerSearchPath);
+				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				searchPath = searchPath.replace(/"/g, '');
+				target.push(searchPath);
 			});
-		}
+		}.bind(this);
+
+		addSearchPathsFromCocoaPods(extraHeaderSearchPaths, this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS);
+		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
 	}
-	var extraFrameworkSearchPaths = [];
 	if (this.hyperloopConfig.ios.thirdparty) {
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
 			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
