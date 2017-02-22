@@ -23,7 +23,8 @@ function makeStruct (json, struct) {
 		},
 		framework: struct.framework,
 		filename: struct.filename,
-		imports: {}
+		imports: {},
+		renderedImports: ''
 	};
 
 	var c = 0;
@@ -52,7 +53,7 @@ function makeStruct (json, struct) {
 		}
 	});
 	entry.class.encoding += '}';
-	entry.imports = util.makeImports(json, entry.imports);
+	entry.renderedImports = util.makeImports(json, entry.imports);
 	return entry;
 }
 
@@ -60,10 +61,7 @@ function makeStruct (json, struct) {
  * generate a struct file
  */
 function generate (dir, json, struct) {
-	var output = util.generateTemplate('struct', {
-		data: makeStruct(json, struct)
-	});
-	util.generateFile(dir, struct.name, struct, output);
+	return makeStruct(json, struct);
 }
 
 exports.generate = generate;

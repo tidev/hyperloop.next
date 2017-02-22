@@ -19,6 +19,7 @@ function makeModule (json, module, state) {
 		framework: module.framework,
 		filename: module.filename,
 		imports: {},
+		renderedImports: '',
 		frameworks: module.frameworks || {}
 	};
 	// filter static variables
@@ -56,7 +57,7 @@ function makeModule (json, module, state) {
 		}
 	});
 
-	entry.imports = util.makeImports(json, entry.imports);
+	entry.renderedImports = util.makeImports(json, entry.imports);
 	return entry;
 }
 
@@ -80,28 +81,9 @@ function generate (dir, json, mod, state) {
 		} else {
 			m.frameworks[mod.framework] = 1;
 		}
-		var output = util.generateTemplate('module.m', {
-			data: m
-		});
-		util.generateFile(dir, mod.name, mod, output, '.m');
 	}
 
-	// generate the JS module
-	var jsoutput = util.generateTemplate('module', {
-		data: m
-	});
-
-	// if we found a Class the same name of the Module/Framework, we will just
-	// append the generated module to the end of the file instead of overwriting
-	// the existing one
-	if (found) {
-		var fn = path.join(dir, mod.framework, mod.name + '.js');
-		var buf = fs.readFileSync(fn);
-		buf += jsoutput;
-		fs.writeFileSync(fn, buf);
-	} else {
-		util.generateFile(dir, mod.name, mod, jsoutput);
-	}
+	return m;
 }
 
 exports.generate = generate;
