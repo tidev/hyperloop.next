@@ -34,7 +34,7 @@ namespace hyperloop {
 				std::cerr << "not handled, struct: " << displayName << " kind: " << kind << std::endl;
 				std::map<std::string, std::string> location;
 				getSourceLocation(cursor, structDef->getContext(), location);
-				std::cout << "struct: " << displayName << " kind: " << kind << ", " << hyperloop::toJSON(location) << std::endl;
+				std::cerr << "struct: " << displayName << " kind: " << kind << ", " << hyperloop::toJSON(location) << std::endl;
 				break;
 			}
 		}
