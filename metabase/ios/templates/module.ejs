@@ -32,7 +32,7 @@ function <%= data.class.name %> () {
 <% if (data.class.properties.length || data.class.class_methods.length || Object.keys(data.class.static_variables).length) { -%>
 function $initialize () {
 	$imports = {};
-<%- data.imports %>
+<%- data.renderedImports %>
 
 	$class = Hyperloop.createProxy({
 		class: 'Hyperloop<%= data.class.name %>',
