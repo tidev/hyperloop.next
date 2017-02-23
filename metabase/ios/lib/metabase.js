@@ -540,13 +540,9 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 			'-alltargets',
 			'IPHONEOS_DEPLOYMENT_TARGET=' + minSDKVersion,
 			'-sdk', sdk,
-			'SYMROOT=' + productsDirectory
+			'SYMROOT=' + productsDirectory,
+			'ONLY_ACTIVE_ARCH=NO'
 		];
-	if (builder.simHandle) {
-		// Manually set the arch for simulator builds since we cannot use -destination
-		// because the Pods project has no scheme.
-		args.push('-arch', process.arch === 'x64' ? 'x86_64' : 'i386');
-	}
 	var buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
 		runDir = path.join(basedir, 'Pods'),
 		child = spawn(xcodesettings.xcodebuild, args, {cwd:runDir});
