@@ -95,7 +95,7 @@ class CodeGenerator {
 				usedClasses[className] = this.sourceSet.classes[className];
 			} else {
 				var fqcn = classInfo.framework +  '/' + classInfo.class.name;
-				util.logger.trace(chalk.gray('exlcuding class ') + chalk.green(fqcn));
+				util.logger.trace(chalk.gray('Excluding class ') + chalk.green(fqcn));
 			}
 		});
 
@@ -126,7 +126,7 @@ class CodeGenerator {
 				}
 				throw new Error(importInfo.name + ' not found!');
 			}
-			util.logger.trace(chalk.gray('adding missing import ') + chalk.green(classInfo.class.name));
+			util.logger.trace(chalk.gray('Reintegrating previously excluded import ') + chalk.green(classInfo.class.name));
 			usedClasses[importInfo.name] = classInfo;
 			enqueMissingImports(classInfo);
 		}
@@ -135,12 +135,12 @@ class CodeGenerator {
 	}
 
 	/**
-	 * Generates the source code files of Hyperloop JS proxies for classes.
+	 * Generates the source code files of Hyperloop JS wrappers for classes.
 	 *
 	 * @param {String} outputPath Path where to save source code files to
 	 */
 	generateClasses(outputPath) {
-		util.logger.trace('Generating Hyperloop JS proxies for native classes');
+		util.logger.trace('Generating Hyperloop JS wrappers for native classes');
 		Object.keys(this.sourceSet.classes).forEach((className) => {
 			var classInfo = this.sourceSet.classes[className];
 			var code = util.generateTemplate('class', {
@@ -152,29 +152,29 @@ class CodeGenerator {
 	}
 
 	/**
-	 * Generates the source code files of Hyperloop JS proxies for structs.
+	 * Generates the source code files of Hyperloop JS wrappers for structs.
 	 *
 	 * @param {String} outputPath Path where to save source code files to
 	 */
 	generateStructs(outputPath) {
-		util.logger.trace('Generating Hyperloop JS proxies for native structs');
+		util.logger.trace('Generating Hyperloop JS wrappers for native structs');
 		Object.keys(this.sourceSet.structs).forEach((structName) => {
 			var structInfo = this.sourceSet.structs[structName];
 			var code = util.generateTemplate('struct', {
 				data: structInfo
 			});
-			util.generateFile(outputPath, structInfo.name, this.json.structs[structName], code);
+			util.generateFile(outputPath, 'struct', this.json.structs[structName], code);
 		});
 	}
 
 	/**
-	 * Generates the source code files of Hyperloop JS proxies and native heloper
+	 * Generates the source code files of Hyperloop JS wrappers and native helper
 	 * code for modules.
 	 *
 	 * @param {String} outputPath Path where to save source code files to
 	 */
 	generateModules(outputPath) {
-		util.logger.trace('Generating Hyperloop JS proxies and native helpers for modules');
+		util.logger.trace('Generating Hyperloop JS wrappers and native helpers for modules');
 		Object.keys(this.sourceSet.modules).forEach((moduleName) => {
 			var moduleInfo = this.modules[moduleName];
 			var moduleSourceInfo = this.sourceSet.modules[moduleName];

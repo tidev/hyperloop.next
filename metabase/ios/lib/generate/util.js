@@ -867,7 +867,7 @@ function generateFile (dir, name, obj, out, ext) {
 	if (obj.framework.indexOf('/') >= 0) {
 		obj.framework = path.basename(obj.framework);
 	}
-	logger.info(chalk.gray('generating ' + name), chalk.green(obj.framework + '/' + obj.name));
+	logger.info(chalk.gray('Generating ' + name), chalk.green(obj.framework + '/' + obj.name));
 	var fdir = path.join(dir, obj.framework.toLowerCase());
 	var fn = path.join(fdir, obj.name.toLowerCase() + (ext || '.js'));
 	if (!fs.existsSync(fdir)) {
