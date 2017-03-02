@@ -347,11 +347,8 @@ exports.cliVersion = '>=3.2';
 				extractedDir = path.join(hyperloopBuildDir, basename),
 				foundJars = [path.join(extractedDir, 'classes.jar')];
 
-			if (afs.exists(extractedDir)) {
-				fs.removeSync(extractedDir);
-			}
 			// Create destination dir
-			fs.mkdirsSync(extractedDir);
+			fs.emptyDirSync(extractedDir);
 
 			async.series([
 				// Unzip aar file to destination
@@ -547,9 +544,7 @@ exports.cliVersion = '>=3.2';
 			}
 
 			filesDir = path.join(hyperloopBuildDir, 'js');
-			if (!afs.exists(filesDir)) {
-				fs.mkdirsSync(filesDir);
-			}
+			fs.emptyDirSync(filesDir);
 
 			// drop hyperloop/ from each entry in references to get just the class names
 			classes = classes.map(function(element) {

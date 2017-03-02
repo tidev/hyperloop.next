@@ -413,9 +413,6 @@ function build(branch, callback) {
 
 	async.series([
 		function (next) {
-			if (fs.existsSync(buildTempDir)) {
-				fs.removeSync(buildTempDir);
-			}
 			fs.emptyDirSync(buildTempDir);
 			next();
 		},

@@ -176,9 +176,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
  */
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
-	if (!fs.existsSync(this.hyperloopBuildDir)) {
-		fs.mkdirsSync(this.hyperloopBuildDir);
-	}
+	fs.ensureDirSync(this.hyperloopBuildDir);	
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
