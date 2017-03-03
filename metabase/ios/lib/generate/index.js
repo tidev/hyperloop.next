@@ -65,15 +65,16 @@ function isProtocolImplementedBySuperClass (json, cls, proto) {
 }
 
 /**
- * Iterates over all given protocols, incorporating one protocol into another by
- * merging their methods and properties.
+ * Iterates over all given protocols and processes protocol inheritance by
+ * incorporating one protocol into another through merging their methods and
+ * properties.
  *
  * @param {Object} protocols Object with protocols from the metabase
  */
-function processIncorporatedProtocols (protocols) {
+function processProtocolInheritance (protocols) {
 	var mergedProtocols = [];
 	/**
-	 * Recursively merges a protocol with all the protocols that it incorporates
+	 * Recursively merges a protocol with all it's inherited protocols
 	 *
 	 * @param {Object} protocol A protocol
 	 * @param {Number} logIntendationLevel Intendation level for debugging messages
@@ -83,20 +84,20 @@ function processIncorporatedProtocols (protocols) {
 		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
 		var parentProtocols = protocol.protocols;
 		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
-		util.logger.trace(logIntendation + 'Processing incorporated protocols for ' + protocolSignature);
+		util.logger.trace(logIntendation + 'Processing inherited protocols of ' + protocolSignature);
 		logIntendation = logIntendationCharacter.repeat(logIntendationLevel);
 
 		if (mergedProtocols.indexOf(protocol.name) !== -1) {
-			util.logger.trace(logIntendation + protocol.name + ' was already merged with all protocols it incorporates.');
+			util.logger.trace(logIntendation + protocol.name + ' was already merged with all protocols it inherits from.');
 			return;
 		}
 		if (!parentProtocols) {
-			util.logger.trace(logIntendation + protocol.name + ' does not incoporates any other protocols.');
+			util.logger.trace(logIntendation + protocol.name + ' does not inherit from any other protocols.');
 			mergedProtocols.push(protocol.name);
 			return;
 		}
 
-		util.logger.trace(logIntendation + 'Iterating over incoporated protocols of ' + protocol.name);
+		util.logger.trace(logIntendation + 'Iterating over inherited protocols of ' + protocol.name);
 		logIntendationLevel++;
 		protocol.protocols.forEach(function (parentProtocolName) {
 			if (protocol.name === parentProtocolName) {
@@ -214,7 +215,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 			}
 		}
 
-		processIncorporatedProtocols(json.protocols);
+		processProtocolInheritance(json.protocols);
 
 		// classes
 		Object.keys(json.classes).forEach(function (k) {
