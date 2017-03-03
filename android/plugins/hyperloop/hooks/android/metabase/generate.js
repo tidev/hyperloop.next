@@ -2,8 +2,7 @@
  * Android hyperloop JS proxy generation.
  */
 var metabase = require('./metabase'),
-	fs = require('fs'),
-	wrench = require('wrench'),
+	fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
 	ejs = require('ejs'),
@@ -169,10 +168,7 @@ function generateFromJSON(dir, metabaseJSON, classes, callback) {
 	var className = '',
 		packages = {};
 
-	if (fs.existsSync(dir)) {
-		wrench.rmdirSyncRecursive(dir);
-	}
-	fs.mkdirSync(dir);
+	fs.emptyDirSync(dir);
 
 	// TODO Do we need to write the date? What should we use as the cache key? SHA/HASH of the json from metabase?
 	fs.writeFile(path.join(dir, 'version.json'), "{ 'version': " + String(Date.now()) + " }", function (err) {

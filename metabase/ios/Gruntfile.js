@@ -9,13 +9,14 @@ module.exports = function (grunt) {
 				ignoreLeaks: false,
 				globals: ['Hyperloop', 'HyperloopObject']
 			},
-			src: ['test/**/*_test.js'],
+			src: ['test/**/*_test.js']
 		},
 		jshint: {
 			options: {
-				jshintrc: true
+				jshintrc: true,
+				force: true
 			},
-			src: ['*.js','lib/**/*.js','test/**/*.js']
+			src: ['*.js', 'lib/**/*.js']
 		},
 		kahvesi: {
 			src: ['test/**/*.js']
