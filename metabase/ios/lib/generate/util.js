@@ -856,17 +856,18 @@ function generateClassMethod (state, json, method) {
 
 function generateFile (dir, name, obj, out, ext) {
 	if (!obj.framework) {
-		// logger.debug(chalk.gray('skipping'), chalk.yellow(name));
+		var sourceInfo = obj.name && obj.filename ? chalk.gray(obj.name + ' from ' + obj.filename) : '';
+		logger.trace(chalk.gray('skipping non-framework'), chalk.yellow(name), sourceInfo);
 		return;
 	}
 	if (!obj.name) {
-		console.log(obj);
-		process.exit(1);
+		logger.debug(obj);
+		throw new Error('Invalid object passed to generateFile(), required property "name" is missing.');
 	}
 	if (obj.framework.indexOf('/') >= 0) {
 		obj.framework = path.basename(obj.framework);
 	}
-	logger.info(chalk.gray('generating ' + name), chalk.green(obj.framework + '/' + obj.name));
+	logger.info(chalk.gray('Generating ' + name), chalk.green(obj.framework + '/' + obj.name));
 	var fdir = path.join(dir, obj.framework.toLowerCase());
 	var fn = path.join(fdir, obj.name.toLowerCase() + (ext || '.js'));
 	if (!fs.existsSync(fdir)) {

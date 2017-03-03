@@ -18,11 +18,16 @@ function makeClass (json, cls, state) {
 		framework: cls.framework,
 		filename: cls.filename,
 		imports: {},
+		renderedImports: '',
 		superclass: cls.superclass && json.classes[cls.superclass],
 		state: state
 	};
 	cls.properties && Object.keys(cls.properties).sort().forEach(function (k) {
 		var prop;
+
+		if (!state.isGetterPropertyReferenced(k) && !state.isSetterPropertyReferenced(k)) {
+			return;
+		}
 
 		if (isClassProperty(cls.properties[k])) {
 			prop = util.generateClassProperty(entry, json, cls.properties[k]);
@@ -61,7 +66,7 @@ function makeClass (json, cls, state) {
 			entry.class.class_methods.push(util.generateClassMethod(entry, json, method));
 		}
 	});
-	entry.imports = util.makeImports(json, entry.imports);
+	entry.renderedImports = util.makeImports(json, entry.imports);
 	return entry;
 }
 
@@ -99,10 +104,7 @@ function isClassProperty(propertyMetadata) {
  * generate a class file
  */
 function generate (dir, json, cls, state) {
-	var output = util.generateTemplate('class', {
-		data: makeClass(json, cls, state)
-	});
-	util.generateFile(dir, 'class', cls, output);
+	return makeClass(json, cls, state);
 }
 
 exports.generate = generate;

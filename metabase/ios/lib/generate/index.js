@@ -11,6 +11,7 @@ var fs = require('fs'),
 	genstruct = require('./struct'),
 	genblock = require('./block'),
 	gencustom = require('./custom'),
+	CodeGenerator = require('./code-generator'),
 	util = require('./util');
 
 function makeModule (modules, e, state) {
@@ -217,6 +218,13 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 
 		processProtocolInheritance(json.protocols);
 
+		var sourceSet = {
+			classes: {},
+			structs: {},
+			modules: {},
+			customs: {}
+		};
+
 		// classes
 		Object.keys(json.classes).forEach(function (k) {
 			var cls = json.classes[k];
@@ -245,7 +253,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 				cls.framework = custom_frameworks[cls.filename] || cls.framework;
 			}
 			// TODO: add categories
-			genclass.generate(dir, json, cls, state);
+			sourceSet.classes[k] = genclass.generate(dir, json, cls, state);
 		});
 
 		// structs
@@ -255,7 +263,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 				// if we have leading underscores for struct names, trim them
 				struct.name = struct.name.replace(/^(_)+/g,'').trim();
 			}
-			genstruct.generate(dir, json, struct);
+			sourceSet.structs[k] = genstruct.generate(dir, json, struct);
 		});
 
 		// modules
@@ -293,11 +301,17 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 
 		// generate the modules
 		modules && Object.keys(modules).forEach(function (k) {
-			genmodule.generate(dir, json, modules[k], state);
+			var moduleInfo = genmodule.generate(dir, json, modules[k], state);
+			if (moduleInfo) {
+				sourceSet.modules[k] = moduleInfo;
+			}
 		});
 
 		// generate any custom classes
-		gencustom.generate(dir, state, json, state);
+		sourceSet.customs = gencustom.generate(dir, state, json);
+
+		var codeGenerator = new CodeGenerator(sourceSet, json, state, modules);
+		codeGenerator.generate(dir);
 
 		var duration = Date.now() - started;
 

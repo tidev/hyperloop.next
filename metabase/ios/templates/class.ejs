@@ -134,7 +134,7 @@ Object.defineProperties(<%= data.class.name %>, {
 
 function $initialize () {
 	$imports = {};
-<%- data.imports %>
+<%- data.renderedImports %>
 
 	$class = Hyperloop.createProxy({
 		class: '<%= data.class.mangledName || data.class.name %>',
