@@ -524,6 +524,39 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}.bind(this), callback);
 	}
 
+	var extraHeaderSearchPaths = [];
+	var extraFrameworkSearchPaths = [];
+	if (this.hasCocoaPods) {
+		var addSearchPathsFromCocoaPods = function (target, source) {
+			if (!source) {
+				return;
+			}
+
+			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
+			var paths = source.split(" ");
+			paths.forEach(function(path) {
+				if (path === '$(inherited)') {
+					return;
+				}
+
+				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				searchPath = searchPath.replace(/"/g, '');
+				target.push(searchPath);
+			});
+		}.bind(this);
+
+		addSearchPathsFromCocoaPods(extraHeaderSearchPaths, this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS);
+		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
+	}
+	if (this.hyperloopConfig.ios.thirdparty) {
+		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
+			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
+			var searchPath = path.resolve(this.builder.projectDir, thirdPartyFrameworkConfig.header);
+			extraHeaderSearchPaths.push(searchPath);
+			extraFrameworkSearchPaths.push(searchPath);
+		}.bind(this));
+	}
+
 	// Framwork umbrella headers are required to propery resolve forward declarations
 	Object.keys(this.packages).forEach(function(frameworkName) {
 		var framework = this.frameworks[frameworkName];
@@ -542,7 +575,9 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		Object.keys(this.includes),
 		false, // don't exclude system libraries
 		generateMetabaseCallback.bind(this),
-		this.builder.forceCleanBuild || this.forceMetabase
+		this.builder.forceCleanBuild || this.forceMetabase,
+		extraHeaderSearchPaths,
+		extraFrameworkSearchPaths
 	);
 };
 

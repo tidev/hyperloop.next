@@ -44,16 +44,85 @@ function merge (src, dest) {
 	}
 }
 
-function superClassImplementsProxy (json, cls, proto) {
-	var prev;
-	while (cls && cls.superclass) {
-		prev = cls;
-		cls = cls.superclass;
-		if (cls) {
-			cls = json.classes[cls];
+/**
+ * Checks if a parent class in the inheritance path already implemented
+ * the given protocol.
+ *
+ * @param {Object} json Native code metabase
+ * @param {Object} cls Class to traverse upwards from
+ * @param {String} proto The protocol to look for in parent classes
+ * @return {bool} True if protocol already implemented in a parent class, false otherwise.
+ */
+function isProtocolImplementedBySuperClass (json, cls, proto) {
+	var parentClass = cls && cls.superclass;
+	while (parentClass) {
+		if (parentClass.protocols && parentClass.protocols.indexOf(proto) !== -1) {
+			return true;
 		}
+		parentClass = parentClass.superclass ? json.classes[parentClass.superclass] : null;
 	}
-	return (prev && prev.protocols && prev.protocols.indexOf(proto) !== -1);
+
+	return false;
+}
+
+/**
+ * Iterates over all given protocols and processes protocol inheritance by
+ * incorporating one protocol into another through merging their methods and
+ * properties.
+ *
+ * @param {Object} protocols Object with protocols from the metabase
+ */
+function processProtocolInheritance (protocols) {
+	var mergedProtocols = [];
+	/**
+	 * Recursively merges a protocol with all it's inherited protocols
+	 *
+	 * @param {Object} protocol A protocol
+	 * @param {Number} logIntendationLevel Intendation level for debugging messages
+	 */
+	function mergeWithParentProtocols(protocol, logIntendationLevel) {
+		var logIntendationCharacter = "  ";
+		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
+		var parentProtocols = protocol.protocols;
+		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
+		util.logger.trace(logIntendation + 'Processing inherited protocols of ' + protocolSignature);
+		logIntendation = logIntendationCharacter.repeat(logIntendationLevel);
+
+		if (mergedProtocols.indexOf(protocol.name) !== -1) {
+			util.logger.trace(logIntendation + protocol.name + ' was already merged with all protocols it inherits from.');
+			return;
+		}
+		if (!parentProtocols) {
+			util.logger.trace(logIntendation + protocol.name + ' does not inherit from any other protocols.');
+			mergedProtocols.push(protocol.name);
+			return;
+		}
+
+		util.logger.trace(logIntendation + 'Iterating over inherited protocols of ' + protocol.name);
+		logIntendationLevel++;
+		protocol.protocols.forEach(function (parentProtocolName) {
+			if (protocol.name === parentProtocolName) {
+				util.logger.trace(logIntendation + 'Invalid protocol meta information. ' + protocol.name.red + ' cannot have itself as parent, skipping.');
+				return;
+			}
+			var parentProtocol = protocols[parentProtocolName];
+			mergeWithParentProtocols(parentProtocol, logIntendationLevel);
+
+			util.logger.trace(logIntendation + 'Merging ' + parentProtocol.name.cyan + ' => ' + protocol.name.cyan);
+			protocol.properties = protocol.properties || {};
+			protocol.methods = protocol.methods || {};
+			merge(parentProtocol.properties, protocol.properties);
+			merge(parentProtocol.methods, protocol.methods);
+		});
+
+		mergedProtocols.push(protocol.name);
+	}
+
+	Object.keys(protocols).forEach(function (protocolName) {
+		var protocol = protocols[protocolName];
+		var logIntendationLevel = 0;
+		mergeWithParentProtocols(protocol, logIntendationLevel);
+	});
 }
 
 function generateBuiltins (json, callback) {
@@ -147,6 +216,8 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 			}
 		}
 
+		processProtocolInheritance(json.protocols);
+
 		var sourceSet = {
 			classes: {},
 			structs: {},
@@ -163,11 +234,13 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 			// add protocols
 			if (cls.protocols && cls.protocols.length) {
 				cls.protocols.forEach(function (p) {
-					if (superClassImplementsProxy(json, cls, p)) {
+					if (isProtocolImplementedBySuperClass(json, cls, p)) {
 						return;
 					}
 					var protocol = json.protocols[p];
 					if (protocol) {
+						cls.properties = cls.properties || {};
+						cls.methods = cls.methods || {};
 						merge(protocol.properties, cls.properties);
 						merge(protocol.methods, cls.methods);
 					}
