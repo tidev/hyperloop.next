@@ -39,6 +39,7 @@
     "ejs": "^2.3.4",
     "escodegen": "^1.7.0",
     "plist": "^1.1.0",
+    "rewire": "^2.5.2",
     "semver": "^5.0.3",
     "walk-ast": "0.0.2",
     "fs-extra": "^2.0.0"
