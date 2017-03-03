@@ -82,7 +82,11 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
  * called for each JS resource to process them
  */
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
-	this.patchJSFile(builder.args[0], builder.args[1], callback);
+	try {
+		this.patchJSFile(builder.args[0], builder.args[1], callback);
+	} catch (e) {
+		callback(e);
+	}
 };
 
 /**
@@ -549,6 +553,15 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			extraFrameworkSearchPaths.push(searchPath);
 		}.bind(this));
 	}
+
+	// Framwork umbrella headers are required to propery resolve forward declarations
+	Object.keys(this.packages).forEach(function(frameworkName) {
+		var framework = this.frameworks[frameworkName];
+		var frameworkUmbrellaHeader = framework && framework[frameworkName];
+		if (frameworkUmbrellaHeader) {
+			this.includes[frameworkUmbrellaHeader] = 1;
+		}
+	}.bind(this));
 
 	// generate the metabase from our includes
 	hm.metabase.generateMetabase(

@@ -338,39 +338,6 @@ function generateMethod (state, metabase, imports, cls, classDef, selector, enco
 	return code.join('\n');
 }
 
-Parser.write = function (dir, state, metabase) {
-
-	// mapping of custom class name to module wrapper path
-	var mappings = {};
-
-	// generate the JS class wrappers
-	if (state.genclasses) {
-		state.genclasses.forEach(function (cls) {
-			cls.methods.addMethod = {
-				name: 'addMethod',
-				instance: false,
-				arguments:[],
-				impl: function () {
-					return 'Hyperloop.addMethod(this, arguments[0]);';
-				}
-			};
-			classgen.generate(dir, metabase, cls, state);
-			mappings[cls.name] = '/hyperloop/' + (cls.framework + '/' + cls.name).toLowerCase();
-		});
-	}
-
-	// generate the objective-c bindings
-	var output = utillib.generateTemplate('custom.m', {
-		data: {
-			code: state.gencode.join('\n'),
-			imports: state.imports,
-			mappings: mappings
-		}
-	});
-
-	utillib.generateFile(dir, 'custom', {framework:'Hyperloop', name:'Custom'}, output, '.m');
-};
-
 Parser.generate = function (dir, state, metabase) {
 	if (Object.keys(state.getClassNames())) {
 		var code = state.gencode || [], imports = state.imports || {};
@@ -433,8 +400,31 @@ Parser.generate = function (dir, state, metabase) {
 		state.imports = imports;
 		state.gencode = code;
 
-		this.write(dir, state, metabase);
+		// generate JS class wrappers source data
+		var customClasses = {};
+		var mappings = [];
+		if (state.genclasses) {
+			state.genclasses.forEach(function (cls) {
+				cls.methods.addMethod = {
+					name: 'addMethod',
+					instance: false,
+					arguments:[],
+					impl: function () {
+						return 'Hyperloop.addMethod(this, arguments[0]);';
+					}
+				};
+				customClasses[cls.name] = classgen.generate(dir, metabase, cls, state);
+				mappings[cls.name] = '/hyperloop/' + (cls.framework + '/' + cls.name).toLowerCase();
+			});
+		}
+
+		return {
+			classes: customClasses,
+			mappings: mappings
+		};
 	}
+
+	return null;
 };
 
 var IgnoreSymbols = [
