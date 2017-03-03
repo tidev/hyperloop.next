@@ -172,8 +172,10 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
  * @param {Boolean} excludeSystem if true, will exclude any system libraries in the generated output
  * @param {Function} callback function to receive the result which will be (err, json, json_file, header_file)
  * @param {Boolean} force if true, will not use cache
+ * @param {Array} extraHeaders Array of extra header search paths passed to the metabase parser
+ * @param {Array} extraFrameworks Array of extra framework search paths passed to the metabase parser
  */
-function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders) {
+function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders, extraFrameworks) {
 	var cacheToken = crypto.createHash('md5').update(sdkPath + iosMinVersion + excludeSystem + JSON.stringify(includes)).digest('hex');
 	var header = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.h');
 	var outfile = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.json');
@@ -226,9 +228,13 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 	if (excludeSystem) {
 		args.push('-x');
 	}
-	if (extraHeaders) {
+	if (extraHeaders && extraHeaders.length > 0) {
 		args.push('-hsp');
 		args.push('"' + extraHeaders.join(',') + '"');
+	}
+	if (extraFrameworks && extraFrameworks.length > 0) {
+		args.push('-fsp');
+		args.push('"' + extraFrameworks.join(',') + '"');
 	}
 	util.logger.trace('running', binary, 'with', args.join(' '));
 	var ts = Date.now();
@@ -540,13 +546,9 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 			'-alltargets',
 			'IPHONEOS_DEPLOYMENT_TARGET=' + minSDKVersion,
 			'-sdk', sdk,
-			'SYMROOT=' + productsDirectory
+			'SYMROOT=' + productsDirectory,
+			'ONLY_ACTIVE_ARCH=NO'
 		];
-	if (builder.simHandle) {
-		// Manually set the arch for simulator builds since we cannot use -destination
-		// because the Pods project has no scheme.
-		args.push('-arch', process.arch === 'x64' ? 'x86_64' : 'i386');
-	}
 	var buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
 		runDir = path.join(basedir, 'Pods'),
 		child = spawn(xcodesettings.xcodebuild, args, {cwd:runDir});
