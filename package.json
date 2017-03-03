@@ -41,6 +41,6 @@
     "semver": "^5.1.0",
     "temp": "~0.6.0",
     "titanium": "git://github.com/appcelerator/titanium.git#master",
-    "wrench": "~1.5.8"
+    "fs-extra": "~2.0.0"
   }
 }

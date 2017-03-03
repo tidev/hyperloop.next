@@ -1,12 +1,11 @@
 var should = require('should'),
 	helper = require('./helper'),
 	utillib = require('util'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	metabase = require('../lib/metabase'),
 	generator = require('../lib/generate/index'),
 	util = require('../lib/generate/util'),
 	nodePath = require('path'),
-	wrench = require('wrench'),
 	buildDir = nodePath.join(__dirname, '..', 'build', 'hyperloop');
 
 function Hyperloop () {
@@ -73,10 +72,7 @@ describe('generate', function () {
 		global.Hyperloop = Hyperloop;
 		global.HyperloopObject = HyperloopObject;
 
-		if (fs.existsSync(buildDir)) {
-			wrench.rmdirSyncRecursive(buildDir);
-		}
-		wrench.mkdirSyncRecursive(buildDir);
+		fs.emptyDirSync(buildDir);
 	});
 
 	before(function () {

@@ -2,10 +2,9 @@
  * Hyperloop Metabase Generator
  * Copyright (c) 2015 by Appcelerator, Inc.
  */
-var fs = require('fs'),
+var fs = require('fs-extra'),
 	path = require('path'),
 	async = require('async'),
-	wrench = require('wrench'),
 	genclass = require('./class'),
 	genmodule = require('./module'),
 	genstruct = require('./struct'),
@@ -76,9 +75,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 
 	json.classes = json.classes || {};
 
-	if (!fs.existsSync(dir)) {
-		wrench.mkdirSyncRecursive(dir);
-	}
+	fs.ensureDirSync(dir);
 
 	generateBuiltins(json, function (err) {
 		if (err) { return callback(err); }

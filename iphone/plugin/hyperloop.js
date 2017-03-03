@@ -24,11 +24,10 @@ var coreLib = {
 var path = require('path'),
 	exec = require('child_process').exec,
 	hm = require('hyperloop-metabase'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	crypto = require('crypto'),
 	chalk = hm.chalk,
 	async = hm.async,
-	wrench = hm.wrench,
 	HL = chalk.magenta.inverse('Hyperloop');
 
 /**
@@ -177,9 +176,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
  */
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
-	if (!fs.existsSync(this.hyperloopBuildDir)) {
-		wrench.mkdirSyncRecursive(this.hyperloopBuildDir);
-	}
+	fs.ensureDirSync(this.hyperloopBuildDir);	
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
@@ -473,7 +470,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		return callback();
 	}
 
-	fs.existsSync(this.hyperloopJSDir) || wrench.mkdirSyncRecursive(this.hyperloopJSDir);
+	fs.ensureDirSync(this.hyperloopJSDir);
 
 	if (this.builder.forceCleanBuild || this.forceMetabase) {
 		this.logger.trace('Forcing a metabase rebuild');
@@ -687,7 +684,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 			if (changed) {
 				logger.debug('Writing ' + chalk.cyan(destFile));
-				fs.existsSync(destDir) || wrench.mkdirSyncRecursive(destDir);
+				fs.ensureDirSync(destDir);
 				fs.writeFileSync(destFile, contents || fs.readFileSync(srcFile).toString());
 			} else {
 				logger.trace('No change, skipping ' + chalk.cyan(destFile));
@@ -1079,7 +1076,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			this.forceRebuild = true;
 		}
 		this.logger.debug(__('Writing %s', dest.cyan));
-		fs.existsSync(parent) || wrench.mkdirSyncRecursive(parent);
+		fs.ensureDirSync(parent);
 		fs.writeFileSync(dest, contents);
 	} else {
 		this.logger.trace(__('No change, skipping %s', dest.cyan));
@@ -1148,7 +1145,7 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
 	// remove empty Framework directory that might have been created by cocoapods
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
-		wrench.rmdirSyncRecursive(frameworksDir);
+		fs.removeSync(frameworksDir);
 	}
 	if (this.hasCocoaPods) {
 		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');

@@ -1,8 +1,7 @@
 var spawn = require('child_process').spawn,
 	plist = require('plist'),
 	path = require('path'),
-	wrench = require('wrench'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	tmpdirs = [],
 	settings;
 
@@ -118,7 +117,7 @@ function getFixture (name) {
 process.on('exit', function () {
 	if (tmpdirs) {
 		tmpdirs.forEach(function (tmp) {
-			wrench.rmdirSyncRecursive(tmp);
+			fs.removeSync(tmp);
 		});
 		tmpdirs = null;
 	}
