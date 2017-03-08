@@ -15,10 +15,9 @@ exports.cliVersion = '>=3.2';
 (function () {
 	var path = require('path'),
 		findit = require('findit'),
-		fs = require('fs'),
+		fs = require('fs-extra'),
 		crypto = require('crypto'),
 		chalk = require('chalk'),
-		wrench = require('wrench'),
 		appc = require('node-appc'),
 		DOMParser = require('xmldom').DOMParser,
 		async = require('async'),
@@ -109,21 +108,19 @@ exports.cliVersion = '>=3.2';
 			fs.mkdirSync(buildDir);
 		}
 		else if (afs.exists(buildPlatform)) {
-			wrench.rmdirSyncRecursive(buildPlatform);
+			fs.removeSync(buildPlatform);
 		}
 		if (!afs.exists(resourcesDir)) {
 			fs.mkdirSync(resourcesDir);
 		}
 		// Wipe hyperloop resources each time, we will re-generate
 		if (afs.exists(hyperloopResources)) {
-			wrench.rmdirSyncRecursive(hyperloopResources);
+			fs.removeSync(hyperloopResources);
 		}
 
 		// create a temporary hyperloop directory
 		hyperloopBuildDir = path.join(buildDir, 'hyperloop', 'android');
-		if (!afs.exists(hyperloopBuildDir)) {
-			wrench.mkdirSyncRecursive(hyperloopBuildDir);
-		}
+		fs.ensureDirSync(hyperloopBuildDir);
 
 		// check to make sure the hyperloop module is actually configured
 		var moduleFound = builder.modules.map(function (i) {
@@ -190,7 +187,7 @@ exports.cliVersion = '>=3.2';
 					fs.unlinkSync(fn);
 				});
 
-				wrench.rmdirSyncRecursive(filesDir);
+				fs.removeSync(filesDir);
 				finished();
 			}
 		});
@@ -405,11 +402,8 @@ exports.cliVersion = '>=3.2';
 				extractedDir = path.join(hyperloopBuildDir, basename),
 				foundJars = [path.join(extractedDir, 'classes.jar')];
 
-			if (afs.exists(extractedDir)) {
-				wrench.rmdirSyncRecursive(extractedDir);
-			}
 			// Create destination dir
-			wrench.mkdirSyncRecursive(extractedDir);
+			fs.emptyDirSync(extractedDir);
 
 			async.series([
 				// Unzip aar file to destination
@@ -472,7 +466,7 @@ exports.cliVersion = '>=3.2';
 									}
 									var dest = path.join(buildLibs, path.relative(jniDir, file));
 									// make dest dir
-									wrench.mkdirSyncRecursive(path.dirname(dest));
+									fs.mkdirsSync(path.dirname(dest));
 									// copy .so over
 									afs.copyFileSync(file, dest, {logger: logger});
 								})
@@ -493,7 +487,7 @@ exports.cliVersion = '>=3.2';
 			var keys = Object.keys(references);
 			// only if we found references, otherwise, skip
 			if (keys.length) {
-				wrench.mkdirSyncRecursive(hyperloopResources);
+				fs.mkdirsSync(hyperloopResources);
 				afs.copyDirRecursive(filesDir, hyperloopResources, function (err) {
 					logger.info('Finished ' + HL + ' assembly');
 					if (err) {
@@ -605,9 +599,7 @@ exports.cliVersion = '>=3.2';
 			}
 
 			filesDir = path.join(hyperloopBuildDir, 'js');
-			if (!afs.exists(filesDir)) {
-				wrench.mkdirSyncRecursive(filesDir);
-			}
+			fs.emptyDirSync(filesDir);
 
 			// drop hyperloop/ from each entry in references to get just the class names
 			classes = classes.map(function(element) {

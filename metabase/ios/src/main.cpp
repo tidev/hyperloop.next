@@ -100,8 +100,9 @@ int main(int argc, char* argv[]) {
 	auto iphone_sim_root = arguments["-sim-sdk-path"];
 	auto prettify = arguments.count("-pretty") > 0;
 	auto excludeSys = arguments.count("-x") > 0;
-    auto bitArch = arguments.count("-bit") ? arguments["-bit"] : "64";
+	auto bitArch = arguments.count("-bit") ? arguments["-bit"] : "64";
 	auto includes = hyperloop::tokenize(arguments["-hsp"], ",");
+	auto frameworks = hyperloop::tokenize(arguments["-fsp"], ",");
 
 	std::string min_ios_version_command("-mios-simulator-version-min=" + min_ios_version);
 
@@ -120,7 +121,7 @@ int main(int argc, char* argv[]) {
 	args.push_back("-fmessage-length=0");
 	args.push_back("-fdiagnostics-show-note-include-stack");
 	args.push_back("-fmacro-backtrace-limit=0");
-    args.push_back(std::string("-m" + bitArch).c_str());
+	args.push_back(std::string("-m" + bitArch).c_str());
 
 	if (includes.size() > 0) {
 		for (auto i = 0; i < includes.size(); i++) {
@@ -132,6 +133,19 @@ int main(int argc, char* argv[]) {
 				each = each.substr(0, each.length() - 1);
 			}
 			args.push_back("-I");
+			args.push_back(strdup(each.c_str()));
+		}
+	}
+	if (frameworks.size() > 0) {
+		for (auto i = 0; i < frameworks.size(); i++) {
+			auto each = frameworks[i];
+			if (each.at(0) == (int)'"') {
+				each = each.substr(1);
+			}
+			if (each.at(each.length() - 1) == (int)'"') {
+				each = each.substr(0, each.length() - 1);
+			}
+			args.push_back("-F");
 			args.push_back(strdup(each.c_str()));
 		}
 	}

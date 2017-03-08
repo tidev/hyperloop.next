@@ -73,7 +73,6 @@
 		<delete dir="${basedir}/plugins/hyperloop/node_modules/findit/example"/>
 		<delete dir="${basedir}/plugins/hyperloop/node_modules/findit/test"/>
 		<delete dir="${basedir}/plugins/hyperloop/node_modules/node-appc/test"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules/wrench/tests"/>
 
 		<!-- Include hyperloop wrappers into module zip -->
 		<zip destfile="${dist}/${module.id}-android-${manifest.version}.zip" update="true">

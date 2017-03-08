@@ -291,6 +291,13 @@ namespace hyperloop {
 			return CXChildVisit_Continue;
 		}
 
+		// Check wether the current cursor is the definition cursor for this AST node. This is used
+		// to skip things like forward declarations, which would result in empty definitions.
+		auto definitionCursor = clang_getCursorDefinition(cursor);
+		if (clang_getCursorKind(definitionCursor) != CXCursor_FirstInvalid && !clang_equalCursors(definitionCursor, cursor)) {
+			return CXChildVisit_Continue;
+		}
+
 		auto ctx = (ParserContext *)static_cast<ParserContext *>(clientData);
 
 		// get parser source information

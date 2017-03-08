@@ -37,7 +37,7 @@ function <%= data.class.name %> (pointer) {
 
 function $initialize () {
 	$imports = {};
-<%- data.imports %>
+<%- data.renderedImports %>
 
 	<%= data.class.name %>._imports = $imports;
 

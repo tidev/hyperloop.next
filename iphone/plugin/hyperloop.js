@@ -24,11 +24,10 @@ var coreLib = {
 var path = require('path'),
 	exec = require('child_process').exec,
 	hm = require('hyperloop-metabase'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	crypto = require('crypto'),
 	chalk = hm.chalk,
 	async = hm.async,
-	wrench = hm.wrench,
 	HL = chalk.magenta.inverse('Hyperloop');
 
 /**
@@ -83,7 +82,11 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
  * called for each JS resource to process them
  */
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
-	this.patchJSFile(builder.args[0], builder.args[1], callback);
+	try {
+		this.patchJSFile(builder.args[0], builder.args[1], callback);
+	} catch (e) {
+		callback(e);
+	}
 };
 
 /**
@@ -177,9 +180,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
  */
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
-	if (!fs.existsSync(this.hyperloopBuildDir)) {
-		wrench.mkdirSyncRecursive(this.hyperloopBuildDir);
-	}
+	fs.ensureDirSync(this.hyperloopBuildDir);	
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
@@ -473,7 +474,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		return callback();
 	}
 
-	fs.existsSync(this.hyperloopJSDir) || wrench.mkdirSyncRecursive(this.hyperloopJSDir);
+	fs.ensureDirSync(this.hyperloopJSDir);
 
 	if (this.builder.forceCleanBuild || this.forceMetabase) {
 		this.logger.trace('Forcing a metabase rebuild');
@@ -520,6 +521,48 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}.bind(this), callback);
 	}
 
+	var extraHeaderSearchPaths = [];
+	var extraFrameworkSearchPaths = [];
+	if (this.hasCocoaPods) {
+		var addSearchPathsFromCocoaPods = function (target, source) {
+			if (!source) {
+				return;
+			}
+
+			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
+			var paths = source.split(" ");
+			paths.forEach(function(path) {
+				if (path === '$(inherited)') {
+					return;
+				}
+
+				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				searchPath = searchPath.replace(/"/g, '');
+				target.push(searchPath);
+			});
+		}.bind(this);
+
+		addSearchPathsFromCocoaPods(extraHeaderSearchPaths, this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS);
+		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
+	}
+	if (this.hyperloopConfig.ios.thirdparty) {
+		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
+			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
+			var searchPath = path.resolve(this.builder.projectDir, thirdPartyFrameworkConfig.header);
+			extraHeaderSearchPaths.push(searchPath);
+			extraFrameworkSearchPaths.push(searchPath);
+		}.bind(this));
+	}
+
+	// Framwork umbrella headers are required to propery resolve forward declarations
+	Object.keys(this.packages).forEach(function(frameworkName) {
+		var framework = this.frameworks[frameworkName];
+		var frameworkUmbrellaHeader = framework && framework[frameworkName];
+		if (frameworkUmbrellaHeader) {
+			this.includes[frameworkUmbrellaHeader] = 1;
+		}
+	}.bind(this));
+
 	// generate the metabase from our includes
 	hm.metabase.generateMetabase(
 		this.hyperloopBuildDir,
@@ -529,7 +572,9 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		Object.keys(this.includes),
 		false, // don't exclude system libraries
 		generateMetabaseCallback.bind(this),
-		this.builder.forceCleanBuild || this.forceMetabase
+		this.builder.forceCleanBuild || this.forceMetabase,
+		extraHeaderSearchPaths,
+		extraFrameworkSearchPaths
 	);
 };
 
@@ -652,7 +697,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 			if (changed) {
 				logger.debug('Writing ' + chalk.cyan(destFile));
-				fs.existsSync(destDir) || wrench.mkdirSyncRecursive(destDir);
+				fs.ensureDirSync(destDir);
 				fs.writeFileSync(destFile, contents || fs.readFileSync(srcFile).toString());
 			} else {
 				logger.trace('No change, skipping ' + chalk.cyan(destFile));
@@ -1044,7 +1089,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			this.forceRebuild = true;
 		}
 		this.logger.debug(__('Writing %s', dest.cyan));
-		fs.existsSync(parent) || wrench.mkdirSyncRecursive(parent);
+		fs.ensureDirSync(parent);
 		fs.writeFileSync(dest, contents);
 	} else {
 		this.logger.trace(__('No change, skipping %s', dest.cyan));
@@ -1113,7 +1158,7 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
 	// remove empty Framework directory that might have been created by cocoapods
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
-		wrench.rmdirSyncRecursive(frameworksDir);
+		fs.removeSync(frameworksDir);
 	}
 	if (this.hasCocoaPods) {
 		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
