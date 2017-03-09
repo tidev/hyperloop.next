@@ -88,7 +88,7 @@ stage('Build') {
 						}
 						sh 'rm -rf build'
 						nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-							sh './build.sh' // FIXME Can we move the logic into this file?
+							sh "${pwd()}/build.sh" // FIXME Can we move the logic into this file?
 						}
 					}
 					stash includes: 'iphone/build/zip/', name: 'iphone-zip'
