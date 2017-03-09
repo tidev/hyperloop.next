@@ -52,9 +52,13 @@ stage('Build') {
 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 					// FIXME: Need to ensure that Android SDK level 23 is installed
 					// FIXME: Need to ensure that Android NDK r11c is installed
+					def androidSDK = sh(returnStdout: true, script: 'echo \\$ANDROID_SDK')
+					def androidNDK = sh(returnStdout: true, script: 'echo \\$ANDROID_NDK')
+
 					def antHome = tool(name: 'Ant 1.9.2', type: 'ant')
-					withEnv(["PATH+ANT=${antHome}/bin"]) {
-						sh 'env' // FIXME ANDROID_SDK and ANDROID_NDK not set?
+					withEnv(["PATH+ANT=${antHome}/bin", "ANDROID_SDK=${androidSDK}", "ANDROID_NDK=${androidNDK}"]) {
+						// FIXME: This is picking up env vars from whatever node got assigned the beginning of the run! (which has been master node)
+						// We need it to pick up ANDROID_SDK and ANDROID_NDK from the local system!
 						sh 'ant clean'
 						sh 'ant test dist'
 					}
