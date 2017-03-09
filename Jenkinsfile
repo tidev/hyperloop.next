@@ -2,9 +2,13 @@
 def jsonParse(def json) {
 	new groovy.json.JsonSlurperClassic().parseText(json)
 }
-
+// TWeak these if you want to test against different nodejs or environment
 def nodeVersion = '4.7.3'
+def platformEnvironment = 'prod' // 'preprod'
+def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
+def sdkVersion = '6.0.1.GA'
 
+// gets assigned once we read the package.json file
 def packageVersion = ''
 
 node {
@@ -33,13 +37,13 @@ stage('Build') {
 
 				sh 'npm install appcelerator'
 				sh './node_modules/.bin/appc logout'
-				sh './node_modules/.bin/appc config set defaultEnvironment preprod'
+				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
 				sh './node_modules/.bin/appc use latest'
 
-				withCredentials([usernamePassword(credentialsId: '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
 				}
-				sh './node_modules/.bin/appc ti sdk install 6.0.1.GA -d'
+				sh "./node_modules/.bin/appc ti sdk install ${sdkVersion} -d"
 
 				echo 'Building Android module...'
 				dir('android') {
@@ -61,20 +65,24 @@ stage('Build') {
 
 				sh 'npm install appcelerator'
 				sh './node_modules/.bin/appc logout'
-				sh './node_modules/.bin/appc config set defaultEnvironment preprod'
+				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
 				sh './node_modules/.bin/appc use latest'
 
-				withCredentials([usernamePassword(credentialsId: '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64', passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
 				}
-				sh './node_modules/.bin/appc ti sdk install 6.0.1.GA -d'
+				sh "./node_modules/.bin/appc ti sdk install ${sdkVersion} -d"
 
 				echo 'Building iOS module...'
 				dir('iphone') {
 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 
 					dir('iphone') {
-						sh 'gem install xcpretty'
+						// Check if xcpretty gem is installed
+						if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
+							// FIXME Typically need sudo rights to do this!
+							sh 'gem install xcpretty'
+						}
 						sh 'rm -rf build'
 						nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 							sh './build.sh' // FIXME Can we move the logic into this file?
