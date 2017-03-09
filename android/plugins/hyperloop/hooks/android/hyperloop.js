@@ -43,7 +43,7 @@ exports.cliVersion = '>=3.2';
 		jars = [],
 		aars = {},
 		cleanup = [],
-		requireRegex = /require\s*\([\\"']+([\w_\/-\\.\\*]+)[\\"']+\)/ig;
+		requireRegex = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/ig;
 
 	/*
 	 Config.
@@ -489,7 +489,7 @@ exports.cliVersion = '>=3.2';
 					found = [];
 				logger.trace('Searching for hyperloop requires in: ' + file);
 				(contents.match(requireRegex) || []).forEach(function (m) {
-					var re = /require\s*\([\\"']+([\w_\/-\\.\\*]+)[\\"']+\)/i.exec(m),
+					var re = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/i.exec(m),
 						className = re[1],
 						lastIndex,
 						validPackage = false,

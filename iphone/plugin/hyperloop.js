@@ -382,7 +382,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
 	var newContents = (this.parserState.getSourceCode() || contents).replace(
-		/require\s*\([\\"']+([\w_/\-\\.]+)[\\"']+\)/ig,
+		/require\s*\(\s*[\\"']+([\w_/\-\\.]+)[\\"']+\s*\)/ig,
 		function (orig, match) {
 			// hyperloop includes will always have a slash
 			var tok = match.split('/');
