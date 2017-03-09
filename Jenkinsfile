@@ -32,7 +32,8 @@ stage('Build') {
 
 	parallel(
 		'android': {
-			node('android-sdk && android-ndk && ant') {
+			// FIXME: Shouldn't need osx label, but build.properties assumes osx location for SDK!
+			node('android-sdk && android-ndk && ant && osx') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
