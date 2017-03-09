@@ -54,6 +54,7 @@ stage('Build') {
 					// FIXME: Need to ensure that Android NDK r11c is installed
 					def antHome = tool(name: 'Ant 1.9.2', type: 'ant')
 					withEnv(["PATH+ANT=${antHome}/bin"]) {
+						sh 'env' // FIXME ANDROID_SDK and ANDROID_NDK not set?
 						sh 'ant clean'
 						sh 'ant test dist'
 					}
