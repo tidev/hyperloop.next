@@ -40,11 +40,10 @@ stage('Build') {
 					sh 'npm install -g appcelerator'
 					sh 'appc logout'
 					sh "appc config set defaultEnvironment ${platformEnvironment}"
-					sh 'appc use latest'
-
 					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 						sh 'appc login --username "$USER" --password "$PASS" -l trace'
 					}
+					sh 'appc use latest'
 					sh "appc ti sdk install ${sdkVersion} -d"
 				}
 
@@ -70,11 +69,10 @@ stage('Build') {
 					sh 'npm install -g appcelerator'
 					sh 'appc logout'
 					sh "appc config set defaultEnvironment ${platformEnvironment}"
-					sh 'appc use latest'
-
 					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 						sh 'appc login --username "$USER" --password "$PASS" -l trace'
 					}
+					sh 'appc use latest'
 					sh "appc ti sdk install ${sdkVersion} -d"
 				}
 
