@@ -180,7 +180,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
  */
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
-	fs.ensureDirSync(this.hyperloopBuildDir);	
+	fs.ensureDirSync(this.hyperloopBuildDir);
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
@@ -379,7 +379,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
 	var newContents = (this.parserState.getSourceCode() || contents).replace(
-		/require\s*\([\\"']+([\w_/\-\\.]+)[\\"']+\)/ig,
+		/require\s*\(\s*[\\"']+([\w_/\-\\.]+)[\\"']+\s*\)/ig,
 		function (orig, match) {
 			// hyperloop includes will always have a slash
 			var tok = match.split('/');
