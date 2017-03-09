@@ -16,6 +16,7 @@ exports.cliVersion = '>=3.2';
 	var path = require('path'),
 		findit = require('findit'),
 		fs = require('fs'),
+		crypto = require('crypto'),
 		chalk = require('chalk'),
 		wrench = require('wrench'),
 		appc = require('node-appc'),
@@ -58,6 +59,28 @@ exports.cliVersion = '>=3.2';
 	}
 
 	module.exports = HyperloopAndroidBuilder;
+
+	/**
+	 * Generates the sha1 for a file's contents
+	 * @param  {String}   file Path to the file
+	 * @param  {Function} next callback function. Receives a String result
+	 */
+	function sha1(file, next) {
+		var hash = crypto.createHash('sha1'),
+			stream = fs.createReadStream(file);
+
+		stream.on('data', function (data) {
+			hash.update(data, 'utf8')
+		});
+
+		stream.on('error', function (e) {
+			return next(e);
+		})
+
+		stream.on('end', function () {
+			return next(null, hash.digest('hex'));
+		})
+	}
 
 	HyperloopAndroidBuilder.prototype.init = function (next) {
 		var builder = this.builder;
@@ -195,45 +218,77 @@ exports.cliVersion = '>=3.2';
 		});
 
 		cli.on('build.android.dexer', {
-			pre: function (data) {
+			pre: function (data, finished) {
 				var uniqueJars = [], // the args we're building back up, eliminating duplicate JARs
-					basenames = []; // basename to sha1
+					shas = {}, // SHA1 of each JAR
+					basenames = {};
 				// Add hyperloop JARs
 				data.args[1] = data.args[1].concat(jars.slice(1));
 				// TIMOB-23697 Don't add duplicate jar entries
 				// http://tools.android.com/recent/dealingwithdependenciesinandroidprojects
-				// We need to ensure no two jars have the same name and sha1
-				for (var i = 0; i < data.args[1].length; i++) {
-					var jarFile = data.args[1][i],
-						basename = path.basename(jarFile),
+				async.eachSeries(data.args[1], function(jarFile, callback) {
+					var basename = path.basename(jarFile),
 						extension = path.extname(basename);
-					if (extension == '.jar') {
-						if (basenames.indexOf(basename) == -1) {
-							uniqueJars.push(jarFile);
-							basenames.push(basename);
-						} else {
-							// TODO We should check to see if they each have the exact same size and sha1. If so, just ignore duplicate. Otherwise we should throw an error to the user.
-							logger.debug('skipping duplicate JAR: ' + jarFile);
-						}
+					// Special case for classes.jar. Assume they're from AARs and the AARs are unique
+					if (extension == '.jar' && basename != 'classes.jar') {
+
+						sha1(jarFile, function (e, hash) {
+							if (e) {
+								return callback(e);
+							}
+
+							// Unique SHA1
+							if (!shas.hasOwnProperty(hash)) {
+								// But not unique basename
+								if (basenames.hasOwnProperty(basename)) {
+									// But we have a base JAR name clash
+									// Error out and tell user we have two JARs with the same name and different contents.
+									// Ask them to manually resolve by:
+									// Deleting one, or renaming one (to keep both)
+									return callback('Conflicting JAR files: ' + jarFile + ', and ' + basenames[basename].path + ' have different contents. Please resolve by deleting one of them, or renaming one if you\'re certain their contents aren\'t duplicates.');
+								}
+								// Unique jar (unique sha and basename)
+								uniqueJars.push(jarFile); // Keep it in our listing...
+								shas[hash] = { // record it's sha for comparison
+									path: jarFile
+								};
+								basenames[basename] = { // record details about it in case we get a clash
+									sha: hash,
+									path: jarFile
+								};
+							} else {
+								// Same SHA1 as another JAR, skip this one assuming it's a duplicate
+								logger.debug('Skipping duplicate JAR: ' + jarFile + ' (duplicates ' + shas[hash].path + ')');
+							}
+							callback();
+						});
 					} else {
-						// actually not a JAR, so just add it back
+						// Either not a JAR, or a classes.jar that likely came from an AAR
 						uniqueJars.push(jarFile);
+						callback();
 					}
-				}
-				// Special case for android-support-v4.jar and android-support-v13.jar
-				if (basenames.indexOf('android-support-v4.jar') != -1 && basenames.indexOf('android-support-v13.jar') != -1) {
-					var specialCase = [];
-					// Remove v4!
-					for (var i = 0; i < uniqueJars.length; i++) {
-						var jarFile = uniqueJars[i],
-							basename = path.basename(jarFile);
-						if (basename != 'android-support-v4.jar') {
-							specialCase.push(jarFile);
+				}, function(err) {
+						if (err) {
+							logger.error(err.toString());
+							process.exit(1);
 						}
-					}
-					uniqueJars = specialCase;
-				}
-				data.args[1] = uniqueJars;
+
+						// Special case for android-support-v4.jar and android-support-v13.jar
+						if (basenames.hasOwnProperty('android-support-v4.jar') && basenames.hasOwnProperty('android-support-v13.jar')) {
+							var specialCase = [];
+							// Remove v4!
+							for (var i = 0; i < uniqueJars.length; i++) {
+								var jarFile = uniqueJars[i],
+									basename = path.basename(jarFile);
+								if (basename != 'android-support-v4.jar') {
+									specialCase.push(jarFile);
+								}
+							}
+							uniqueJars = specialCase;
+						}
+						data.args[1] = uniqueJars;
+						finished();
+				});
 			}
 		});
 
