@@ -80,19 +80,17 @@ stage('Build') {
 				dir('iphone') {
 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 
-					dir('iphone') {
-						// Check if xcpretty gem is installed
-						if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
-							// FIXME Typically need sudo rights to do this!
-							sh 'gem install xcpretty'
-						}
-						sh 'rm -rf build'
-						nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-							sh "${pwd()}/build.sh" // FIXME Can we move the logic into this file?
-						}
+					// Check if xcpretty gem is installed
+					if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
+						// FIXME Typically need sudo rights to do this!
+						sh 'gem install xcpretty'
 					}
-					stash includes: 'iphone/build/zip/', name: 'iphone-zip'
+					sh 'rm -rf build'
+					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						sh './build.sh' // FIXME Can we move the logic into this file?
+					}
 				}
+				stash includes: 'iphone/build/zip/', name: 'iphone-zip'
 			}
 		},
 		failFast: true
