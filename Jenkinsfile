@@ -38,7 +38,7 @@ stage('Build') {
 				sh 'npm install appcelerator'
 				sh './node_modules/.bin/appc logout'
 				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
-				sh './node_modules/.bin/appc use latest'
+				sh './node_modules/.bin/appc use -o json'
 
 				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
@@ -66,7 +66,7 @@ stage('Build') {
 				sh 'npm install appcelerator'
 				sh './node_modules/.bin/appc logout'
 				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
-				sh './node_modules/.bin/appc use latest'
+				sh './node_modules/.bin/appc use -o json'
 
 				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
 					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
