@@ -35,15 +35,17 @@ stage('Build') {
 			node('android-sdk && android-ndk && ant') {
 				unstash 'source'
 
-				sh 'npm install appcelerator'
-				sh './node_modules/.bin/appc logout'
-				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
-				sh './node_modules/.bin/appc use -o json'
+				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					sh 'npm install -g appcelerator'
+					sh 'appc logout'
+					sh "appc config set defaultEnvironment ${platformEnvironment}"
+					sh 'appc use latest'
 
-				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
+					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+						sh 'appc login --username "$USER" --password "$PASS" -l trace'
+					}
+					sh "appc ti sdk install ${sdkVersion} -d"
 				}
-				sh "./node_modules/.bin/appc ti sdk install ${sdkVersion} -d"
 
 				echo 'Building Android module...'
 				dir('android') {
@@ -63,15 +65,17 @@ stage('Build') {
 			node('osx && xcode') {
 				unstash 'source'
 
-				sh 'npm install appcelerator'
-				sh './node_modules/.bin/appc logout'
-				sh "./node_modules/.bin/appc config set defaultEnvironment ${platformEnvironment}"
-				sh './node_modules/.bin/appc use -o json'
+				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					sh 'npm install -g appcelerator'
+					sh 'appc logout'
+					sh "appc config set defaultEnvironment ${platformEnvironment}"
+					sh 'appc use latest'
 
-				withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-					sh './node_modules/.bin/appc login --username "$USER" --password "$PASS" -l trace'
+					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
+						sh 'appc login --username "$USER" --password "$PASS" -l trace'
+					}
+					sh "appc ti sdk install ${sdkVersion} -d"
 				}
-				sh "./node_modules/.bin/appc ti sdk install ${sdkVersion} -d"
 
 				echo 'Building iOS module...'
 				dir('iphone') {
