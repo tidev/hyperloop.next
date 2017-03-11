@@ -1036,7 +1036,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  */
 +(void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[DEBUG][HYPERLOOP] willStartNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
 #endif
 
 	// if not a valid platform GUID, we aren't going to enable Hyperloop
@@ -1165,7 +1165,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  */
 +(void)didStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[HYPERLOOP] didStartNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] didStartNewContext %@", kroll);
 #endif
 }
 
@@ -1175,7 +1175,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  */
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[HYPERLOOP] willStopNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", kroll);
 #endif
 	if (context) {
 		[callbacks removeAllObjects];
@@ -1208,7 +1208,7 @@ static BOOL isPlatformGUID (NSString *guid) {
  */
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[HYPERLOOP] didStopNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] didStopNewContext %@", kroll);
 #endif
 }
 
