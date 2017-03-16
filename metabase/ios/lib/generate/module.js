@@ -62,9 +62,10 @@ function makeModule (json, module, state) {
 }
 
 /**
- * generate a module file and it's module objective-c class
+ * Generates the source template data for a module file and it's module
+ * objective-c class
  */
-function generate (dir, json, mod, state) {
+function generate (json, mod, state) {
 	// for now, skip non frameworks
 	if (mod.framework.indexOf('/') >= 0) { return; }
 	// generate the objective-c module

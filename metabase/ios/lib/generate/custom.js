@@ -338,7 +338,7 @@ function generateMethod (state, metabase, imports, cls, classDef, selector, enco
 	return code.join('\n');
 }
 
-Parser.generate = function (dir, state, metabase) {
+Parser.generate = function (state, metabase) {
 	if (Object.keys(state.getClassNames())) {
 		var code = state.gencode || [], imports = state.imports || {};
 		state.getClassNames().forEach(function (name) {
@@ -413,7 +413,7 @@ Parser.generate = function (dir, state, metabase) {
 						return 'Hyperloop.addMethod(this, arguments[0]);';
 					}
 				};
-				customClasses[cls.name] = classgen.generate(dir, metabase, cls, state);
+				customClasses[cls.name] = classgen.generate(metabase, cls, state);
 				mappings[cls.name] = '/hyperloop/' + (cls.framework + '/' + cls.name).toLowerCase();
 			});
 		}
