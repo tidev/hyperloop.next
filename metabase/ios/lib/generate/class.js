@@ -101,9 +101,9 @@ function isClassProperty(propertyMetadata) {
 }
 
 /**
- * generate a class file
+ * Generates the source template data for a class file
  */
-function generate (dir, json, cls, state) {
+function generate (json, cls, state) {
 	return makeClass(json, cls, state);
 }
 

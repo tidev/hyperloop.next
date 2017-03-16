@@ -58,9 +58,9 @@ function makeStruct (json, struct) {
 }
 
 /**
- * generate a struct file
+ * Generates the source template data for a struct file
  */
-function generate (dir, json, struct) {
+function generate (json, struct) {
 	return makeStruct(json, struct);
 }
 

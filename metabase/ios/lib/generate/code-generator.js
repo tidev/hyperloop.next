@@ -6,6 +6,7 @@ var chalk = require('chalk');
 var fs = require('fs');
 var path = require('path');
 var util = require('./util');
+var wrench = require('wrench');
 
 /**
  * A generator for Hyperloop source code files
@@ -19,12 +20,14 @@ class CodeGenerator {
 	 * @param {Object} json Metabase object
 	 * @param {Object} state State from the metabase parser
 	 * @param {Object} modules Map of module info objects
+	 * @param {Object} userRequires Map of explicit requires of Hyperloop files made by the user
 	 */
-	constructor(sourceSet, json, state, modules) {
+	constructor(sourceSet, json, state, modules, userRequires) {
 		this.sourceSet = sourceSet;
 		this.json = json;
 		this.state = state;
 		this.modules = modules;
+		this.userRequires = userRequires;
 	}
 
 	/**
@@ -39,6 +42,9 @@ class CodeGenerator {
 		// TODO: Only do this for production builds to support liveview
 		this.sourceSet.classes = this.stripUnusedClasses();
 
+		if (!fs.existsSync(outputPath)) {
+			wrench.mkdirSyncRecursive(outputPath);
+		}
 		this.generateClasses(outputPath);
 		this.generateStructs(outputPath);
 		this.generateModules(outputPath);
@@ -87,14 +93,17 @@ class CodeGenerator {
 			var hasClassMembers = classMemberLists.some((memberListName) => {
 				return classInfo.class[memberListName].length > 0;
 			});
-
 			var isSuperclass = classInfo.class.name in superclassMap;
-
 			var isClassUsed = hasClassMembers || isSuperclass;
-			if (isClassUsed) {
+
+			var fqcn = classInfo.framework +  '/' + classInfo.class.name;
+			var isExplicitlyRequired = Object.keys(this.userRequires).some((requirePath) => {
+				return requirePath.indexOf(fqcn.toLowerCase()) !== -1;
+			});
+
+			if (isClassUsed || isExplicitlyRequired) {
 				usedClasses[className] = this.sourceSet.classes[className];
 			} else {
-				var fqcn = classInfo.framework +  '/' + classInfo.class.name;
 				util.logger.trace(chalk.gray('Excluding class ') + chalk.green(fqcn));
 			}
 		});

@@ -5,7 +5,6 @@
 var fs = require('fs'),
 	path = require('path'),
 	async = require('async'),
-	wrench = require('wrench'),
 	genclass = require('./class'),
 	genmodule = require('./module'),
 	genstruct = require('./struct'),
@@ -136,19 +135,13 @@ function generateBuiltins (json, callback) {
 	});
 }
 
-function generateFromJSON (name, dir, json, state, callback, includes) {
-	var started = Date.now();
-
+function generateFromJSON (name, json, state, callback, includes) {
 	// set the name of the app in the state object
 	state.appName = name;
 
 	if (!json) { return callback(); }
 
 	json.classes = json.classes || {};
-
-	if (!fs.existsSync(dir)) {
-		wrench.mkdirSyncRecursive(dir);
-	}
 
 	generateBuiltins(json, function (err) {
 		if (err) { return callback(err); }
@@ -253,7 +246,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 				cls.framework = custom_frameworks[cls.filename] || cls.framework;
 			}
 			// TODO: add categories
-			sourceSet.classes[k] = genclass.generate(dir, json, cls, state);
+			sourceSet.classes[k] = genclass.generate(json, cls, state);
 		});
 
 		// structs
@@ -263,7 +256,7 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 				// if we have leading underscores for struct names, trim them
 				struct.name = struct.name.replace(/^(_)+/g,'').trim();
 			}
-			sourceSet.structs[k] = genstruct.generate(dir, json, struct);
+			sourceSet.structs[k] = genstruct.generate(json, struct);
 		});
 
 		// modules
@@ -301,23 +294,16 @@ function generateFromJSON (name, dir, json, state, callback, includes) {
 
 		// generate the modules
 		modules && Object.keys(modules).forEach(function (k) {
-			var moduleInfo = genmodule.generate(dir, json, modules[k], state);
+			var moduleInfo = genmodule.generate(json, modules[k], state);
 			if (moduleInfo) {
 				sourceSet.modules[k] = moduleInfo;
 			}
 		});
 
 		// generate any custom classes
-		sourceSet.customs = gencustom.generate(dir, state, json);
+		sourceSet.customs = gencustom.generate(state, json);
 
-		var codeGenerator = new CodeGenerator(sourceSet, json, state, modules);
-		codeGenerator.generate(dir);
-
-		var duration = Date.now() - started;
-
-		util.logger.info('Generation took ' + duration + ' ms');
-
-		callback();
+		callback(null, sourceSet, modules);
 	});
 }
 
@@ -362,3 +348,4 @@ exports.generateFromJSON = generateFromJSON;
 exports.parse = parse;
 exports.parseFromBuffer = parseBuffer;
 exports.generateState = generateState;
+exports.CodeGenerator = CodeGenerator;
