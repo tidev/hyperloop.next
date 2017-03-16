@@ -622,12 +622,24 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 
 	// now generate the stubs
 	this.logger.debug('Generating stubs');
+	var started = Date.now();
 	hm.generate.generateFromJSON(
 		this.builder.tiapp.name,
-		this.hyperloopJSDir,
 		this.metabase,
 		this.parserState,
-		callback,
+		function (err, sourceSet, modules) {
+			if (err) {
+				return callback(err);
+			}
+
+			var codeGenerator = new hm.generate.CodeGenerator(sourceSet, this.metabase, this.parserState, modules, this.references);
+			codeGenerator.generate(this.hyperloopJSDir);
+
+			var duration = Date.now() - started;
+			this.logger.info('Generation took ' + duration + ' ms');
+
+			callback();
+		}.bind(this),
 		this.frameworks
 	);
 };
