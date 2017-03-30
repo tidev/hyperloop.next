@@ -67,16 +67,18 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 	if (AsyncSupport::IsAsyncAction(generic_type__)) {
 		const auto t = create_task(dynamic_cast<IAsyncAction^>(native_object__));
 		t.then([resolve, reject](task<void> t) {
-			try {
-				t.get();
-				static_cast<JSObject>(resolve)(resolve.get_context().get_global_object());
-			} catch (Platform::COMException^ e) {
-				const auto ctx = reject.get_context();
-				const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
-				static_cast<JSObject>(reject)(args, ctx.get_global_object());
-			} catch (...) {
-				static_cast<JSObject>(reject)(reject.get_context().get_global_object());
-			}
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, t]() {
+				try {
+					t.get();
+					static_cast<JSObject>(resolve)(resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
 		});
 	} else if (AsyncSupport::IsAsyncActionWithProgress(generic_type__)) {
 		//
@@ -84,37 +86,41 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 		//
 		completed_handler__ = ref new AsyncEvent();
 		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
-			try {
-				const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
-				const auto ctx = resolve.get_context();
-				const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
-				const std::vector<JSValue> args = { object };
-				static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
-			} catch (Platform::COMException^ e) {
-				const auto ctx = reject.get_context();
-				const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
-				static_cast<JSObject>(reject)(args, ctx.get_global_object());
-			} catch (...) {
-				static_cast<JSObject>(reject)(reject.get_context().get_global_object());
-			}
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
 		});
 		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
 	} else if (AsyncSupport::IsAsyncOperation(generic_type__)) {
 		completed_handler__ = ref new AsyncEvent();
 		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
-			try {
-				const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
-				const auto ctx = resolve.get_context();
-				const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
-				const std::vector<JSValue> args = { object };
-				static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
-			} catch (Platform::COMException^ e) {
-				const auto ctx = reject.get_context();
-				const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
-				static_cast<JSObject>(reject)(args, ctx.get_global_object());
-			} catch (...) {
-				static_cast<JSObject>(reject)(reject.get_context().get_global_object());
-			}
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
 		});
 		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
 	} else if (AsyncSupport::IsAsyncOperationWithProgress(generic_type__)) {
@@ -123,19 +129,21 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 		//
 		completed_handler__ = ref new AsyncEvent();
 		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
-			try {
-				const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
-				const auto ctx = resolve.get_context();
-				const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
-				const std::vector<JSValue> args = { object };
-				static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
-			} catch (Platform::COMException^ e) {
-				const auto ctx = reject.get_context();
-				const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
-				static_cast<JSObject>(reject)(args, ctx.get_global_object());
-			} catch (...) {
-				static_cast<JSObject>(reject)(reject.get_context().get_global_object());
-			}
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
 		});
 		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
 	} else {
