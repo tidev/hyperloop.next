@@ -72,9 +72,9 @@ public class JavaMetabaseGenerator
                 }
                 try {
                     JavaClass cls = repo.loadClass(classname);
-                    // skip private/package-level classes
-                    // skip anonymous classes.
-                    if ((cls.isPublic() || cls.isProtected()) && !anonymousClass.matcher(classname).matches()) {
+                    // skip private/package-level/anonymous classes but keep abstract classes
+                    // because there may be other public classes extending them
+                    if ((cls.isPublic() || cls.isProtected() || cls.isAbstract()) && !anonymousClass.matcher(classname).matches()) {
                         writer.key(classname);
                         writer.object();
                         asJSON(cls, writer);
