@@ -116,6 +116,9 @@ HyperloopiOSBuilder.prototype.run = function run(builder, callback) {
 		'copyHyperloopJSFiles',
 		'updateXcodeProject'
 	], function (err) {
+		if (err instanceof StopHyperloopCompileError) {
+			err = null;
+		}
 		this.logger.info('Finished ' + HL + ' assembly in ' + (Math.round((Date.now() - start) / 10) / 100) + ' seconds');
 		callback(err);
 	});
@@ -471,7 +474,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	// no hyperloop files detected, we can stop here
 	if (!this.includes.length && !Object.keys(this.references).length) {
 		this.logger.info('Skipping ' + HL + ' compile, no usage found ...');
-		return callback();
+		return callback(new StopHyperloopCompileError());
 	}
 
 	fs.ensureDirSync(this.hyperloopJSDir);
@@ -1258,6 +1261,13 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
 	addParam('APPC_PROJECT_DIR', this.builder.projectDir);
 };
+
+/**
+ * Special marker error to stop Hyperloop compile if no usage found
+ */
+class StopHyperloopCompileError extends Error {
+
+}
 
 /**
  * Computes the soundex for a string.
