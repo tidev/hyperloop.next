@@ -321,10 +321,8 @@ exports.cliVersion = '>=3.2';
 			 * @param {Function} next Callback function
 			 */
 			function (next) {
-				var supportLibraryFilenames = [
-					'android-support-v4.jar',
-					'android-support-v7-appcompat.jar'
-				];
+				var depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
+				var supportLibraryFilenames = depMap.libraries.appcompat;
 				async.each(supportLibraryFilenames, function(libraryFilename, cb) {
 					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
 					if (afs.exists(libraryPathAndFilename)) {
