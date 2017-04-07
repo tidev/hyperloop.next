@@ -66,6 +66,10 @@ namespace HyperloopInvocation
             NativeType   = t;
             NativeObject = o;
         }
+        public bool IsVoid()
+        {
+            return NativeObject == null;
+        }
         public bool IsAsync()
         {
             return NativeObject is IAsyncInfo;
@@ -214,6 +218,10 @@ namespace HyperloopInvocation
             if (arguments == null)
             {
                 object obj = methodInfo.Invoke(instanceObj, null);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
             else
@@ -224,6 +232,10 @@ namespace HyperloopInvocation
                     args[i] = arguments[i].NativeObject;
                 }
                 object obj = methodInfo.Invoke(instanceObj, args);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
         }

@@ -499,7 +499,9 @@ JSObject HyperloopModule::CreatePromise(const JSContext& js_context, HyperloopIn
 // Convert native object to JSValue
 JSValue HyperloopModule::Convert(const JSContext& js_context, HyperloopInvocation::Instance^ instance)
 {
-	if (instance->IsNumber()) {
+	if (instance->IsVoid()) {
+		return js_context.CreateUndefined();
+	} else if (instance->IsNumber()) {
 		return js_context.CreateNumber(instance->ConvertToNumber());
 	} else if (instance->IsString()) {
 		return js_context.CreateString(ConvertUTF8String(static_cast<Platform::String^>(instance->NativeObject)));
