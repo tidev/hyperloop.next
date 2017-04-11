@@ -49,3 +49,31 @@ var MemoryManager = require('Windows.System.MemoryManager');
 var appMemoryUsageLimit = MemoryManager.AppMemoryUsageLimit;
 var appMemoryUsage      = MemoryManager.AppMemoryUsage;
 
+/*
+ * Enum values
+ */
+var CreationCollisionOption = require('Windows.Storage.CreationCollisionOption');
+var ReplaceExisting = CreationCollisionOption.ReplaceExisting;
+
+/*
+ * Async operations with Promises
+ */
+var PathIO = require('Windows.Storage.PathIO'),
+    ApplicationData = require('Windows.Storage.ApplicationData'),
+	CreationCollisionOption = require('Windows.Storage.CreationCollisionOption');
+
+Ti.API.info('ApplicationData.Current.LocalFolder.Path = ' + ApplicationData.Current.LocalFolder.Path);
+
+ApplicationData.Current.LocalFolder.CreateFileAsync("test.txt", CreationCollisionOption.ReplaceExisting)
+    .then(function () {
+        return PathIO.WriteTextAsync('ms-appdata:///local/test.txt', 'Lorem ipsum dolor sit amet');
+    })
+    .then(function () {
+        return PathIO.ReadTextAsync('ms-appdata:///local/test.txt');
+    }).
+    then(function (content) {
+        alert(content);
+    }, function (err) {
+        alert(err);
+    });
+
