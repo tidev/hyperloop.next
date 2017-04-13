@@ -317,6 +317,25 @@ exports.cliVersion = '>=3.2';
 		jars = [builder.androidTargetSDK.androidJar];
 
 		async.series([
+			/**
+			 * Manually adds the Android Support Libraries beacuse at this point the builder
+			 * hasn't loaded all the jars from our SDK core yet.
+			 *
+			 * @param {Function} next Callback function
+			 */
+			function (next) {
+				var depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
+				var supportLibraryFilenames = depMap.libraries.appcompat;
+				async.each(supportLibraryFilenames, function(libraryFilename, cb) {
+					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
+					if (afs.exists(libraryPathAndFilename)) {
+						jars.push(libraryPathAndFilename);
+						cb();
+					} else {
+						cb(new Error('Android Support Library not found at expected path ' + libraryPathAndFilename));
+					}
+				}, next);
+			},
 			// Find 3rd-party JARs and AARs
 			function (next) {
 				if (!afs.exists(platformAndroid)) {

@@ -516,7 +516,7 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ')];';
 		}
 		case 'enum': {
-			return returns + ' [HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ')];';
+			return returns + ' @(' + name + ');';
 		}
 		case 'struct': {
 			if (value.framework && value.filename) {
