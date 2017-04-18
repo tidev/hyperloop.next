@@ -7,10 +7,13 @@
  */
 #include "Hyperloop.hpp"
 #include "Titanium/detail/TiImpl.hpp"
+#include "Titanium/App.hpp"
 #include "TitaniumWindows/LogForwarder.hpp"
 #include "TitaniumWindows/Utility.hpp"
 #include "Titanium/detail/TiUtil.hpp"
+#include <ppltasks.h>
 
+using namespace Windows::Foundation;
 using namespace Windows::UI::Xaml::Interop;
 using namespace TitaniumWindows::Utility;
 using namespace TitaniumWindows_Hyperloop;
@@ -35,6 +38,179 @@ namespace Hyperloop
 			/* DO NOTHING */	
 		}
 	};
+}
+
+/**
+* returns true if platform GUID, false if not (open source, legacy, invalid, etc)
+*
+* the platform guid is a special guid where it is a valid UUID v4 string but specifically
+* encoded in a certain way so that we can determine predicitably if it's a platform generated
+* GUID or one that wasn't generated with the platform.
+*
+* The GUID format is a generated random UUID v4 but where the following is changed:
+*
+* 9cba353d-81aa-4593-9111-2e83c0136c14
+*					  ^
+*					  +---- always 9
+*
+* 9cba353d-81aa-4593-9111-2e83c0136c14
+*					   ^^^
+*					   +---- the following 3 characters will be the same and will be
+*							 one of 0-9a-f
+*
+* 9cba353d-81aa-4593-9111-2e83c0136c14
+*						   ^
+*						   +----- the last remaining string is a SHA1 encoding of
+*								  the org_id + app id (first 12 characters of the SHA1)
+*
+*/
+static const char ALPHA[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
+static bool IsPlatformGUID(const JSContext& js_context)
+{
+	// Get GUID
+	const auto appModule = Titanium::AppModule::GetStaticObject(js_context);
+	const auto guid = appModule.GetPrivate<Titanium::AppModule>()->guid();
+
+	// UUID v4 is 36 characters long
+	if (guid.size() == 36) {
+		// example guid: 9cba353d-81aa-4593-9111-2e83c0136c14
+		// for org_id 14301, appid : com.tii
+		if (guid.at(19) == '9') {
+			const auto alpha = guid.at(20);
+			auto found = false;
+			for (size_t c = 0; c < sizeof(ALPHA); c++) {
+				if (alpha == ALPHA[c]) {
+					found = true;
+					break;
+				}
+			}
+			if (found) {
+				const auto str = guid.substr(20, 3);
+				std::string strcomp;
+				strcomp.push_back(alpha);
+				strcomp.push_back(alpha);
+				strcomp.push_back(alpha);
+				if (str == strcomp) {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+HyperloopPromiseCallback::HyperloopPromiseCallback(const JSContext& js_context) TITANIUM_NOEXCEPT
+	: JSExportObject(js_context)
+{
+	TITANIUM_LOG_DEBUG("HyperloopPromiseCallback ctor");
+}
+
+void HyperloopPromiseCallback::JSExportInitialize()
+{
+	JSExport<HyperloopPromiseCallback>::SetClassVersion(1);
+	JSExport<HyperloopPromiseCallback>::SetParent(JSExport<JSExportObject>::Class());
+	JSExport<HyperloopPromiseCallback>::AddCallAsFunctionCallback(std::mem_fn(&HyperloopPromiseCallback::CallAsFunction));
+}
+
+JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_arguments, const JSObject& this_object)
+{
+	TITANIUM_ASSERT(js_arguments.size() >= 2);
+	TITANIUM_ASSERT(js_arguments.at(0).IsObject());
+	TITANIUM_ASSERT(js_arguments.at(1).IsObject());
+
+	using namespace concurrency;
+
+	const auto ctx = get_context();
+	const auto resolve = static_cast<JSObject>(js_arguments.at(0));
+	const auto reject  = static_cast<JSObject>(js_arguments.at(1));
+
+	if (AsyncSupport::IsAsyncAction(generic_type__)) {
+		const auto t = create_task(dynamic_cast<IAsyncAction^>(native_object__));
+		t.then([resolve, reject](task<void> t) {
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, t]() {
+				try {
+					t.get();
+					static_cast<JSObject>(resolve)(resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
+		});
+	} else if (AsyncSupport::IsAsyncActionWithProgress(generic_type__)) {
+		//
+		// TODO: Need a way to notify progress
+		//
+		completed_handler__ = ref new AsyncEvent();
+		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
+		});
+		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
+	} else if (AsyncSupport::IsAsyncOperation(generic_type__)) {
+		completed_handler__ = ref new AsyncEvent();
+		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
+		});
+		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
+	} else if (AsyncSupport::IsAsyncOperationWithProgress(generic_type__)) {
+		//
+		// TODO: Need a way to notify progress
+		//
+		completed_handler__ = ref new AsyncEvent();
+		completed_handler__->Completed += ref new TypedEventHandler<Platform::Object^, AsyncStatus>([resolve, reject, this](Platform::Object^ sender, AsyncStatus status) {
+			TitaniumWindows::Utility::RunOnUIThread([resolve, reject, this]() {
+				try {
+					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
+					const auto ctx = resolve.get_context();
+					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const std::vector<JSValue> args = { object };
+					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
+				} catch (Platform::COMException^ e) {
+					const auto ctx = reject.get_context();
+					const std::vector<JSValue> args = { ctx.CreateString(TitaniumWindows::Utility::ConvertUTF8String(e->Message)) };
+					static_cast<JSObject>(reject)(args, ctx.get_global_object());
+				} catch (...) {
+					static_cast<JSObject>(reject)(reject.get_context().get_global_object());
+				}
+			});
+		});
+		AsyncSupport::AddCompletedHandler(generic_type__, native_object__, completed_handler__);
+	} else {
+		TITANIUM_ASSERT_AND_THROW(true, "Unable to initialize Hyperloop Promise");
+	}
+
+	return ctx.CreateUndefined();
 }
 
 HyperloopBase::HyperloopBase(const JSContext& js_context) TITANIUM_NOEXCEPT
@@ -332,10 +508,17 @@ TITANIUM_FUNCTION(HyperloopModule, exists)
 
 TITANIUM_FUNCTION(HyperloopModule, require)
 {
+	const auto ctx = get_context();
+
+	if (!IsPlatformGUID(ctx)) {
+		std::string message = "Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import";
+		TITANIUM_LOG_WARN(message);
+		detail::ThrowRuntimeError("Hyperloop", message);
+		return ctx.CreateNull();
+	}
+
 	ENSURE_STRING_AT_INDEX(moduleId, 0);
 	try {
-		const auto ctx  = get_context();
-
 		const auto module = TypeHelper::GetType(ConvertUTF8String(moduleId));
 		const auto ctor = ctx.CreateObject(JSExport<HyperloopInstance>::Class());
 		const auto ctor_ptr = ctor.GetPrivate<HyperloopInstance>();
@@ -366,10 +549,26 @@ JSObject HyperloopModule::CreateObject(const JSContext& js_context, HyperloopInv
 	return object;
 }
 
+JSObject HyperloopModule::CreatePromise(const JSContext& js_context, HyperloopInvocation::Instance^ instance, TypeName genericType)
+{
+	const auto callback = js_context.CreateObject(JSExport<HyperloopPromiseCallback>::Class());
+	const auto callback_ptr = callback.GetPrivate<HyperloopPromiseCallback>();
+
+	callback_ptr->set_native_object(instance->NativeObject);
+	callback_ptr->set_generic_type(genericType);
+
+	static JSFunction func = js_context.CreateFunction("return new Promise(callback);", { "callback" });
+	const auto promise = (func({ callback }, js_context.get_global_object()));
+	TITANIUM_ASSERT(promise.IsObject());
+	return static_cast<JSObject>(promise);
+}
+
 // Convert native object to JSValue
 JSValue HyperloopModule::Convert(const JSContext& js_context, HyperloopInvocation::Instance^ instance)
 {
-	if (instance->IsNumber()) {
+	if (instance->IsVoid()) {
+		return js_context.CreateUndefined();
+	} else if (instance->IsNumber()) {
 		return js_context.CreateNumber(instance->ConvertToNumber());
 	} else if (instance->IsString()) {
 		return js_context.CreateString(ConvertUTF8String(static_cast<Platform::String^>(instance->NativeObject)));
@@ -378,7 +577,14 @@ JSValue HyperloopModule::Convert(const JSContext& js_context, HyperloopInvocatio
 	} else if (instance->IsNull()) {
 		return js_context.CreateNull();
 	} else if (instance->IsObject()) {
-		return CreateObject(js_context, instance);
+		// Convert async action to JS Promise object
+		if (instance->IsAsync()) {
+			const auto genericType = TypeName(instance->NativeObject->GetType());
+			return CreatePromise(js_context, instance, genericType);
+		} else {
+			return CreateObject(js_context, instance);
+		}
+
 	} else {
 		Titanium::detail::ThrowRuntimeError("HyperloopModule::Convert", "Can't convert native type: " + ConvertString(instance->NativeType.Name));
 	}

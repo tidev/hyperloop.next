@@ -2,9 +2,57 @@
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Collections.Generic;
+using Windows.Foundation;
 
 namespace HyperloopInvocation
 {
+    public sealed class AsyncEvent
+    {
+        public event TypedEventHandler<object, AsyncStatus> Completed;
+        public void OnCompleted(object sender, AsyncStatus args)
+        {
+            Completed?.Invoke(sender, args);
+        }
+
+    }
+
+    public sealed class AsyncSupport
+    {
+        public static bool IsAsyncAction(Type t)
+        {
+            return t == typeof(IAsyncAction);
+        }
+        public static bool IsAsyncActionWithProgress(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncActionWithProgress<>);
+        }
+        public static bool IsAsyncOperation(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncOperation<>);
+        }
+        public static bool IsAsyncOperationWithProgress(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncOperationWithProgress<,>);
+        }
+
+        public static void AddCompletedHandler(Type t, object asyncOperation, AsyncEvent handler)
+        {
+            PropertyInfo completed = t.GetRuntimeProperty("Completed");
+            Type[] completedArgs = { typeof(object), typeof(AsyncStatus) };
+            MethodInfo onCompleted = typeof(AsyncEvent).GetRuntimeMethod("OnCompleted", completedArgs);
+
+            Delegate d = onCompleted.CreateDelegate(completed.PropertyType, handler);
+            completed.SetValue(asyncOperation, d);
+        }
+
+        // Get results from IAsyncOperation and IAsyncOperationWithProgress
+        public static object GetResults(Type t, object obj)
+        { 
+            Method method = Method.GetMethod(t, "GetResults", new Type[0]);
+            return method.Invoke(obj);
+        }
+    }
+
     /*
      * Encapsulate native object because some types can't get through WinRT boundary
      */
@@ -17,6 +65,14 @@ namespace HyperloopInvocation
         {
             NativeType   = t;
             NativeObject = o;
+        }
+        public bool IsVoid()
+        {
+            return NativeObject == null;
+        }
+        public bool IsAsync()
+        {
+            return NativeObject is IAsyncInfo;
         }
         public bool IsString()
         {
@@ -48,6 +104,7 @@ namespace HyperloopInvocation
         {
             return NativeObject == null;
         }
+
         public static object ConvertNumber(Type nativeType, double number)
         {
             return System.Convert.ChangeType(number, nativeType);
@@ -142,6 +199,15 @@ namespace HyperloopInvocation
         {
             Name = name;
         }
+
+        //
+        // Shorthand for invoking method with no arguments
+        //
+        public object Invoke(object instanceObj)
+        {
+            return methodInfo.Invoke(instanceObj, null);
+        }
+
         public Instance Invoke(Instance instance, [ReadOnlyArray()] Instance[] arguments)
         {
             object instanceObj = null;
@@ -152,6 +218,10 @@ namespace HyperloopInvocation
             if (arguments == null)
             {
                 object obj = methodInfo.Invoke(instanceObj, null);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
             else
@@ -162,6 +232,10 @@ namespace HyperloopInvocation
                     args[i] = arguments[i].NativeObject;
                 }
                 object obj = methodInfo.Invoke(instanceObj, args);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
         }
@@ -313,6 +387,7 @@ namespace HyperloopInvocation
     {
         public string Name { get; set; }
         private PropertyInfo propertyInfo;
+        private FieldInfo fieldInfo;
         public Property(string name)
         {
             Name = name;
@@ -324,16 +399,37 @@ namespace HyperloopInvocation
             {
                 obj = instance.NativeObject;
             }
-            object value = propertyInfo.GetValue(obj);
-            return new Instance(propertyInfo.PropertyType, value);
+            if (propertyInfo != null)
+            {
+                object value = propertyInfo.GetValue(obj);
+                return new Instance(propertyInfo.PropertyType, value);
+            }
+            else if (fieldInfo != null)
+            {
+                object value = fieldInfo.GetValue(null);
+                return new Instance(fieldInfo.FieldType, value);
+            }
+
+            return null;
         }
         public void SetValue(Instance instance, Instance value)
         {
-            propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+            if (propertyInfo != null)
+            {
+                propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+            }
         }
         public Type GetPropertyType()
         {
-            return propertyInfo.PropertyType;
+            if (propertyInfo != null)
+            {
+                return propertyInfo.PropertyType;
+            }
+            else if (fieldInfo != null)
+            {
+                return fieldInfo.FieldType;
+            }
+            return null;
         }
 
         public static Property GetProperty(Type type, string name)
@@ -345,6 +441,16 @@ namespace HyperloopInvocation
                 property.propertyInfo = propertyInfo;
                 return property;
             }
+
+            // Enum
+            FieldInfo fieldInfo = type.GetRuntimeField(name);
+            if (fieldInfo != null)
+            {
+                Property property = new Property(name);
+                property.fieldInfo = fieldInfo;
+                return property;
+            }
+
             return null;
         }
         public static bool HasProperty(Type type, string name)
