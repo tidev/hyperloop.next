@@ -17,4 +17,4 @@ moduleIdAsIdentifier: Hyperloop
 classname: HyperloopModule
 guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
 platform: windows
-minsdk: 6.0.4
+minsdk: 6.1.0
