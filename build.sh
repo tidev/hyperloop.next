@@ -83,6 +83,7 @@ VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
+sed -i.bak 's/VERSION/'"$VERSION"'/g' ./windows/manifest
 
 echo "Building Android module..."
 cd android
@@ -120,7 +121,15 @@ cp -R build/zip/modules/ ../dist/modules
 cp -R build/zip/plugins/ ../dist/plugins/
 cd ..
 
-echo "Creating combined zip with iOS and Android ..."
+cd windows/dist
+if [ -f hyperloop-windows-$VERSION.zip ];
+then
+echo "Unzipping Windows zipfile..."
+unzip hyperloop-windows-$VERSION.zip -d ../../dist
+fi
+cd ../../
+
+echo "Creating combined zip with iOS, Android and Windows..."
 cd dist
 mkdir -p temp
 cp -R plugins/hyperloop/* temp
@@ -128,6 +137,7 @@ rm -rf plugins
 mkdir -p plugins/hyperloop/$VERSION
 cp -R temp/* plugins/hyperloop/$VERSION
 rm -rf temp
+cp -R ../plugins/windows plugins/hyperloop/$VERSION/hooks/
 zip -q -r hyperloop-$VERSION.zip *
 rm -rf modules
 rm -rf plugins
