@@ -15,5 +15,5 @@ Make sure `cmake.exe` and `nuget.exe` are on your `PATH`. You can download `nuge
 
 ## License
 
-See the [LICENSE](../LICENSE.md) text for full details.
+See the [LICENSE](../LICENSE) text for full details.
 Copyright (c) 2015-2016 by Appcelerator, Inc. All Rights Reserved.

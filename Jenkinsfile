@@ -22,7 +22,7 @@ node {
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 			sh 'npm install'
 		}
-		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE.md, etc
+		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
 		stash includes: '**/*', name: 'source'
 	} // stage
@@ -50,17 +50,14 @@ stage('Build') {
 				echo 'Building Android module...'
 				dir('android') {
 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-					// FIXME: Need to ensure that Android SDK level 23 is installed
+					// FIXME: Need to ensure that Android SDK level ? is installed
 					// FIXME: Need to ensure that Android NDK r11c is installed
-
-					def antHome = tool(name: 'Ant 1.9.2', type: 'ant')
 					// Forcibly "wipe" the overriding ANDROID_SDK/ANDROID_NDK values from first node that started job
 					// This causes it to load the value from the local node
-					withEnv(["PATH+ANT=${antHome}/bin", "ANDROID_SDK=", "ANDROID_NDK="]) {
-						// FIXME: This is picking up env vars from whatever node got assigned the beginning of the run! (which has been master node)
-						// We need it to pick up ANDROID_SDK and ANDROID_NDK from the local system!
-						sh 'ant clean'
-						sh 'ant test dist'
+					withEnv(["ANDROID_SDK=", "ANDROID_NDK="]) {
+						// FIXME This requires SDK with this fix: https://jira.appcelerator.org/browse/TIMOB-24470
+						// sh 'app ti clean' // FIXME we have no module clean command yet!
+						sh 'appc ti build --build-only'
 					}
 					stash includes: 'android/dist/hyperloop-android-*.zip', name: 'android-zip'
 				}
@@ -92,7 +89,19 @@ stage('Build') {
 					}
 					sh 'rm -rf build'
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-						sh './build.sh' // FIXME Can we move the logic into this file?
+            // Building for TiCore
+						sh 'appc ti build --build-only'
+            // TODO Unzip the module zip generated, keep the libhyperloop.a and rename it to libhyperloop-ticore.a
+
+            // Building for JSCore
+            sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
+            sh 'appc ti build --build-only'
+
+            // TODO Add a fake libhyperloop.a file
+            
+						// THEN we need to combine all the plugins stuff!
+						// And build and package the metabase shit!
+						sh './build.sh' // FIXME Can we move the logic into this file? Maybe use appc ti build?
 					}
 				}
 				stash includes: 'iphone/build/zip/', name: 'iphone-zip'

@@ -3,13 +3,13 @@ build/
 node_modules
 android/plugins/hyperloop/metabase/hyperloop/
 android/plugins/hyperloop/hooks/hyperloop.js
-android/LICENSE.md
+android/LICENSE
 android/libs/
 android/documentation/
 android/assets/
 android/example/
 android/bin
-android/LICENSE
+android/java-sources.txt
 dist/
 xcuserdata
 project.xcworkspace
