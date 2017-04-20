@@ -1052,6 +1052,22 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	});
 
 	if (this.hasCocoaPods) {
+		var embedPodsFrameworksBuildPhaseId = generateUuid();
+		var embedPodsFrameworksBuildPhase = {
+			isa: 'PBXShellScriptBuildPhase',
+			buildActionMask: 2147483647,
+			files: [],
+			inputPaths: [],
+			name: '"[CP] Embed Pods Frameworks"',
+			outputPaths: [],
+			runOnlyForDeploymentPostprocessing: 0,
+			shellPath: '/bin/sh',
+			shellScript: '"\\"${PODS_ROOT}/Target Support Files/Pods-' + appName + '/Pods-' + appName + '-frameworks.sh\\""',
+			showEnvVarsInLog: 0
+		};
+		xobjs.PBXShellScriptBuildPhase[embedPodsFrameworksBuildPhaseId] = embedPodsFrameworksBuildPhase;
+		mainTarget.buildPhases.push(embedPodsFrameworksBuildPhaseId);
+
 		var copyPodsResourcesBuildPhaseId = generateUuid();
 		var copyPodsResourcesBuildPhase = {
 			isa: 'PBXShellScriptBuildPhase',
