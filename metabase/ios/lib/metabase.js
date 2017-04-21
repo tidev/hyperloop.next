@@ -361,18 +361,208 @@ function getUserFrameworks (cacheDir, directories, callback, frameworkName) {
 }
 
 /**
- * for a given project directory, return a mapping of symbols for CocoaPods
- * third-party libraries
+ * Gets CocoaPods metabase mappings from cache file
+ *
+ * @param {String} cacheDir Path to the cache directory
+ * @param {String} cacheToken Hash to identifiy the required cache file
+ * @return {Object} The CocoaPods metabase mappings
  */
-function generateCocoaPodsFrameworks (cacheDir, basedir, callback) {
-	var podDir = path.join(basedir, 'Pods');
+function getCachedCocoaPodsMetbaseMappings(cacheDir, cacheToken) {
+	var cacheFilename = 'metabase-mappings-cocoapods-' + cacheToken + '.json';
+	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
+
+	if (!fs.existsSync(cachePathAndFilename)) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(fs.readFileSync(cachePathAndFilename).toString());
+	} catch (e) {
+		util.logger.debug(e);
+		util.logger.warn('Could not parse cached metabase mappings for CocoaPods, regenerating...');
+	}
+
+	return null;
+}
+
+/**
+ * Stores the given CocoaPods metabase mappings in a cache file
+ *
+ * @param {String} cacheDir Path to the cache directory
+ * @param {String} cacheToken Hash to identifiy the required cache file
+ * @param {Object} data The CocoaPods metabase mappings to store
+ */
+function writeCocoaPodsMetabaseMappingsToCache(cacheDir, cacheToken, data) {
+	var cacheFilename = 'metabase-mappings-cocoapods-' + cacheToken + '.json';
+	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
+
+	if (!fs.existsSync(cacheDir)) {
+		fs.mkdirSync(cacheDir);
+	}
+
+	fs.writeFileSync(cachePathAndFilename, JSON.stringify(data));
+}
+
+/**
+ * Parses all headers in the given path and creates a mapping of implementation
+ * names and their header file.
+ *
+ * This works for CocoaPods ObjC static libraries only
+ *
+ * @param {String} cacheDir
+ * @param {String} staticLibrariesHeaderPath
+ * @param {Object} includes
+ * @param {Function} callback
+ */
+function generateStaticLibraryIncludes (cacheDir, staticLibrariesHeaderPath, includes, callback) {
+	var files = getAllHeaderFiles([staticLibrariesHeaderPath]);
+	files.forEach(function (fn) {
+		var fw;
+		var pos = fn.lastIndexOf('/');
+		fw = fn;
+		if (pos > 0) {
+			var ppos = fn.lastIndexOf('/', pos - 1);
+			if (ppos) {
+				fw = fn.substring(ppos + 1, pos);
+			} else {
+				fw = fn.substring(0, pos);
+			}
+		}
+		var f = includes[fw] || {};
+		extractImplementations(fn, f);
+		includes[fw] = f;
+	});
+
+	return callback(null, includes, false);
+}
+
+/**
+ * Parses all given dynamic frameworks (swift modules) and creates a mapping of
+ * implementation names and their header file.
+ *
+ * This currently only supports Frameworks which expose an ObjC Interface Header.
+ *
+ * @param {String} cacheDir
+ * @param {String} dynamicFrameworks
+ * @param {Object} includes
+ * @param {Function} callback
+ */
+function generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes, callback) {
+	util.logger.debug('Generating dynamic framework includes:');
+	async.each(dynamicFrameworks, function (dynamicFrameworkPath, next) {
+		var frameworkNameMatches = dynamicFrameworkPath.match(/([^\/]+)\/[^\/]+\.framework/);
+		if (frameworkNameMatches === null) {
+			return next(new Error('Could not determine the Framework name under ' + dynamicFrameworkPath));
+		}
+		var frameworkName = frameworkNameMatches[1];
+		var frameworkHeadersPath = path.join(dynamicFrameworkPath, 'Headers');
+		var moduleMapPathAndFilename = path.join(dynamicFrameworkPath, 'Modules', 'module.modulemap');
+		var moduleMap = fs.readFileSync(moduleMapPathAndFilename).toString();
+		var objcInterfaceHeaderRegex = /header\s"(.+\-Swift\.h)"/ig;
+		var objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
+		while (objcInterfaceHeaderMatches !== null) {
+			var objcInterfaceHeaderFilename = objcInterfaceHeaderMatches[1];
+			var headerPathAndFilename = path.join(frameworkHeadersPath, objcInterfaceHeaderFilename);
+			if (!fs.existsSync(headerPathAndFilename)) {
+				util.logger.warn('ObjC interface header file for ' + frameworkName + ' not found at expected path ' + headerPathAndFilename + '.');
+				objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
+				continue;
+			}
+			var implementationToHeaderFileMap = includes[frameworkName] || {};
+			extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
+			includes[frameworkName] = implementationToHeaderFileMap;
+
+			objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
+		}
+
+		util.logger.debug('  ' + frameworkName.green + ' (' + dynamicFrameworkPath + ')');
+
+		next();
+	}, callback);
+}
+
+function getBuiltProductsRootPath(basePath, configurationName, sdkType) {
+	return path.join(basePath, 'build/iphone/build/Products', configurationName + '-' + sdkType);
+}
+
+/**
+ * Generates a mapping of symbols for CocoaPods third-party frameworks.
+ *
+ * This can process both static libraries and dynamic frameworks that expose an
+ * ObjC Interface Header file.
+ *
+ * @param {string} cacheDir
+ * @param {Object} builder
+ * @param {Function} callback
+ */
+function generateCocoaPodsFrameworks (cacheDir, builder, callback) {
+	var includes = {};
+	var tasks = [];
+
+	var podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
+	if (!fs.existsSync(podLockfilePathAndFilename)) {
+		return callback(new Error('No Podfile.lock found in your project root. '));
+	}
+	var cacheTokenData = {podfile: '', specs: []};
+	var podLockfileContent = fs.readFileSync(podLockfilePathAndFilename).toString();
+	var specChecksumRegex = /[ ]{2}[^\.][^\s\/]*:\s(.*)/ig;
+	var checksumMatches = specChecksumRegex.exec(podLockfileContent);
+	if (checksumMatches === null) {
+		return callback(new Error('Could not read sepc checksums from Podfile.lock'));
+	}
+	while (checksumMatches !== null) {
+		cacheTokenData.specs.push(checksumMatches[1]);
+		checksumMatches = specChecksumRegex.exec(podLockfileContent);
+	}
+	var podfileChecksumMatch = podLockfileContent.match(/PODFILE CHECKSUM: (.*)/);
+	if (podfileChecksumMatch === null) {
+		return callback(new Error('Could not read Podfile checksum from Podfile.lock'));
+	}
+	cacheTokenData.podfile = podfileChecksumMatch[1];
+	var cacheToken = crypto.createHash('md5').update(JSON.stringify(cacheTokenData)).digest('hex');
+	var cachedMappings = getCachedCocoaPodsMetbaseMappings(cacheDir, cacheToken);
+	if (cachedMappings !== null) {
+		util.logger.trace('Using cached CocoaPods mappings.');
+		return callback(null, cachedMappings);
+	}
+
+	var headerPath;
+	var podDir = path.join(builder.projectDir, 'Pods');
 	if (fs.existsSync(podDir)) {
-		var headers = path.join(podDir, 'Headers', 'Public');
-		if (fs.existsSync(headers)) {
-			return getUserFrameworks(cacheDir, [headers], callback);
+		var staticLibrariesHeaderPath = path.join(podDir, 'Headers', 'Public');
+		if (fs.existsSync(staticLibrariesHeaderPath)) {
+			tasks.push(function (next) {
+				generateStaticLibraryIncludes(cacheDir, staticLibrariesHeaderPath, includes, next);
+			});
 		}
 	}
-	callback();
+
+	var builtProductsRootPath = getBuiltProductsRootPath(builder.projectDir, builder.xcodeTarget, builder.xcodeTargetOS);
+	var builtProducts = fs.readdirSync(builtProductsRootPath);
+	var dynamicFrameworks = [];
+	builtProducts.forEach(function (productPath) {
+		var absoluteProductPath = path.join(builtProductsRootPath, productPath);
+		if (!fs.statSync(absoluteProductPath).isDirectory()) {
+			return;
+		}
+		var productFiles = fs.readdirSync(absoluteProductPath);
+		productFiles.forEach(function (fileSystemEntry) {
+			if (fileSystemEntry.match(/\.framework$/)) {
+				var dynamicFrameworkPath = path.join(absoluteProductPath, fileSystemEntry);
+				dynamicFrameworks.push(dynamicFrameworkPath);
+			}
+		});
+	});
+	if (dynamicFrameworks.length > 0) {
+		tasks.push(function (next) {
+			generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes, next);
+		});
+	}
+
+	async.series(tasks, function(err) {
+		writeCocoaPodsMetabaseMappingsToCache(cacheDir, cacheToken, includes);
+		callback(err, includes);
+	});
 }
 
 /**
@@ -509,10 +699,10 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
 						var buf = fs.readFileSync(file);
 						var out = path.join(appDir, rel);
 						var d = path.dirname(out);
-						
+
 						fs.ensureDirSync(d);
 						util.logger.trace('Copying Resource', chalk.cyan(file), 'to', chalk.cyan(out));
-						
+
 						return fs.writeFile(out, buf, cb);
 					}
 				}
@@ -739,7 +929,7 @@ function generateCocoaPods (cachedir, builder, callback) {
 				settings.LIBRARY_SEARCH_PATHS = (settings.LIBRARY_SEARCH_PATHS  || '$(inherited)') + ' "' + libDir + '"';
 			}
 			util.logger.trace(chalk.green('CocoaPods') + ' xcode settings will', JSON.stringify(settings, null, 2));
-			generateCocoaPodsFrameworks(cachedir, basedir, function (err, includes) {
+			generateCocoaPodsFrameworks(cachedir, builder, function (err, includes) {
 				return callback(err, settings, includes);
 			});
 		});

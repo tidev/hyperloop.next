@@ -79,6 +79,8 @@ function generate (json, mod, state) {
 		m.class.blocks.length) {
 		if (mod.filename && mod.filename.indexOf('/') > 0) {
 			m.import = mod.filename;
+		} else if (mod.filename.match(/\-Swift\.h$/)) {
+			m.import = mod.framework + '/' + mod.filename;
 		} else {
 			m.frameworks[mod.framework] = 1;
 		}

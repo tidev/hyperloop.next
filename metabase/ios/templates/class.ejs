@@ -38,7 +38,7 @@ function <%= data.class.name %> (pointer) {
 
 	if (!pointer) {
 		pointer = Hyperloop.createProxy({
-			class: '<%= data.class.mangledName || data.class.name %>',
+			class: '<%= data.class.fqcn %>',
 			alloc: true,
 			init: 'init'
 		});
@@ -147,7 +147,7 @@ function $initialize () {
 <%- data.renderedImports %>
 
 	$class = Hyperloop.createProxy({
-		class: '<%= data.class.mangledName || data.class.name %>',
+		class: '<%= data.class.fqcn %>',
 		alloc: false,
 		init: 'class'
 	});
