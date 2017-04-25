@@ -66,6 +66,7 @@ var implRE = /@interface\s*(.*)/g,
 	swiftClassRE = /class\s*(\w+)/g;
 
 function extractImplementations (fn, files) {
+	util.logger.trace('Extracting implementations from ' + fn.cyan);
 	var content = fs.readFileSync(fn).toString();
 	var matches;
 	if (/\.swift$/.test(fn)) {
@@ -402,39 +403,53 @@ function generateStaticLibraryIncludes (staticLibrariesHeaderPath, includes, cal
  * @param {Object} includes Map of interface names and their header file for each framewok
  * @param {Function} callback Callback function
  */
-function generateDynamicFrameworkIncludes (dynamicFrameworks, includes, callback) {
-	util.logger.debug('Generating dynamic framework includes:');
+ function generateDynamicFrameworkIncludes (dynamicFrameworks, includes, callback) {
+	util.logger.debug('Start generating dynamic framework includes');
+
+	/**
+	 * Convenience function to extract implementations from a header file and
+	 * store that under the framework name in the includes map.
+	 *
+	 * @param {string} headerPathAndFilename Full path and file to the header file
+	 * @param {string} frameworkName Name of the framework the header belongs to
+	 */
+	function extractImplementationsFromHeader (headerPathAndFilename, frameworkName) {
+		var implementationToHeaderFileMap = includes[frameworkName] || {};
+		extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
+		includes[frameworkName] = implementationToHeaderFileMap;
+	}
+
 	async.each(dynamicFrameworks, function (dynamicFrameworkPath, next) {
 		var frameworkNameMatches = dynamicFrameworkPath.match(/([^\/]+)\/[^\/]+\.framework/);
 		if (frameworkNameMatches === null) {
 			return next(new Error('Could not determine the Framework name under ' + dynamicFrameworkPath));
 		}
 		var frameworkName = frameworkNameMatches[1];
+		util.logger.debug('Generating includes for ' + frameworkName.green + ' (' + dynamicFrameworkPath + ')');
 		var frameworkHeadersPath = path.join(dynamicFrameworkPath, 'Headers');
 		var moduleMapPathAndFilename = path.join(dynamicFrameworkPath, 'Modules', 'module.modulemap');
 		var moduleMap = fs.readFileSync(moduleMapPathAndFilename).toString();
-		var objcInterfaceHeaderRegex = /header\s"(.+\-Swift\.h)"/ig;
-		var objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
-		while (objcInterfaceHeaderMatches !== null) {
-			var objcInterfaceHeaderFilename = objcInterfaceHeaderMatches[1];
+		var objcInterfaceHeaderRegex = /header\s"(.+\-Swift\.h)"/i;
+		var objcInterfaceHeaderMatch = moduleMap.match(objcInterfaceHeaderRegex);
+		if (objcInterfaceHeaderMatch === null) {
+			util.logger.debug('No Objective-C interface header found, fallback to parsing each individual header file.');
+			var headerFiles = getAllHeaderFiles([frameworkHeadersPath]);
+			headerFiles.forEach(function(headerPathAndFilename) {
+				extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
+			});
+		} else {
+			var objcInterfaceHeaderFilename = objcInterfaceHeaderMatch[1];
 			var headerPathAndFilename = path.join(frameworkHeadersPath, objcInterfaceHeaderFilename);
 			if (!fs.existsSync(headerPathAndFilename)) {
-				util.logger.warn('ObjC interface header file for ' + frameworkName + ' not found at expected path ' + headerPathAndFilename + '.');
-				objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
-				continue;
+				return next(new Error('Objective-C interface header file for ' + frameworkName + ' not found at expected path ' + headerPathAndFilename + '.'));
 			}
-			var implementationToHeaderFileMap = includes[frameworkName] || {};
-			extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
-			includes[frameworkName] = implementationToHeaderFileMap;
-
-			objcInterfaceHeaderMatches = objcInterfaceHeaderRegex.exec(moduleMap);
+			util.logger.debug('Using Objective-C interface header ' + objcInterfaceHeaderFilename);
+			extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
 		}
-
-		util.logger.debug('  ' + frameworkName.green + ' (' + dynamicFrameworkPath + ')');
 
 		next();
 	}, callback);
-}
+ }
 
 /**
  * Generates a mapping of symbols for CocoaPods third-party frameworks.
