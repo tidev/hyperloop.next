@@ -361,49 +361,6 @@ function getUserFrameworks (cacheDir, directories, callback, frameworkName) {
 }
 
 /**
- * Gets CocoaPods metabase mappings from cache file
- *
- * @param {String} cacheDir Path to the cache directory
- * @param {String} cacheToken Hash to identifiy the required cache file
- * @return {Object} The CocoaPods metabase mappings
- */
-function getCachedCocoaPodsMetbaseMappings(cacheDir, cacheToken) {
-	var cacheFilename = 'metabase-mappings-cocoapods-' + cacheToken + '.json';
-	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
-
-	if (!fs.existsSync(cachePathAndFilename)) {
-		return null;
-	}
-
-	try {
-		return JSON.parse(fs.readFileSync(cachePathAndFilename).toString());
-	} catch (e) {
-		util.logger.debug(e);
-		util.logger.warn('Could not parse cached metabase mappings for CocoaPods, regenerating...');
-	}
-
-	return null;
-}
-
-/**
- * Stores the given CocoaPods metabase mappings in a cache file
- *
- * @param {String} cacheDir Path to the cache directory
- * @param {String} cacheToken Hash to identifiy the required cache file
- * @param {Object} data The CocoaPods metabase mappings to store
- */
-function writeCocoaPodsMetabaseMappingsToCache(cacheDir, cacheToken, data) {
-	var cacheFilename = 'metabase-mappings-cocoapods-' + cacheToken + '.json';
-	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
-
-	if (!fs.existsSync(cacheDir)) {
-		fs.mkdirSync(cacheDir);
-	}
-
-	fs.writeFileSync(cachePathAndFilename, JSON.stringify(data));
-}
-
-/**
  * Parses all headers in the given path and creates a mapping of implementation
  * names and their header file.
  *
@@ -479,10 +436,6 @@ function generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes,
 
 		next();
 	}, callback);
-}
-
-function getBuiltProductsRootPath(basePath, configurationName, sdkType) {
-	return path.join(basePath, 'build/iphone/build/Products', configurationName + '-' + sdkType);
 }
 
 /**
@@ -578,6 +531,73 @@ function calculateCacheTokenFromPodLockfile (podLockfilePathAndFilename) {
 	}
 	cacheTokenData.podfile = podfileChecksumMatch[1];
 	return crypto.createHash('md5').update(JSON.stringify(cacheTokenData)).digest('hex');
+}
+
+/**
+ * Gets the full path to the built products directory for the current Xcode build
+ * configuration name and SDK type.
+ *
+ * @param {string} basePath Project root path
+ * @param {string} configurationName Active configuration name, i.e. Debug, Release
+ * @param {string} sdkType Active SDK type, i.e. iphone or iphonesimulator
+ * @return {string} Full path the the products directory
+ */
+function getBuiltProductsRootPath (basePath, configurationName, sdkType) {
+	return path.join(basePath, 'build/iphone/build/Products', configurationName + '-' + sdkType);
+}
+
+/**
+ * Gets CocoaPods metabase mappings from cache file.
+ *
+ * @param {String} cacheDir Path to the cache directory
+ * @param {String} cacheToken Hash to identifiy the required cache file
+ * @return {Object} The CocoaPods metabase mappings
+ */
+function getCachedCocoaPodsMetbaseMappings (cacheDir, cacheToken) {
+	var cacheFilename = getCocoaPodsMappingsCacheFilename(cacheToken);
+	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
+
+	if (!fs.existsSync(cachePathAndFilename)) {
+		return null;
+	}
+
+	try {
+		return JSON.parse(fs.readFileSync(cachePathAndFilename).toString());
+	} catch (e) {
+		util.logger.debug(e);
+		util.logger.warn('Could not parse cached metabase mappings for CocoaPods, regenerating...');
+	}
+
+	return null;
+}
+
+/**
+ * Stores the given CocoaPods metabase mappings in a cache file.
+ *
+ * @param {string} cacheDir Path to the cache directory
+ * @param {string} cacheToken Hash to identifiy the required cache file
+ * @param {Object} data The CocoaPods metabase mappings to store
+ */
+function writeCocoaPodsMetabaseMappingsToCache (cacheDir, cacheToken, data) {
+	var cacheFilename = getCocoaPodsMappingsCacheFilename(cacheToken);
+	var cachePathAndFilename = path.join(cacheDir, cacheFilename);
+
+	if (!fs.existsSync(cacheDir)) {
+		fs.mkdirSync(cacheDir);
+	}
+
+	fs.writeFileSync(cachePathAndFilename, JSON.stringify(data));
+}
+
+/**
+ * Returns the name of the cache file for CocoaPods metabase mappings for a
+ * given cacheToken.
+ *
+ * @param {string} cacheToken Computed cache token from CocoaPods lockfile
+ * @return {string} Metabse mappings cache filename
+ */
+function getCocoaPodsMappingsCacheFilename(cacheToken) {
+	return 'metabase-mappings-cocoapods-' + cacheToken + '.json';
 }
 
 /**
