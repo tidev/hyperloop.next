@@ -442,15 +442,16 @@ function generateDynamicFrameworkIncludes (dynamicFrameworks, includes, callback
  * This can process both static libraries and dynamic frameworks that expose an
  * ObjC Interface Header file.
  *
+ * @param {string} cacheDir Path to the cache directory
  * @param {Object} builder iOSBuilder instance
  * @param {Function} callback Callback function
  */
-function generateCocoaPodsFrameworks (builder, callback) {
+function generateCocoaPodsFrameworks (cacheDir, builder, callback) {
 	var includes = {};
 	var tasks = [];
 
 	var podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
-	var cacheToken = generateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
+	var cacheToken = calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
 	var cachedMappings = getCachedCocoaPodsMetbaseMappings(cacheDir, cacheToken);
 	if (cachedMappings !== null) {
 		util.logger.trace('Using cached CocoaPods mappings.');
@@ -463,7 +464,7 @@ function generateCocoaPodsFrameworks (builder, callback) {
 		var staticLibrariesHeaderPath = path.join(podDir, 'Headers', 'Public');
 		if (fs.existsSync(staticLibrariesHeaderPath)) {
 			tasks.push(function (next) {
-				generateStaticLibraryIncludes(cacheDir, staticLibrariesHeaderPath, includes, next);
+				generateStaticLibraryIncludes(staticLibrariesHeaderPath, includes, next);
 			});
 		}
 	}
@@ -486,7 +487,7 @@ function generateCocoaPodsFrameworks (builder, callback) {
 	});
 	if (dynamicFrameworks.length > 0) {
 		tasks.push(function (next) {
-			generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes, next);
+			generateDynamicFrameworkIncludes(dynamicFrameworks, includes, next);
 		});
 	}
 
