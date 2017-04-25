@@ -829,15 +829,15 @@ namespace hyperloop {
 		unsigned line, column, offset;
 		CXFile file;
 		clang_getFileLocation(sl, &file, &line, &column, &offset);
-    auto filePathAndName = CXStringToString(clang_getFileName(file));
-    auto frameworkStringPosition = filePathAndName.rfind(".framework");
-    if (frameworkStringPosition != std::string::npos) {
-      auto frameworkRootPath = filePathAndName.substr(0, frameworkStringPosition + 10);
-      auto lastSlashBeforeFramework = frameworkRootPath.rfind("/");
-      filePathAndName = filePathAndName.substr(lastSlashBeforeFramework + 1);
-    } else {
-      filePathAndName = replace(CXStringToString(clang_getFileName(file)), ctx->getSDKPath(), "");
-    }
+		auto filePathAndName = CXStringToString(clang_getFileName(file));
+		auto frameworkStringPosition = filePathAndName.rfind(".framework");
+		if (frameworkStringPosition != std::string::npos) {
+			auto frameworkRootPath = filePathAndName.substr(0, frameworkStringPosition + 10);
+			auto lastSlashBeforeFramework = frameworkRootPath.rfind("/");
+			filePathAndName = filePathAndName.substr(lastSlashBeforeFramework + 1);
+		} else {
+			filePathAndName = replace(CXStringToString(clang_getFileName(file)), ctx->getSDKPath(), "");
+		}
 		map["filename"] = filePathAndName;
 		map["line"] = hyperloop::toString(line);
 	}
