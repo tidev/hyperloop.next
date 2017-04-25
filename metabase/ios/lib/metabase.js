@@ -361,17 +361,16 @@ function getUserFrameworks (cacheDir, directories, callback, frameworkName) {
 }
 
 /**
- * Parses all headers in the given path and creates a mapping of implementation
+ * Parses all headers under the given path and creates a mapping of implementation
  * names and their header file.
  *
  * This works for CocoaPods ObjC static libraries only
  *
- * @param {String} cacheDir
- * @param {String} staticLibrariesHeaderPath
- * @param {Object} includes
- * @param {Function} callback
+ * @param {string} staticLibrariesHeaderPath Path to directory with static library headers
+ * @param {Object} includes Map of interface names and their header file for each library
+ * @param {Function} callback Callback function
  */
-function generateStaticLibraryIncludes (cacheDir, staticLibrariesHeaderPath, includes, callback) {
+function generateStaticLibraryIncludes (staticLibrariesHeaderPath, includes, callback) {
 	var files = getAllHeaderFiles([staticLibrariesHeaderPath]);
 	files.forEach(function (fn) {
 		var fw;
@@ -399,12 +398,11 @@ function generateStaticLibraryIncludes (cacheDir, staticLibrariesHeaderPath, inc
  *
  * This currently only supports Frameworks which expose an ObjC Interface Header.
  *
- * @param {String} cacheDir
- * @param {String} dynamicFrameworks
- * @param {Object} includes
- * @param {Function} callback
+ * @param {Array} dynamicFrameworks List of paths to dynamic frameworks
+ * @param {Object} includes Map of interface names and their header file for each framewok
+ * @param {Function} callback Callback function
  */
-function generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes, callback) {
+function generateDynamicFrameworkIncludes (dynamicFrameworks, includes, callback) {
 	util.logger.debug('Generating dynamic framework includes:');
 	async.each(dynamicFrameworks, function (dynamicFrameworkPath, next) {
 		var frameworkNameMatches = dynamicFrameworkPath.match(/([^\/]+)\/[^\/]+\.framework/);
@@ -444,11 +442,10 @@ function generateDynamicFrameworkIncludes(cacheDir, dynamicFrameworks, includes,
  * This can process both static libraries and dynamic frameworks that expose an
  * ObjC Interface Header file.
  *
- * @param {string} cacheDir
- * @param {Object} builder
- * @param {Function} callback
+ * @param {Object} builder iOSBuilder instance
+ * @param {Function} callback Callback function
  */
-function generateCocoaPodsFrameworks (cacheDir, builder, callback) {
+function generateCocoaPodsFrameworks (builder, callback) {
 	var includes = {};
 	var tasks = [];
 
