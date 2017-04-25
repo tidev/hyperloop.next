@@ -500,26 +500,7 @@ function generateCocoaPodsFrameworks (cacheDir, builder, callback) {
 	var tasks = [];
 
 	var podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
-	if (!fs.existsSync(podLockfilePathAndFilename)) {
-		return callback(new Error('No Podfile.lock found in your project root. '));
-	}
-	var cacheTokenData = {podfile: '', specs: []};
-	var podLockfileContent = fs.readFileSync(podLockfilePathAndFilename).toString();
-	var specChecksumRegex = /[ ]{2}[^\.][^\s\/]*:\s(.*)/ig;
-	var checksumMatches = specChecksumRegex.exec(podLockfileContent);
-	if (checksumMatches === null) {
-		return callback(new Error('Could not read sepc checksums from Podfile.lock'));
-	}
-	while (checksumMatches !== null) {
-		cacheTokenData.specs.push(checksumMatches[1]);
-		checksumMatches = specChecksumRegex.exec(podLockfileContent);
-	}
-	var podfileChecksumMatch = podLockfileContent.match(/PODFILE CHECKSUM: (.*)/);
-	if (podfileChecksumMatch === null) {
-		return callback(new Error('Could not read Podfile checksum from Podfile.lock'));
-	}
-	cacheTokenData.podfile = podfileChecksumMatch[1];
-	var cacheToken = crypto.createHash('md5').update(JSON.stringify(cacheTokenData)).digest('hex');
+	var cacheToken = generateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
 	var cachedMappings = getCachedCocoaPodsMetbaseMappings(cacheDir, cacheToken);
 	if (cachedMappings !== null) {
 		util.logger.trace('Using cached CocoaPods mappings.');
@@ -563,6 +544,40 @@ function generateCocoaPodsFrameworks (cacheDir, builder, callback) {
 		writeCocoaPodsMetabaseMappingsToCache(cacheDir, cacheToken, includes);
 		callback(err, includes);
 	});
+}
+
+/**
+ * Calculates a cache token based on the Podfile checksum and all installed pod
+ * specs checksums.
+ *
+ * If one of these checksums change, either the Podfile changed or a Pod was
+ * updated/installed/removed, resulting in a changed cache token and the
+ * CocoaPods symbol mapping will be regenerated.
+ *
+ * @param {string} podLockfilePathAndFilename Path and filename of the Pod lockfile
+ * @return {string} The generated cache token
+ */
+function calculateCacheTokenFromPodLockfile (podLockfilePathAndFilename) {
+	if (!fs.existsSync(podLockfilePathAndFilename)) {
+		throw new Error('No Podfile.lock found in your project root. ');
+	}
+	var cacheTokenData = {podfile: '', specs: []};
+	var podLockfileContent = fs.readFileSync(podLockfilePathAndFilename).toString();
+	var specChecksumRegex = /[ ]{2}[^\.][^\s\/]*:\s(.*)/ig;
+	var checksumMatches = specChecksumRegex.exec(podLockfileContent);
+	if (checksumMatches === null) {
+		throw new Error('Could not read sepc checksums from Podfile.lock');
+	}
+	while (checksumMatches !== null) {
+		cacheTokenData.specs.push(checksumMatches[1]);
+		checksumMatches = specChecksumRegex.exec(podLockfileContent);
+	}
+	var podfileChecksumMatch = podLockfileContent.match(/PODFILE CHECKSUM: (.*)/);
+	if (podfileChecksumMatch === null) {
+		throw new Error('Could not read Podfile checksum from Podfile.lock');
+	}
+	cacheTokenData.podfile = podfileChecksumMatch[1];
+	return crypto.createHash('md5').update(JSON.stringify(cacheTokenData)).digest('hex');
 }
 
 /**
