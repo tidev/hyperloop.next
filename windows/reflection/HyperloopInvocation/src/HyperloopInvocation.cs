@@ -84,18 +84,24 @@ namespace HyperloopInvocation
         }
         public bool IsNumber()
         {
-            return (NativeType == typeof(System.Double) ||
-                NativeType == typeof(System.Single) ||
-                NativeType == typeof(System.Decimal) ||
-                NativeType == typeof(System.Int64) ||
-                NativeType == typeof(System.Int32) ||
-                NativeType == typeof(System.Int16) ||
-                NativeType == typeof(System.UInt64) ||
-                NativeType == typeof(System.UInt32) ||
-                NativeType == typeof(System.UInt16) ||
-                NativeType == typeof(System.SByte) ||
-                NativeType == typeof(System.Byte));
+            return CanConvertToNumber(NativeType);
         }
+
+        public static bool CanConvertToNumber(Type type)
+        {
+            return (type == typeof(System.Double) ||
+                type == typeof(System.Single) ||
+                type == typeof(System.Decimal) ||
+                type == typeof(System.Int64) ||
+                type == typeof(System.Int32) ||
+                type == typeof(System.Int16) ||
+                type == typeof(System.UInt64) ||
+                type == typeof(System.UInt32) ||
+                type == typeof(System.UInt16) ||
+                type == typeof(System.SByte) ||
+                type == typeof(System.Byte));
+        }
+
         public bool IsObject()
         {
             return NativeObject is object;
@@ -107,7 +113,14 @@ namespace HyperloopInvocation
 
         public static object ConvertNumber(Type nativeType, double number)
         {
-            return System.Convert.ChangeType(number, nativeType);
+            if (CanConvertToNumber(nativeType))
+            {
+                return System.Convert.ChangeType(number, nativeType);
+            }
+            else
+            {
+                return System.Convert.ChangeType(number, typeof(System.Double));
+            }
         }
 
         public object addEventListener(string name, object target, Type helper)
