@@ -269,16 +269,28 @@ namespace HyperloopInvocation
                 MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
                 if (methodInfo == null)
                 {
-                    return null;
+                    Type[] interfaces = type.GetInterfaces();
+                    foreach (Type i in interfaces)
+                    {
+                        Method m = GetMethod(i, name, parameters);
+                        if (m != null)
+                        {
+                            return m;
+                        }
+                    }
                 }
-                Method method = new Method(name);
-                method.methodInfo = methodInfo;
-                return method;
+                else
+                {
+                    Method method = new Method(name);
+                    method.methodInfo = methodInfo;
+                    return method;
+                }
             }
             catch
             {
-                return null;
+                // Do nothing
             }
+            return null;
         }
         private static bool TryGetCachedMethod(Type type, string name, int expectedCount, out IList<Method> cachedMethods)
         {
@@ -353,6 +365,16 @@ namespace HyperloopInvocation
                 }
             }
 
+            var interfaces = type.GetInterfaces();
+            foreach (Type i in interfaces)
+            {
+                var iMethods = GetMethods(i, name, expectedCount);
+                foreach(Method m in iMethods)
+                {
+                    methodList.Add(m);
+                }
+            }
+
             UpdateCache(type, name, expectedCount, methodList);
 
             return methodList;
@@ -377,6 +399,15 @@ namespace HyperloopInvocation
             foreach (MethodInfo methodInfo in methods)
             {
                 if (methodInfo.Name.Equals(name))
+                {
+                    return true;
+                }
+            }
+
+            var interfaces = type.GetInterfaces();
+            foreach (Type i in interfaces)
+            {
+                if (HasMethod(i, name))
                 {
                     return true;
                 }
@@ -462,6 +493,17 @@ namespace HyperloopInvocation
                 Property property = new Property(name);
                 property.fieldInfo = fieldInfo;
                 return property;
+            }
+
+            // Interfaces
+            Type[] interfaces = type.GetInterfaces();
+            foreach(Type i in interfaces)
+            {
+                Property property = GetProperty(i, name);
+                if (property != null)
+                {
+                    return property;
+                }
             }
 
             return null;
