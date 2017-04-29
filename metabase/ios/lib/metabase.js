@@ -1,6 +1,6 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2017 by Appcelerator, Inc.
  */
 var spawn = require('child_process').spawn,
 	exec = require('child_process').exec,
@@ -563,25 +563,8 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 		if (!fs.existsSync(buildOutDir)) {
 			return callback(new Error('xcodebuild did not produce the expected CocoaPods libraries at ' + buildOutDir));
 		}
-		var libs = [];
-		// Find all the libraries that CocoaPods built. Can be removed when we drop
-		// support for CocoaPods < 1.0
-		async.each(fs.readdirSync(buildOutDir), function (fn, cb) {
-			if (/\.a$/.test(fn) && fn.indexOf('libPods-') < 0) {
-				libs.push(fn);
-			} else if (fs.statSync(path.join(buildOutDir, fn)).isDirectory()) {
-				// Since CocoaPods 1.0 the libraries are contained in subfolders
-				async.each(fs.readdirSync(path.join(buildOutDir, fn)), function(fn, cb) {
-					if (/\.a$/.test(fn)) {
-						libs.push(fn);
-					}
-					cb();
-				});
-			}
-			cb();
-		});
 
-		return callback(null, libs, buildOutDir);
+		return callback(null, [], buildOutDir);
 	});
 }
 
