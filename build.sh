@@ -132,6 +132,6 @@ zip -q -r hyperloop-$VERSION.zip *
 rm -rf modules
 rm -rf plugins
 
-echo "$CHECK Combined zip completed successfully"
+echo "$CHECK Combined zip completed successfully 🚀"
 echo "$CHECK Distribution is available at dist/hyperloop-$VERSION.zip"
 exit 0
