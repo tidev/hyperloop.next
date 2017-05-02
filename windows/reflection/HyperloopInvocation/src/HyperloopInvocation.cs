@@ -430,6 +430,8 @@ namespace HyperloopInvocation
     public sealed class Property
     {
         public string Name { get; set; }
+        public int Index { get; set; }
+        public bool IsIndexer { get; set;  }
         private PropertyInfo propertyInfo;
         private FieldInfo fieldInfo;
         public Property(string name)
@@ -443,6 +445,18 @@ namespace HyperloopInvocation
             {
                 obj = instance.NativeObject;
             }
+
+            if (IsIndexer)
+            {
+                Type[] indexParams = { typeof(Int32) };
+                Instance[] indexArgs = { new Instance(indexParams[0], Index) };
+                Method m = Method.GetMethod(propertyInfo.DeclaringType, "get_" + Name, indexParams);
+                if (m != null)
+                {
+                    return m.Invoke(instance, indexArgs);
+                }
+            }
+
             if (propertyInfo != null)
             {
                 object value = propertyInfo.GetValue(obj);
@@ -460,7 +474,20 @@ namespace HyperloopInvocation
         {
             if (propertyInfo != null)
             {
-                propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+                // Array-style property access such as object[0]
+                if (IsIndexer)
+                {
+                    Type[] indexParams = { typeof(Int32), value.NativeType };
+                    Instance[] indexArgs = { new Instance(indexParams[0], Index), value };
+                    Method m = Method.GetMethod(propertyInfo.DeclaringType, "set_" + Name, indexParams);
+                    if (m != null)
+                    {
+                        m.Invoke(instance, indexArgs);
+                    }
+                } else
+                {
+                    propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+                }
             }
         }
         public Type GetPropertyType()
@@ -478,6 +505,24 @@ namespace HyperloopInvocation
 
         public static Property GetProperty(Type type, string name)
         {
+            // Array-style property access such as object[0]
+            int index = 0;
+            if (Int32.TryParse(name, out index))
+            {
+                PropertyInfo[] properties = type.GetProperties();
+                foreach (var prop in properties)
+                {
+                    if (prop.GetIndexParameters().Length > 0)
+                    {
+                        Property property = new Property(prop.Name);
+                        property.propertyInfo = prop;
+                        property.Index = index;
+                        property.IsIndexer = true;
+                        return property;
+                    }
+                }
+            }
+
             PropertyInfo propertyInfo = type.GetRuntimeProperty(name);
             if (propertyInfo != null)
             {
