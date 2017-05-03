@@ -201,6 +201,7 @@ function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTarg
 			componentRE = /component id='(.*)'/,
 			patternNamedRE = /pattern_named type='(\w+)' '(\w+)'/,
 			typeRE = /type='(\w+)'/,
+			publicAccessPattern = /access=(public|open)/,
 			// turn our imports into includes for the metabase generation
 			includes = imports.map(function (name) {
 				return '<' + name + '/' + name + '.h>';
@@ -229,7 +230,7 @@ function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTarg
 							language: 'swift'
 						};
 						tok.slice(2).forEach(function (t, i) {
-							if (t.indexOf('access=public') === 0) {
+							if (publicAccessPattern.test(t)) {
 								classdef.public = true;
 							} else if (t.indexOf('inherits:') === 0) {
 								classdef.superclass = tok[i + 3]; // 2 is sliced so add + 1
@@ -250,7 +251,7 @@ function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTarg
 							public: false
 						};
 						tok.splice(2).forEach(function (t, i) {
-							if (t.indexOf('access=public') === 0) {
+							if (publicAccessPattern.test(t)) {
 								vardef.public = true;
 							} else if (t.indexOf('type=') === 0) {
 								vardef.type = resolveType(fn, metabase, typeRE.exec(t)[1]);
@@ -279,7 +280,7 @@ function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTarg
 							});
 						}
 						tok.splice(2).forEach(function (t, i) {
-							if (t.indexOf('access=public') === 0) {
+							if (publicAccessPattern.test(t)) {
 								methodef.public = true;
 							} else if (t.indexOf('type=') === 0) {
 								if (t.indexOf('type=\'' + classdef.name + '.Type') === 0) {
