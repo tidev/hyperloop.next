@@ -854,6 +854,9 @@ function encodeFriendlyType (type, imports) {
 		case 'object':
 		case 'NSObject': return '@';
 		default: {
+			if (type.indexOf('<') !== -1) {
+				type = type.substring(0, type.indexOf('<'));
+			}
 			imports && (imports[type] = 1);
 			return '[' + type + ']';
 		}
