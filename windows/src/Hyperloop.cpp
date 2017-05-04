@@ -317,16 +317,28 @@ TITANIUM_FUNCTION(HyperloopInstance, cast)
 	if (arguments.size() == 0) {
 		return get_context().CreateNull();
 	}
+	const auto ctx = get_context();
 	const auto _0 = arguments.at(0);
 	if (_0.IsObject()) {
 		const auto obj = static_cast<JSObject>(_0);
 		const auto obj_ptr = obj.GetPrivate<HyperloopInstance>();
 		if (obj_ptr) {
-			obj_ptr->set_type(type__);
+			// We should create new instance with new type because original object should not be altered with cast.
+			const auto instance = ref new HyperloopInvocation::Instance(type__, obj_ptr->get_instance()->NativeObject);
+
+			//
+			// We have a way to convert native object into JavaScript types.
+			// i.e. require('System.Double').cast(obj); returns JavaScript Number
+			//
+			if (instance->IsBoolean() || instance->IsNumber() || instance->IsString()) {
+				return HyperloopModule::Convert(ctx, instance);
+			}
+
+			return HyperloopModule::CreateObject(ctx, instance);
 		}
 		return obj;
 	} else {
-		return HyperloopModule::CreateObject(get_context(), HyperloopModule::Convert(_0, type__));
+		return HyperloopModule::CreateObject(ctx, HyperloopModule::Convert(_0, type__));
 	}
 	return _0;
 }
