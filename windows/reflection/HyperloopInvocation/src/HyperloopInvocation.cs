@@ -269,6 +269,11 @@ namespace HyperloopInvocation
                 MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
                 if (methodInfo == null)
                 {
+#if UWP_PORTABLE
+                    /*
+                     * UWP 8.1 Portable doesn't support GetInterfaces
+                     */
+#else
                     Type[] interfaces = type.GetInterfaces();
                     foreach (Type i in interfaces)
                     {
@@ -278,6 +283,7 @@ namespace HyperloopInvocation
                             return m;
                         }
                     }
+#endif
                 }
                 else
                 {
@@ -365,6 +371,11 @@ namespace HyperloopInvocation
                 }
             }
 
+#if UWP_PORTABLE
+            /*
+             * UWP 8.1 Portable doesn't support GetInterfaces
+             */
+#else
             var interfaces = type.GetInterfaces();
             foreach (Type i in interfaces)
             {
@@ -374,7 +385,7 @@ namespace HyperloopInvocation
                     methodList.Add(m);
                 }
             }
-
+#endif
             UpdateCache(type, name, expectedCount, methodList);
 
             return methodList;
@@ -404,6 +415,11 @@ namespace HyperloopInvocation
                 }
             }
 
+#if UWP_PORTABLE
+            /*
+             * UWP 8.1 Portable doesn't support GetInterfaces
+             */
+#else
             var interfaces = type.GetInterfaces();
             foreach (Type i in interfaces)
             {
@@ -412,7 +428,7 @@ namespace HyperloopInvocation
                     return true;
                 }
             }
-
+#endif
             // We can't find the method, then we marks it as "not available"
             if (cached == null)
             {
@@ -509,7 +525,7 @@ namespace HyperloopInvocation
             int index = 0;
             if (Int32.TryParse(name, out index))
             {
-                PropertyInfo[] properties = type.GetProperties();
+                var properties = type.GetRuntimeProperties();
                 foreach (var prop in properties)
                 {
                     if (prop.GetIndexParameters().Length > 0)
@@ -540,6 +556,11 @@ namespace HyperloopInvocation
                 return property;
             }
 
+#if UWP_PORTABLE
+/*
+ * UWP 8.1 Portable doesn't support GetInterfaces
+ */
+#else
             // Interfaces
             Type[] interfaces = type.GetInterfaces();
             foreach(Type i in interfaces)
@@ -550,7 +571,7 @@ namespace HyperloopInvocation
                     return property;
                 }
             }
-
+#endif
             return null;
         }
         public static bool HasProperty(Type type, string name)
