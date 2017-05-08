@@ -1,6 +1,6 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2017 by Appcelerator, Inc.
  */
 var spawn = require('child_process').spawn,
 	exec = require('child_process').exec,
@@ -563,25 +563,8 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 		if (!fs.existsSync(buildOutDir)) {
 			return callback(new Error('xcodebuild did not produce the expected CocoaPods libraries at ' + buildOutDir));
 		}
-		var libs = [];
-		// Find all the libraries that CocoaPods built. Can be removed when we drop
-		// support for CocoaPods < 1.0
-		async.each(fs.readdirSync(buildOutDir), function (fn, cb) {
-			if (/\.a$/.test(fn) && fn.indexOf('libPods-') < 0) {
-				libs.push(fn);
-			} else if (fs.statSync(path.join(buildOutDir, fn)).isDirectory()) {
-				// Since CocoaPods 1.0 the libraries are contained in subfolders
-				async.each(fs.readdirSync(path.join(buildOutDir, fn)), function(fn, cb) {
-					if (/\.a$/.test(fn)) {
-						libs.push(fn);
-					}
-					cb();
-				});
-			}
-			cb();
-		});
 
-		return callback(null, libs, buildOutDir);
+		return callback();
 	});
 }
 
@@ -689,14 +672,12 @@ function runPodInstallIfRequired(basedir, callback) {
 			if (err) { return callback(err); }
 			util.logger.trace('Found CocoaPods ' + version + ' (' + pod + ')');
 			if (semver.lt(version, '1.0.0')) {
-				util.logger.warn('Using a CocoaPods version below 1.0.0 is deprecated. Please update your CocoaPods installation with: sudo gem install cocoapods');
+				util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
+				return callback(new Error("Using a CocoaPods < 1.0.0 is not supported anymore."))
 			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
 			var args = ['install'];
-			if (semver.lte(version, '0.39.0')) {
-				args.push('--no-integrate');
-			}
 			var child = spawn(pod, args, {cwd:basedir});
 			createLogger(child.stdout, util.logger.trace);
 			createLogger(child.stderr, util.logger.warn);
@@ -718,27 +699,23 @@ function generateCocoaPods (cachedir, builder, callback) {
 	var basedir = builder.projectDir;
 	var Podfile = path.join(basedir, 'Podfile');
 	if (!fs.existsSync(Podfile)) {
-		util.logger.debug('No CocoaPods file found');
+		util.logger.debug('No CocoaPods Podfile found. Skipping ...');
 		return callback();
 	} else {
 		var content = fs.readFileSync(Podfile).toString();
 
 		if (content.length && content.indexOf('pod ') === -1) {
-			util.logger.warn('Podfile found, but no pod\'s specified. Skipping ...');
+			util.logger.warn('Podfile found, but no Pod\'s specified. Skipping ...');
 			return callback();
 		}
 	}
 
 	runPodInstallIfRequired(basedir, function (err) {
 		if (err) { return callback(err); }
-		runCocoaPodsBuild(basedir, builder, function (err, libs, libDir) {
+		runCocoaPodsBuild(basedir, builder, function (err) {
 			if (err) { return callback(err); }
 			var settings = getCocoaPodsXCodeSettings(basedir);
-			if (libs && libs.length) {
-				// This can be removed when we drop support for CocoaPods <1.0.0
-				settings.LIBRARY_SEARCH_PATHS = (settings.LIBRARY_SEARCH_PATHS  || '$(inherited)') + ' "' + libDir + '"';
-			}
-			util.logger.trace(chalk.green('CocoaPods') + ' xcode settings will', JSON.stringify(settings, null, 2));
+			util.logger.trace(chalk.green('CocoaPods') + ' Xcode settings will', JSON.stringify(settings, null, 2));
 			generateCocoaPodsFrameworks(cachedir, basedir, function (err, includes) {
 				return callback(err, settings, includes);
 			});
@@ -761,7 +738,7 @@ if (module.id === ".") {
 	// generateCocoaPods('/Users/jhaynie/work/proto/hyperloop-samples/build', '/Users/jhaynie/work/proto/hyperloop-samples', '/Users/jhaynie/work/proto/hyperloop-samples/build', 'iphonesimulator', '9.0', '7.0', {xcodebuild:'xcodebuild'}, function (err, result) {
 	// 	console.log(err, result);
 	// });
-	// runCocoaPodsBuild('/Users/jhaynie/work/proto/hyperloop-samples', 'iphonesimulator', '9.0', 'xcodebuild', function (err, libs) {
+	// runCocoaPodsBuild('/Users/jhaynie/work/proto/hyperloop-samples', 'iphonesimulator', '9.0', 'xcodebuild', function (err) {
 	// 	console.log(libs);
 	// });
 	// generateCocoaPodsFrameworks('build', '/Users/jhaynie/work/proto/hyperloop-samples', function (err, results) {

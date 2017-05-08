@@ -232,7 +232,7 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  * Has the Hyperloop Metabase generate the CocoaPods and then adds the symbols to the map of frameworks.
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
-	// attempt to handle cocoapods for third-party frameworks
+	// attempt to handle CocoaPods for third-party frameworks
 	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, symbols) {
 		if (!err) {
 			this.hasCocoaPods = symbols && Object.keys(symbols).length > 0;
@@ -1240,7 +1240,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		}, this);
 	}
 
-	// add any build settings from the generate cocoapods phase
+	// add any build settings from the generate CocoaPods phase
 	this.cocoaPodsBuildSettings && Object.keys(this.cocoaPodsBuildSettings).forEach(function (key) {
 		addParam(key, this.cocoaPodsBuildSettings[key]);
 	}, this);
