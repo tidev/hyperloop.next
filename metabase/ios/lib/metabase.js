@@ -712,7 +712,7 @@ function generateCocoaPods (cachedir, builder, callback) {
 
 	runPodInstallIfRequired(basedir, function (err) {
 		if (err) { return callback(err); }
-		runCocoaPodsBuild(basedir, builder, function (err, libs, libDir) {
+		runCocoaPodsBuild(basedir, builder, function (err) {
 			if (err) { return callback(err); }
 			var settings = getCocoaPodsXCodeSettings(basedir);
 			util.logger.trace(chalk.green('CocoaPods') + ' Xcode settings will', JSON.stringify(settings, null, 2));
@@ -738,7 +738,7 @@ if (module.id === ".") {
 	// generateCocoaPods('/Users/jhaynie/work/proto/hyperloop-samples/build', '/Users/jhaynie/work/proto/hyperloop-samples', '/Users/jhaynie/work/proto/hyperloop-samples/build', 'iphonesimulator', '9.0', '7.0', {xcodebuild:'xcodebuild'}, function (err, result) {
 	// 	console.log(err, result);
 	// });
-	// runCocoaPodsBuild('/Users/jhaynie/work/proto/hyperloop-samples', 'iphonesimulator', '9.0', 'xcodebuild', function (err, libs) {
+	// runCocoaPodsBuild('/Users/jhaynie/work/proto/hyperloop-samples', 'iphonesimulator', '9.0', 'xcodebuild', function (err) {
 	// 	console.log(libs);
 	// });
 	// generateCocoaPodsFrameworks('build', '/Users/jhaynie/work/proto/hyperloop-samples', function (err, results) {
