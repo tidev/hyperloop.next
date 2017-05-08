@@ -564,7 +564,7 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 			return callback(new Error('xcodebuild did not produce the expected CocoaPods libraries at ' + buildOutDir));
 		}
 
-		return callback(null, [], buildOutDir);
+		return callback();
 	});
 }
 
