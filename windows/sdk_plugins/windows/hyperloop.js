@@ -23,7 +23,7 @@ exports.cliVersion = '>=3.2';
 	var state = {};
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '6.2.0';
+	var TI_MIN = '6.1.0';
 
 	// Hyperloop Build for Windows
 	function HyperloopWindowsBuilder (logger, config, cli, appc, hyperloopConfig, builder) {
