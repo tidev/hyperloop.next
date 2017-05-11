@@ -60,6 +60,9 @@ exports.cliVersion = '>=3.2';
 			windowsInfo = this.builder.windowsInfo,
 			t_ = this;
 
+		// Overrides Hyperloop code generation
+		builder.useHyperloopBuilder = true;
+
 		state.thirdpartyLibraries = builder.hyperloopConfig.windows.thirdparty && Object.keys(builder.hyperloopConfig.windows.thirdparty) || [];
 		state.buildDir            = builder.buildDir;
 		state.hyperloopBuildDir   = path.join(builder.buildDir, 'TitaniumWindows_Hyperloop');
