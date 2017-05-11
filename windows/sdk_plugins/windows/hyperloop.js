@@ -66,9 +66,11 @@ exports.cliVersion = '>=3.2';
 
 		this.builder.cli.on('build.windows.analyzeJsFile', {
 			pre: function(data, finished) {
-				var ast      = data.args[0],
-					traverse = data.args[1],
-					types    = data.args[2];
+				var from     = data.args[0],
+					to       = data.args[1],
+					ast      = data.args[2],
+					traverse = data.args[3],
+					types    = data.args[4];
 
 				builder.native_types  || (builder.native_types  = {});
 				builder.native_events || (builder.native_events = {});
