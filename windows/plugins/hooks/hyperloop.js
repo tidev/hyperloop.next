@@ -62,6 +62,9 @@ exports.init = function(logger, config, cli, nodeappc) {
                     for (var i = 0; i < files.length; i++) {
                         fs.createReadStream(path.join(from, files[i])).pipe(fs.createWriteStream(path.join(to, files[i])));
                     }
+                    // Don't copy TitaniumWindows_Hyperloop.winmd
+                    var exclude_file = path.join(to, 'TitaniumWindows_Hyperloop.winmd');
+                    fs.existsSync(exclude_file) && fs.unlinkSync(exclude_file);
                 }
             });
         });
