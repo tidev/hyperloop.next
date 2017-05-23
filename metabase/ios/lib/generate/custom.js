@@ -591,7 +591,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	var ast = acorn.parse(buf, { locations: true }),
+	var ast = acorn.parse(buf, { ecmaVersion: 6, locations: true }),
 		mutated,
 		prop;
 
