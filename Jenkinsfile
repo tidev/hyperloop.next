@@ -6,7 +6,7 @@ def jsonParse(def json) {
 def nodeVersion = '4.7.3'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-def sdkVersion = '6.0.1.GA'
+def sdkVersion = '6.0.3.GA'
 
 // gets assigned once we read the package.json file
 def packageVersion = ''
@@ -29,6 +29,7 @@ node {
 } // node
 
 stage('Build') {
+	// TODO Just cheat and do "sh 'build.sh'" for now?
 
 	parallel(
 		'android': {
@@ -83,26 +84,36 @@ stage('Build') {
 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 
 					// Check if xcpretty gem is installed
-					if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
-						// FIXME Typically need sudo rights to do this!
-						sh 'gem install xcpretty'
-					}
+					// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
+					// 	// FIXME Typically need sudo rights to do this!
+					// 	sh 'gem install xcpretty'
+					// }
 					sh 'rm -rf build'
-					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-            // Building for TiCore
-						sh 'appc ti build --build-only'
-            // TODO Unzip the module zip generated, keep the libhyperloop.a and rename it to libhyperloop-ticore.a
+					// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
+					// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
+					// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
+					// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
+					// nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					// 	// Building for TiCore
+					// 	echo "Building for TiCore ..."
+					// 	sh 'appc ti build --build-only'
+					// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
+					// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
+					//
+					// 	// Building for JSCore
+					// 	echo "Building for JSCore ..."
+					// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
+					// 	sh 'appc ti build --build-only'
+					// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
+					// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
+					//
+					// 	// Add a fake libhyperloop.a file
+					// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
 
-            // Building for JSCore
-            sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
-            sh 'appc ti build --build-only'
-
-            // TODO Add a fake libhyperloop.a file
-            
 						// THEN we need to combine all the plugins stuff!
 						// And build and package the metabase shit!
 						sh './build.sh' // FIXME Can we move the logic into this file? Maybe use appc ti build?
-					}
+					// }
 				}
 				stash includes: 'iphone/build/zip/', name: 'iphone-zip'
 			}
