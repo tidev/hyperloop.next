@@ -13,7 +13,14 @@ def packageVersion = ''
 
 node {
 	stage('Checkout') {
-		checkout scm
+		// checkout scm
+		// Hack for JENKINS-37658 - see https://support.cloudbees.com/hc/en-us/articles/226122247-How-to-Customize-Checkout-for-Pipeline-Multibranch
+		checkout([
+			$class: 'GitSCM',
+			branches: scm.branches,
+			extensions: scm.extensions + [[$class: 'CleanBeforeCheckout']],
+			userRemoteConfigs: scm.userRemoteConfigs
+		])
 	} // stage
 
 	stage('Setup') {
@@ -47,23 +54,23 @@ stage('Build') {
 					}
 					sh 'appc use latest'
 					sh "appc ti sdk install ${sdkVersion} -d"
-				}
 
-				echo 'Building Android module...'
-				dir('android') {
-					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-					// FIXME: Need to ensure that Android SDK level ? is installed
-					// FIXME: Need to ensure that Android NDK r11c is installed
-					// Forcibly "wipe" the overriding ANDROID_SDK/ANDROID_NDK values from first node that started job
-					// This causes it to load the value from the local node
-					withEnv(["ANDROID_SDK=", "ANDROID_NDK="]) {
-						// FIXME This requires SDK with this fix: https://jira.appcelerator.org/browse/TIMOB-24470
-						// sh 'app ti clean' // FIXME we have no module clean command yet!
-						sh 'appc ti build --build-only'
-					}
-					stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
-				}
-			}
+					echo 'Building Android module...'
+					dir('android') {
+						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+						// FIXME: Need to ensure that Android SDK level ? is installed
+						// FIXME: Need to ensure that Android NDK r11c is installed
+						// Forcibly "wipe" the overriding ANDROID_SDK/ANDROID_NDK values from first node that started job
+						// This causes it to load the value from the local node
+						withEnv(["ANDROID_SDK=", "ANDROID_NDK="]) {
+							// FIXME This requires SDK with this fix: https://jira.appcelerator.org/browse/TIMOB-24470
+							// sh 'app ti clean' // FIXME we have no module clean command yet!
+							sh 'appc ti build --build-only'
+						} // withEnv
+						stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
+					} // dir
+				} // nodejs
+			} // node
 		},
 		'iOS': {
 			node('osx && xcode') {
