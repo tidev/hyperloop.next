@@ -44,7 +44,7 @@
 		</copy>
 
 		<!-- Copy license -->
-		<copy todir="${basedir}" file="${basedir}/../LICENSE.md"/>
+		<copy todir="${basedir}" file="${basedir}/../LICENSE"/>
 
 		<!-- Copy common CLI hook -->
 		<copy todir="${basedir}/plugins/hyperloop/hooks" file="${basedir}/../plugins/hyperloop.js"/>
@@ -55,7 +55,7 @@
 		<delete dir="${basedir}/documentation"/>
 		<delete dir="${basedir}/example"/>
 		<delete dir="${basedir}/libs"/>
-		<delete file="${basedir}/LICENSE.md"/>
+		<delete file="${basedir}/LICENSE"/>
 		<delete dir="${basedir}/plugins/hyperloop/node_modules"/>
 		<delete file="${basedir}/plugins/hyperloop/hooks/hyperloop.js"/>
 		<delete dir="${basedir}/plugins/hyperloop/hooks/android/metabase/hyperloop"/>
