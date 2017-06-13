@@ -147,6 +147,7 @@ function installAndSelectLatestTiSDK(branch, next) {
 	var child = spawn(titanium, args);
 	child.stdout.on('data', function(buffer) {
 		var message = buffer.toString();
+		console.log(message);
 		if (message.indexOf('You\'re up-to-date') !== -1) {
 			isUpToDate = true;
 			versionMatch = message.match(/Version\s([\d\.v]+)/);
@@ -240,18 +241,31 @@ function installAndroidSDKComponents(androidSDKPath, next) {
 	// FIXME this doesn't seem to ever "finish" on Travis. Hangs after installing the last portion...
 	var androidBin = path.join(androidSDKPath, 'tools', 'android'),
 		buildToolsFolder = path.join(androidSDKPath, 'build-tools'),
-		shellSyntaxCommand = "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter tools;' +
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter platform-tools;' +
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter build-tools-' + TITANIUM_ANDROID_API + '.0.1;' +
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter extra-android-support;' + // FIXME Do we need this?
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter android-' + TITANIUM_ANDROID_API +';' +
-		"echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter addon-google_apis-google-' + TITANIUM_ANDROID_API + ';' +
-		"echo '__FINISHED__'",
+		sdkApiLevelFolder = path.join(androidSDKPath, 'platforms', 'android-' + TITANIUM_ANDROID_API),
+		components = [
+			'tools',
+			'platform-tools',
+			'build-tools-' + TITANIUM_ANDROID_API + '.0.1',
+			'extra-android-support', // FIXME Do we need this?
+			'android-' + TITANIUM_ANDROID_API,
+			'addon-google_apis-google-' + TITANIUM_ANDROID_API
+		],
+		shellSyntaxCommand = '',
 		prc;
 	if (fs.existsSync(buildToolsFolder)) {
-		console.log("Android SDK + Tools already installed at", androidBin);
-		return next();
+		if (fs.existsSync(sdkApiLevelFolder)) {
+			console.log("Android SDK and Tools already installed at", androidBin);
+			return next();
+		}
+		console.log("Android Tools already installed at", androidBin);
+		components = components.slice(4); // only install sdk/google apis for version
 	}
+	// Build up command to install necessary components
+	for (var i = 0; i < components.length; i++) {
+		shellSyntaxCommand += "echo 'y' | " + androidBin + ' -s update sdk --no-ui --all --filter ' + components[i] + ';';
+	}
+	shellSyntaxCommand += "echo '__FINISHED__'";
+
 	console.log("Installing and configuring Android SDK + Tools");
 	prc = spawn('sh', ['-c', shellSyntaxCommand]);
 	prc.stdout.on('data', function(data) {
