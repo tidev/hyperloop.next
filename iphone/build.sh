@@ -31,11 +31,6 @@ fi
 
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 mkdir -p build/zip/plugins/hyperloop/hooks/ios
-mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
-cd build/zip/plugins/hyperloop
-npm install findit --production >/dev/null 2>&1
-rm -rf node_modules/findit/test
-cd $CWD
 cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 
 # Build for the Apple JavaScriptCore built-in
@@ -62,7 +57,15 @@ cp plugin/filter.sh build/zip/plugins/hyperloop/hooks/ios
 cp ../LICENSE build/zip/plugins/hyperloop
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 
+# Install findit, need package.json there first on npm5
+echo "Installing npm dependency..."
+cd build/zip/plugins/hyperloop
+npm install findit --production >/dev/null 2>&1
+rm -rf node_modules/findit/test
+cd $CWD
+
 # package the metabase into the .zip
+echo "Packaging metabase..."
 cd ../metabase/ios
 ./build.sh >/dev/null
 rm *.tgz
@@ -75,6 +78,7 @@ rm -rf *.tgz
 cd package
 npm i --production >/dev/null 2>&1
 rm -rf unittest
+mkdir -p $METABASE
 cp -R * $METABASE
 rm -rf $METABASE/hyperloop-metabase.xcodeproj $METABASE/hyperloop-metabase.xcodeproj $METABASE/src $METABASE/unittest $METABASE/include $METABASE/build
 

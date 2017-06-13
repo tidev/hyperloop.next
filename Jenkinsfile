@@ -122,8 +122,8 @@ stage('Build') {
 						// And build and package the metabase shit!
 						sh './build.sh' // FIXME Can we move the logic into this file? Maybe use appc ti build?
 					// }
+					stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
 				}
-				stash includes: 'build/zip/', name: 'iphone-zip'
 			}
 		},
 		failFast: true
@@ -136,13 +136,16 @@ stage('Package') {
 
 		// Copy the built module/plugin for iOS under a new dist dir
 		unstash 'iphone-zip'
-		sh 'mv build/zip/ dist/'
+		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
 		unstash 'android-zip'
 
 		echo 'Creating combined zip with iOS and Android ...'
 		dir('dist') {
 			sh "unzip hyperloop-android-${packageVersion}.zip"
+			sh "rm -f hyperloop-android-${packageVersion}.zip"
+			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
+			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
 
 			// Here we extract and force the version of the plugin into the folder structure
 			sh 'mkdir -p temp'
@@ -156,6 +159,6 @@ stage('Package') {
 			sh 'rm -rf modules'
 			sh 'rm -rf plugins'
 		}
-		archiveArtifacts "dist/hyperloop--${packageVersion}.zip"
+		archiveArtifacts "dist/hyperloop-${packageVersion}.zip"
 	}
 }
