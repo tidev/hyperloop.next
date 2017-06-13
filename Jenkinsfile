@@ -1,4 +1,4 @@
-properties(buildDiscarder(logRotator(numToKeepStr: '15')))
+properties([buildDiscarder(logRotator(numToKeepStr: '15'))])
 
 node('git && android-sdk && android-ndk && node-4 && xcversion && zip && unzip && npm && xcode') {
 	stage('Checkout') {
@@ -14,7 +14,7 @@ node('git && android-sdk && android-ndk && node-4 && xcversion && zip && unzip &
 
 	stage('Build') {
 		dir('tools') {
-			sh 'build.sh'
+			sh './build.sh'
 		}
 		archiveArtifacts 'dist/*.zip'
 		junit '**/build/reports/junit.xml'
