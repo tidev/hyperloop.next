@@ -127,6 +127,7 @@ stage('Build') {
 stage('Package') {
 	node('osx || linux') {
 		sh 'rm -rf dist'
+		sh 'mkdir -p dist'
 
 		// Copy the built module/plugin for iOS under a new dist dir
 		unstash 'iphone-zip'
