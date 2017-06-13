@@ -61,7 +61,7 @@ stage('Build') {
 						// sh 'app ti clean' // FIXME we have no module clean command yet!
 						sh 'appc ti build --build-only'
 					}
-					stash includes: 'android/dist/hyperloop-android-*.zip', name: 'android-zip'
+					stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
 				}
 			}
 		},
@@ -116,7 +116,7 @@ stage('Build') {
 						sh './build.sh' // FIXME Can we move the logic into this file? Maybe use appc ti build?
 					// }
 				}
-				stash includes: 'iphone/build/zip/', name: 'iphone-zip'
+				stash includes: 'build/zip/', name: 'iphone-zip'
 			}
 		},
 		failFast: true
@@ -129,10 +129,9 @@ stage('Package') {
 
 		// Copy the built module/plugin for iOS under a new dist dir
 		unstash 'iphone-zip'
-		sh 'mv iphone/build/zip/ dist/'
+		sh 'mv build/zip/ dist/'
 
 		unstash 'android-zip'
-		sh "mv hyperloop-android-${packageVersion}.zip dist/"
 
 		echo 'Creating combined zip with iOS and Android ...'
 		dir('dist') {
