@@ -22,6 +22,7 @@ node {
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 			sh 'npm install'
 		}
+		sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
 		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
 		stash includes: '**/*', name: 'source'
