@@ -29,7 +29,6 @@ node {
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 			sh 'npm install'
 		}
-		sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
 		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
 		stash includes: '**/*', name: 'source'
@@ -56,6 +55,7 @@ stage('Build') {
 					sh "appc ti sdk install ${sdkVersion} -d"
 
 					echo 'Building Android module...'
+					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
 					dir('android') {
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 						// FIXME: Need to ensure that Android SDK level ? is installed
