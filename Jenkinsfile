@@ -1,7 +1,6 @@
-@NonCPS
-def jsonParse(def json) {
-	new groovy.json.JsonSlurperClassic().parseText(json)
-}
+@Library('pipeline-library')
+import com.axway.AppcCLI;
+
 // TWeak these if you want to test against different nodejs or environment
 def nodeVersion = '4.7.3'
 def platformEnvironment = 'prod' // 'preprod'
@@ -10,6 +9,9 @@ def sdkVersion = '6.0.3.GA'
 
 // gets assigned once we read the package.json file
 def packageVersion = ''
+
+def appc = new AppcCLI(steps)
+appc.environment = 'prod'
 
 node {
 	stage('Checkout') {
@@ -45,14 +47,8 @@ stage('Build') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					sh 'npm install -g appcelerator'
-					sh 'appc logout'
-					sh "appc config set defaultEnvironment ${platformEnvironment}"
-					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-						sh 'appc login --username "$USER" --password "$PASS" -l trace'
-					}
-					sh 'appc use latest'
-					sh "appc ti sdk install ${sdkVersion} -d"
+					appc.install()
+					appc.installAndSelectSDK(sdkVersion)
 
 					echo 'Building Android module...'
 					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
@@ -65,7 +61,11 @@ stage('Build') {
 						withEnv(["ANDROID_SDK=", "ANDROID_NDK="]) {
 							// FIXME This requires SDK with this fix: https://jira.appcelerator.org/browse/TIMOB-24470
 							// sh 'app ti clean' // FIXME we have no module clean command yet!
-							sh 'appc ti build --build-only'
+							sh 'ti build -p android --build-only'
+							// FIXME Use appc ti build
+							// appc.loggedIn {
+								// sh 'appc run -p android --build-only'
+							// }
 						} // withEnv
 						stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
 					} // dir
@@ -77,54 +77,48 @@ stage('Build') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					sh 'npm install -g appcelerator'
-					sh 'appc logout'
-					sh "appc config set defaultEnvironment ${platformEnvironment}"
-					withCredentials([usernamePassword(credentialsId: credentialsId, passwordVariable: 'PASS', usernameVariable: 'USER')]) {
-						sh 'appc login --username "$USER" --password "$PASS" -l trace'
-					}
-					sh 'appc use latest'
-					sh "appc ti sdk install ${sdkVersion} -d"
-				}
+					appc.install()
+					appc.installAndSelectSDK(sdkVersion)
 
-				echo 'Building iOS module...'
-				dir('iphone') {
-					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+					echo 'Building iOS module...'
+					dir('iphone') {
+						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 
-					// Check if xcpretty gem is installed
-					// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
-					// 	// FIXME Typically need sudo rights to do this!
-					// 	sh 'gem install xcpretty'
-					// }
-					sh 'rm -rf build'
-					// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
-					// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
-					// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
-					// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
-					// nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					// 	// Building for TiCore
-					// 	echo "Building for TiCore ..."
-					// 	sh 'appc ti build --build-only'
-					// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
-					// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
-					//
-					// 	// Building for JSCore
-					// 	echo "Building for JSCore ..."
-					// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
-					// 	sh 'appc ti build --build-only'
-					// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
-					// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
-					//
-					// 	// Add a fake libhyperloop.a file
-					// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
+						// Check if xcpretty gem is installed
+						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
+						// 	// FIXME Typically need sudo rights to do this!
+						// 	sh 'gem install xcpretty'
+						// }
+
+						sh 'rm -rf build'
+						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
+
+						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
+						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
+						// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
+						// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
+						// 	// Building for TiCore
+						// 	echo "Building for TiCore ..."
+						// 	sh 'appc ti build --build-only'
+						// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
+						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
+						//
+						// 	// Building for JSCore
+						// 	echo "Building for JSCore ..."
+						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
+						// 	sh 'appc ti build --build-only'
+						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
+						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
+						//
+						// 	// Add a fake libhyperloop.a file
+						// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
 
 						// THEN we need to combine all the plugins stuff!
 						// And build and package the metabase shit!
-						sh './build.sh' // FIXME Can we move the logic into this file? Maybe use appc ti build?
-					// }
-					stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
-				}
-			}
+						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
+					} // dir
+				} // nodejs
+			} // node
 		},
 		failFast: true
 	)
