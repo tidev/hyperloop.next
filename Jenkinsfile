@@ -1,11 +1,12 @@
 @Library('pipeline-library')
 import com.axway.AppcCLI;
 
-// TWeak these if you want to test against different nodejs or environment
+// Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '4.7.3'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
 def sdkVersion = '6.0.3.GA'
+def androidAPILevel = '23'
 
 // gets assigned once we read the package.json file
 def packageVersion = ''
@@ -38,12 +39,9 @@ node {
 } // node
 
 stage('Build') {
-	// TODO Just cheat and do "sh 'build.sh'" for now?
-
 	parallel(
 		'android': {
-			// FIXME: Shouldn't need osx label, but build.properties assumes osx location for SDK!
-			node('android-sdk && android-ndk && ant && osx') {
+			node('android-sdk && android-ndk && osx') { // FIXME Support linux or windows!
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
@@ -52,23 +50,43 @@ stage('Build') {
 
 					echo 'Building Android module...'
 					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
-					dir('android') {
-						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-						// FIXME: Need to ensure that Android SDK level ? is installed
-						// FIXME: Need to ensure that Android NDK r11c is installed
-						// Forcibly "wipe" the overriding ANDROID_SDK/ANDROID_NDK values from first node that started job
-						// This causes it to load the value from the local node
-						withEnv(["ANDROID_SDK=", "ANDROID_NDK="]) {
-							// FIXME This requires SDK with this fix: https://jira.appcelerator.org/browse/TIMOB-24470
-							// sh 'app ti clean' // FIXME we have no module clean command yet!
-							sh 'ti build -p android --build-only'
-							// FIXME Use appc ti build
-							// appc.loggedIn {
-								// sh 'appc run -p android --build-only'
-							// }
-						} // withEnv
-						stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
-					} // dir
+
+					// We have to hack to make sure we pick up correct ANDROID_SDK/NDK values from the node that's currently running this section of the build.
+					def androidSDK = env.ANDROID_SDK // default to what's in env (may have come from jenkins env vars set on initial node)
+					def androidNDK = env.ANDROID_NDK
+					withEnv(['ANDROID_SDK=', 'ANDROID_NDK=']) {
+						try {
+							androidSDK = sh(returnStdout: true, script: 'printenv ANDROID_SDK')
+						} catch (e) {
+							// squash, env var not set at OS-level
+						}
+						try {
+							androidNDK = sh(returnStdout: true, script: 'printenv ANDROID_NDK')
+						} catch (e) {
+							// squash, env var not set at OS-level
+						}
+
+						dir('android') {
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							writeFile file: 'build.properties', text: """
+titanium.platform=${activeSDKPath}/android
+android.platform=${androidSDK}/platforms/android-${androidAPILevel}
+google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
+"""
+							// FIXME We should have a module clean command!
+							// manually clean
+							sh 'rm -rf build/'
+							sh 'rm -rf dist/'
+							sh 'rm -rf libs/'
+							appc.loggedIn {
+								// Even setting config needs login, ugh
+								sh "appc ti config android.sdkPath ${androidSDK}"
+								sh "appc ti config android.ndkPath ${androidNDK}"
+								sh 'appc run -p android --build-only'
+							} // appc.loggedIn
+							stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
+						} // dir
+					} // withEnv
 				} // nodejs
 			} // node
 		},
