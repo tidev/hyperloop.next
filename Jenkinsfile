@@ -14,7 +14,9 @@ node('git && android-sdk && android-ndk && node-4 && xcversion && zip && unzip &
 
 	stage('Build') {
 		dir('tools') {
-			sh './build.sh'
+			timeout(10) {
+				sh './build.sh'
+			}
 		}
 		archiveArtifacts 'dist/*.zip'
 		junit '**/build/reports/junit.xml'

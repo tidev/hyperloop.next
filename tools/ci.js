@@ -147,6 +147,7 @@ function installAndSelectLatestTiSDK(branch, next) {
 	var child = spawn(titanium, args);
 	child.stdout.on('data', function(buffer) {
 		var message = buffer.toString();
+		console.log(message);
 		if (message.indexOf('You\'re up-to-date') !== -1) {
 			isUpToDate = true;
 			versionMatch = message.match(/Version\s([\d\.v]+)/);
