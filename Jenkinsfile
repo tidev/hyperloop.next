@@ -46,7 +46,7 @@ stage('Build') {
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 					appc.install()
-					appc.installAndSelectSDK(sdkVersion)
+					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
 					echo 'Building Android module...'
 					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
