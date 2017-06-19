@@ -184,9 +184,9 @@ function runMSBuild(data, slnFile, buildConfig, callback) {
     logger.debug('Running MSBuild on solution: ' + slnFile);
 
     // Use spawn directly so we can pipe output as we go
-    var p = spawn(vsInfo.vcvarsall, [
-        '&&', 'MSBuild', '/p:Platform=Any CPU', '/p:Configuration=' + buildConfig, slnFile
-    ]);
+    var p = spawn((process.env.comspec || 'cmd.exe'), ['/S', '/C', '"', vsInfo.vsDevCmd.replace(/[ \(\)\&]/g, '^$&') +
+        ' && MSBuild /p:Platform=\"Any CPU\" /p:Configuration=' + buildConfig + ' ' + slnFile, '"'
+    ], {windowsVerbatimArguments: true});
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
