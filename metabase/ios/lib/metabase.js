@@ -537,7 +537,8 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 		minSDKVersion = builder.minIosVer,
 		xcodesettings = builder.xcodeEnv.executables,
 		spawn = require('child_process').spawn,
-		sdk = sdkType + sdkVersion,
+		// Make sure SDK version is always in MAJOR.MINOR format
+		sdk = sdkType + (/\d+\.\d+\.\d+/.test(sdkVersion) ? sdkVersion.substring(0, sdkVersion.lastIndexOf('.')) : sdkVersion),
 		productsDirectory = path.join(basedir, 'build/iphone/build/Products'),
 		buildConfigurationName = builder.xcodeTarget,
 		args = [
