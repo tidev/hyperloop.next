@@ -1,13 +1,14 @@
 {
   "name": "hyperloop",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
     "appcelerator",
     "titanium",
     "hyperloop",
     "android",
-    "ios"
+    "ios",
+    "windows"
   ],
   "author": "Jeff Haynie",
   "contributors": [
