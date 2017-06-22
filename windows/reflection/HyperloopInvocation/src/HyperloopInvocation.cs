@@ -502,7 +502,16 @@ namespace HyperloopInvocation
                     }
                 } else
                 {
-                    propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+                    if (instance != null)
+                    {
+                        // instance property
+                        propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+                    }
+                    else
+                    {
+                        // static property
+                        propertyInfo.SetValue(null, value.NativeObject);
+                    }
                 }
             }
         }
