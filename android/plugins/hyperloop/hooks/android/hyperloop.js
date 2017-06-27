@@ -21,7 +21,11 @@ exports.cliVersion = '>=3.2';
 		appc = require('node-appc'),
 		DOMParser = require('xmldom').DOMParser,
 		async = require('async'),
-		metabase = require(path.join(__dirname, 'metabase'));
+		metabase = require(path.join(__dirname, 'metabase')),
+		CopySourcesTask = require('./internal/tasks/copy-sources-task'),
+		GenerateMetabaseTask = require('./internal/tasks/generate-metabase-task'),
+		GenerateSourcesTask = require('./internal/tasks/generate-sources-task'),
+		ScanReferencesTask = require('./internal/tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
 	var TI_MIN = '6.0.0';
@@ -150,14 +154,20 @@ exports.cliVersion = '>=3.2';
 
 		cli.on('build.android.copyResource', {
 			priority: 99999,
-			pre: function (build, finished) {
-				build.ctx._minifyJS = build.ctx.minifyJS;
-				build.ctx.minifyJS = true;
+			pre: function (data, finished) {
+				var sourcePathAndFilename = data.args[1];
+				if (references[sourcePathAndFilename]) {
+					data.ctx._minifyJS = data.ctx.minifyJS;
+					data.ctx.minifyJS = true;
+				}
 				finished();
 			},
-			post: function (build, finished) {
-				build.ctx.minifyJS = build.ctx._minifyJS;
-				delete build.ctx._minifyJS;
+			post: function (data, finished) {
+				var sourcePathAndFilename = data.args[1];
+				if (references[sourcePathAndFilename]) {
+					data.ctx.minifyJS = data.ctx._minifyJS;
+					delete data.ctx._minifyJS;
+				}
 				finished();
 			}
 		});
@@ -265,26 +275,26 @@ exports.cliVersion = '>=3.2';
 						callback();
 					}
 				}, function(err) {
-						if (err) {
-							logger.error(err.toString());
-							process.exit(1);
-						}
+					if (err) {
+						logger.error(err.toString());
+						process.exit(1);
+					}
 
-						// Special case for android-support-v4.jar and android-support-v13.jar
-						if (basenames.hasOwnProperty('android-support-v4.jar') && basenames.hasOwnProperty('android-support-v13.jar')) {
-							var specialCase = [];
-							// Remove v4!
-							for (var i = 0; i < uniqueJars.length; i++) {
-								var jarFile = uniqueJars[i],
-									basename = path.basename(jarFile);
-								if (basename != 'android-support-v4.jar') {
-									specialCase.push(jarFile);
-								}
+					// Special case for android-support-v4.jar and android-support-v13.jar
+					if (basenames.hasOwnProperty('android-support-v4.jar') && basenames.hasOwnProperty('android-support-v13.jar')) {
+						var specialCase = [];
+						// Remove v4!
+						for (var i = 0; i < uniqueJars.length; i++) {
+							var jarFile = uniqueJars[i],
+								basename = path.basename(jarFile);
+							if (basename != 'android-support-v4.jar') {
+								specialCase.push(jarFile);
 							}
-							uniqueJars = specialCase;
 						}
-						data.args[1] = uniqueJars;
-						finished();
+						uniqueJars = specialCase;
+					}
+					data.args[1] = uniqueJars;
+					finished();
 				});
 			}
 		});
@@ -303,6 +313,7 @@ exports.cliVersion = '>=3.2';
 		var metabaseJSON,
 			aarFiles = [],
 			sourceFolders = [resourcesDir],
+			sourceFiles = [],
 			platformAndroid = path.join(cli.argv['project-dir'], 'platform', 'android');
 
 		logger.info('Starting ' + HL + ' assembly');
@@ -368,43 +379,90 @@ exports.cliVersion = '>=3.2';
 				// we can map requires by containing JAR
 
 				// Simple way may be to generate a "metabase" per-JAR
-				logger.trace("Generating metabase for JARs: " + jars);
-				metabase.metabase.loadMetabase(jars, {platform: 'android-' + builder.realTargetSDK}, function (err, json) {
-					if (err) {
-						logger.error("Failed to generated metabase: " + err);
-						return next(err);
-					}
-					metabaseJSON = json;
-					next();
+				var task = new GenerateMetabaseTask({
+					name: 'hyperloop:generateMetabase',
+					inputFiles: jars,
+					logger: logger
 				});
+				task.builder = builder;
+				task.run().then(metabase => {
+					metabaseJSON = metabase;
+					next();
+				}).catch(next);
 			},
 			function (next) {
 				// Need to generate the metabase first to know the full set of possible native requires as a filter when we look at requires in user's JS!
 				// look for any reference to hyperloop native libraries in our JS files
 				async.each(sourceFolders, function(folder, cb) {
 					findit(folder)
-						.on('file', function (file, stat) {
+						.on('file', function (file) {
 							// Only consider JS files.
 							if (path.extname(file) !== '.js') {
 								return;
 							}
-							match(file);
+							sourceFiles.push(file);
 						})
 						.on('end', function () {
 							cb();
 						});
-					}, function(err) {
-						if (err) {
-							return next(err);
-						}
-						generateSourceFiles(copyNativeReferences);
-						next();
+				}, function(err) {
+					if (err) {
+						return next(err);
+					}
+
+					var task = new ScanReferencesTask({
+						name: 'hyperloop:scanReferences',
+						incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'scanReferences'),
+						inputFiles: sourceFiles,
+						outputDirectory: path.join(hyperloopBuildDir, 'references'),
+						logger: logger
 					});
+					task.metabase = metabaseJSON;
+					task.run().then((foundReferences) => {
+						references = foundReferences;
+						references.forEach((fileInfo, pathAndFilename) => {
+							files[pathAndFilename] = fileInfo.replacedContent;
+						});
+						next();
+					}).catch(next);
+				});
+			},
+			function (next) {
+				var task = new GenerateSourcesTask({
+					name: 'hyperloop:generateSources',
+					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'generateSources'),
+					inputFiles: sourceFiles,
+					outputDirectory: path.join(hyperloopBuildDir, 'js'),
+					logger: logger
+				});
+				task.metabase = metabaseJSON;
+				task.references = references;
+				task.run().then(next).catch(next);
+			},
+			function (next) {
+				var hyperloopSourcesPath = path.join(hyperloopBuildDir, 'js');
+				var task = new CopySourcesTask({
+					name: 'hyperloop:copySources',
+					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'copySources'),
+					inputDirectory: hyperloopSourcesPath,
+					outputDirectory: path.join(builder.buildBinAssetsResourcesDir, 'hyperloop'),
+					logger: logger
+				});
+				task.addInputDirectory(hyperloopSourcesPath);
+				task.preTaskRun = function () {
+					task.inputFiles.forEach(pathAndFilename => {
+						var destinationPathAndFilename = path.join(task.outputDirectory, path.basename(pathAndFilename));
+						delete builder.lastBuildFiles[destinationPathAndFilename];
+					});
+				};
+				task.run().then(next).catch(next);
 			}
 		], function (err) {
 			if (err) {
 				return callback(err);
 			}
+
+			callback();
 		});
 
 		/**
@@ -491,141 +549,17 @@ exports.cliVersion = '>=3.2';
 								})
 								.on('end', cb);
 						}], next);
-				}],
-				function (err, results) {
-					if (err) {
-						logger.error('Failed to extract/handle aar zip: %s', chalk.cyan(aarFile) + '\n');
-						return finished(err, foundJars);
-					}
-					logger.debug("Processed AAR file : " + aarFile);
-					finished(null, foundJars);
-				});
-		}
-
-		function copyNativeReferences () {
-			var keys = Object.keys(references);
-			// only if we found references, otherwise, skip
-			if (keys.length) {
-				fs.mkdirsSync(hyperloopResources);
-				afs.copyDirRecursive(filesDir, hyperloopResources, function (err) {
-					logger.info('Finished ' + HL + ' assembly');
-					if (err) {
-						logger.error(err);
-					}
-					callback(err);
-				}, {logger: logger});
-			} else {
-				logger.info('Finished ' + HL + ' assembly');
-				callback();
-			}
-		}
-
-		function match (file) {
-			var matches = findHyperloopRequires(file);
-			if (matches.length && matches[0].length) {
-				files[file] = matches[1];
-				matches[0].forEach(function (ref) {
-					references[ref] = 1;
-				});
-				return true;
-			}
-			return false;
-		}
-
-		// replace the contents of a buffer
-		function replaceAll (haystack, needle, replaceStr) {
-			var newBuffer = haystack;
-			while (1) {
-				var index = newBuffer.indexOf(needle);
-				if (index < 0) {
-					break;
 				}
-				var before = newBuffer.substring(0, index),
-					after = newBuffer.substring(index + needle.length);
-				newBuffer = before + replaceStr + after;
-			}
-			return newBuffer;
-		}
-
-		// look for any require which matches our hyperloop system frameworks
-		function findHyperloopRequires (file) {
-			if (!afs.exists(file)) {
-				return [];
-			}
-			else {
-				var contents = fs.readFileSync(file, 'UTF-8'),
-					found = [];
-				logger.trace('Searching for hyperloop requires in: ' + file);
-				(contents.match(requireRegex) || []).forEach(function (m) {
-					var re = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/i.exec(m),
-						className = re[1],
-						lastIndex,
-						validPackage = false,
-						type,
-						ref,
-						str,
-						packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
-
-					// Is this a Java type we found in the JARs/APIs?
-					logger.trace('Checking require for: ' + className);
-
-					// Look for requires using wildcard package names and assume all types under that namespace!
-					if (className.indexOf('.*') == className.length - 2) {
-						// Check that it's a valid package name and search for all the classes directly under that package!
-						for (var mClass in metabaseJSON.classes) {
-							if (mClass.match(packageRegexp)) {
-								found.push('hyperloop/' + mClass);
-								validPackage = true;
-							}
-						}
-						if (validPackage) {
-							ref = 'hyperloop/' + className.slice(0, className.length - 2); // drop the .* ending
-							str = "require('" + ref + "')";
-							contents = replaceAll(contents, m, str);
-						}
-					} else {
-						// single type
-						type = metabaseJSON.classes[className];
-						if (!type) {
-							// fallback for using dot notation to refer to nested class
-							lastIndex = className.lastIndexOf('.');
-							className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
-							type = metabaseJSON.classes[className];
-							if (!type) {
-								return;
-							}
-						}
-						// Looks like it's a Java type, so let's hack it and add it to our list!
-						// replace the require to point to our generated file path
-						ref = 'hyperloop/' + className;
-						str = "require('" + ref + "')";
-						contents = replaceAll(contents, m, str);
-						found.push(ref);
-					}
-				});
-				return [found, contents];
-			}
-		}
-
-		// generate the metabase from required hyperloop files
-		// and then generate the source files from that metabase
-		function generateSourceFiles (next) {
-			var classes = Object.keys(references);
-			// no hyperloop files detected, we can stop here
-			if (!classes.length) {
-				logger.info('Skipping ' + HL + ' compile, no usage found ...');
-				return next();
-			}
-
-			filesDir = path.join(hyperloopBuildDir, 'js');
-			fs.emptyDirSync(filesDir);
-
-			// drop hyperloop/ from each entry in references to get just the class names
-			classes = classes.map(function(element) {
-				return element.slice(10);
+			],
+			function (err, results) {
+				if (err) {
+					logger.error('Failed to extract/handle aar zip: %s', chalk.cyan(aarFile) + '\n');
+					return finished(err, foundJars);
+				}
+				logger.debug("Processed AAR file : " + aarFile);
+				finished(null, foundJars);
 			});
-
-			return metabase.generate.generateFromJSON(filesDir, metabaseJSON, classes, next);
 		}
+
 	}
 })();
