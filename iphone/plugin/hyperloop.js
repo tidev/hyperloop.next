@@ -1216,6 +1216,12 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	}
 
 	function addParam(key, value) {
+		if (key === 'OTHER_LDFLAGS') {
+			// Rewrite other linker flags to the special Hyperloop linker flags to
+			// make sure they will only be passed to iPhone device and sim builds
+			key = 'HYPERLOOP_LDFLAGS';
+		}
+
 		for (var i = 0; i < args.length; i++) {
 			if (args[i].indexOf(key + '=') === 0) {
 				// already exists

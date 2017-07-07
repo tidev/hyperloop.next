@@ -6,21 +6,4 @@
 // for this file:
 // http://help.apple.com/xcode/mac/8.3/#/dev745c5c974
 
-//
-// How to add a Framework (example)
-//
-// OTHER_LDFLAGS=$(inherited) -framework Foo
-//
-// Adding a framework for a specific version(s) of iPhone:
-//
-// OTHER_LDFLAGS[sdk=iphoneos4*]=$(inherited) -framework Foo
-// OTHER_LDFLAGS[sdk=iphonesimulator4*]=$(inherited) -framework Foo
-//
-//
-// How to add a compiler define:
-//
-// OTHER_CFLAGS=$(inherited) -DFOO=1
-//
-//
-// IMPORTANT NOTE: always use $(inherited) in your overrides
-//
+OTHER_LDFLAGS=$(inherited) $(HYPERLOOP_LDFLAGS)
