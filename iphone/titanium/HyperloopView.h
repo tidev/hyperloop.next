@@ -1,6 +1,6 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 #ifdef TIMODULE
 
@@ -8,10 +8,10 @@
 
 @interface HyperloopView : TiUIView
 
-@property (nonatomic, retain) UIView* nativeView;
-@property (nonatomic, retain) id nativeProxy;
+@property(nonatomic, retain) UIView *nativeView;
+@property(nonatomic, retain) id nativeProxy;
 
--(instancetype)initWithView:(UIView*)view andProxy:(TiProxy*)proxy;
+- (instancetype)initWithView:(UIView *)view andProxy:(TiProxy *)proxy;
 
 @end
 

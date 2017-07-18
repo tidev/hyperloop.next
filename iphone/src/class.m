@@ -1,6 +1,6 @@
 /**
  * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 #import <objc/runtime.h>
 #import <objc/message.h>
@@ -13,7 +13,8 @@
 
 @synthesize nativeObject = _nativeObject;
 
--(instancetype)initWithClassName: (NSString *)className alloc:(BOOL)alloc init:(SEL)init args:(NSArray*)args {
+- (instancetype)initWithClassName:(NSString *)className alloc:(BOOL)alloc init:(SEL)init args:(NSArray *)args
+{
 	if (self = [self init]) {
 		Class c = NSClassFromString(className);
 		if (c == nil) {
@@ -39,17 +40,20 @@
 	return self;
 }
 
--(void)dealloc {
+- (void)dealloc
+{
 	[self destroy:nil];
 	FORGET(self);
 }
-
--(void)destroy:(id)args {
+ 
+- (void)destroy:(id)args
+{
 	RELEASE_AND_CHECK(self.nativeObject);
 	RELEASE_AND_CHECK(self.customClass);
 }
 
--(id)target {
+- (id)target
+{
 	return self.nativeObject;
 }
 

@@ -1,6 +1,6 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 #ifdef TIMODULE
 
@@ -9,14 +9,15 @@
 
 @implementation HyperloopViewProxy
 
--(void)setNativeView:(id)nativeView {
+- (void)setNativeView:(id)nativeView
+{
 	if (_nativeView && [_nativeView respondsToSelector:@selector(destroy)]) {
 		[_nativeView destroy];
 		_nativeView = nil;
 	}
 	if (nativeView) {
 		if ([nativeView isKindOfClass:[HyperloopClass class]]) {
-			HyperloopClass *hyperloopClass = (HyperloopClass*)nativeView;
+			HyperloopClass *hyperloopClass = (HyperloopClass *)nativeView;
 			id nativeObject = [hyperloopClass nativeObject];
 			_nativeView = nativeObject;
 		} else {
@@ -27,30 +28,36 @@
 	}
 }
 
--(void) dealloc {
+- (void)dealloc
+{
 	if (_nativeView && [_nativeView respondsToSelector:@selector(destroy)]) {
 		[_nativeView destroy];
 	}
 	_nativeView = nil;
 }
 
--(TiUIView*)newView {
+- (TiUIView *)newView
+{
 	return [[HyperloopView alloc] initWithView:[self nativeView] andProxy:self];
 }
 
--(UIViewAutoresizing)verifyAutoresizing:(UIViewAutoresizing)suggestedResizing {
+- (UIViewAutoresizing)verifyAutoresizing:(UIViewAutoresizing)suggestedResizing
+{
 	return suggestedResizing & ~(UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth);
 }
 
--(NSString*)apiName {
+- (NSString *)apiName
+{
 	return @"HyperloopViewProxy";
 }
 
--(TiDimension)defaultAutoWidthBehavior:(id)unused {
+- (TiDimension)defaultAutoWidthBehavior:(id)unused
+{
 	return TiDimensionAutoFill;
 }
 
--(TiDimension)defaultAutoHeightBehavior:(id)unused {
+- (TiDimension)defaultAutoHeightBehavior:(id)unused
+{
 	return TiDimensionAutoFill;
 }
 
