@@ -164,9 +164,9 @@
 				24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */,
 				24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */,
 				24B0352B1BC47F2900F3D9E5 /* HyperloopView.h */,
-				247077731BB304E100150B9F /* HyperloopModuleAssets.h */,
 				247077711BB304E100150B9F /* HyperloopModule.h */,
 				247077721BB304E100150B9F /* HyperloopModule.m */,
+				247077731BB304E100150B9F /* HyperloopModuleAssets.h */,
 				247077741BB304E100150B9F /* HyperloopModuleAssets.m */,
 			);
 			name = Titanium;
