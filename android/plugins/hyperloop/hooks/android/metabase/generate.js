@@ -200,7 +200,7 @@ function generateFromJSON(dir, metabaseJSON, classes, callback) {
 		// Generate package entries all the way up!
 		for (var i = 0; i < packageParts.length - 1; i++) {
 			var tmpPackageName = packageParts.slice(0, i + 1).join('.');
-			packages[tmpPackageName] = packages[tmpPackageName] || {};
+			packages[tmpPackageName] = packages[tmpPackageName] || [];
 		}
 
 		json.name = className;
