@@ -2,11 +2,13 @@
  * Hyperloop Module
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
-#import "HyperloopModule.h"
+
 #import "define.h"
-#import "class.h"
-#import "pointer.h"
-#import "utils.h"
+
+#import "HyperloopModule.h"
+#import "HyperloopClass.h"
+#import "HyperloopPointer.h"
+#import "HyperloopUtils.h"
 
 #ifdef TIMODULE
 #import "TiToJS.h"
@@ -22,26 +24,34 @@
 #import "HyperloopView.h"
 #import "TiViewProxy.h"
 #else
-#import "UIKit/UIKit.h"
+
+@import UIKit;
+
 // for unit testing
 @interface KrollContext : NSObject
 - (TiContextRef)context;
 @end
+
 @interface KrollBridge : NSObject
 - (id)require:(KrollContext *)kroll path:(NSString *)path;
 @end
+
 @interface KrollObject : NSObject
 + (id)toID:(KrollContext *)c value:(TiValueRef)ref;
 - (TiObjectRef)propsObject;
 @end
+
 @interface KrollWrapper : NSObject
 @property(nonatomic, readwrite, assign) TiObjectRef jsobject;
 @end
+
 @interface KrollCallback : NSObject
 @end
+
 @interface TiViewProxy : NSObject
 @property(nonatomic, readwrite, retain) UIView *view;
 @end
+
 #endif
 
 #if TARGET_OS_SIMULATOR
@@ -1003,7 +1013,7 @@ GETNUMVALUE(unsignedLongLong, UnsignedLongLong, TiValueMakeNumber, NAN);
 GETNUMVALUE(unsignedShort, UnsignedShort, TiValueMakeNumber, NAN);
 GETNUMVALUE(unsignedChar, UnsignedChar, TiValueMakeNumber, NAN);
 
-// directly from titanium_prep
+// Directly from titanium_prep
 static const char ALPHA[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
 extern NSString *const TI_APPLICATION_GUID;
 extern NSString *const TI_APPLICATION_DEPLOYTYPE;
@@ -1061,15 +1071,15 @@ static BOOL isPlatformGUID(NSString *guid)
 @implementation Hyperloop
 
 /**
- * this method is called before Titanium loads to allow Hyperloop to bootstrap into the JS VM
+ * Called before Titanium loads to allow Hyperloop to bootstrap into the JS VM
  */
-+ (void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge
++ (void)willStartNewContext:(KrollContext *)krollContext bridge:(KrollBridge *)krollbridge
 {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", KrollContext);
 #endif
 
-	// if not a valid platform GUID, we aren't going to enable Hyperloop
+	// If not a valid platform GUID, we aren't going to enable Hyperloop
 	if (isPlatformGUID(TI_APPLICATION_GUID) == NO) {
 		NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
 #if TARGET_OS_SIMULATOR
@@ -1083,12 +1093,12 @@ static BOOL isPlatformGUID(NSString *guid)
 		return;
 	}
 
-	context = kroll;
+	context = krollContext;
 	bridge = krollbridge;
-	TiGlobalContextRef ctx = (TiGlobalContextRef)[kroll context];
+	TiGlobalContextRef ctx = (TiGlobalContextRef)[krollContext context];
 	TiGlobalContextRetain(ctx);
 
-	// create our hyperloop class
+	// Create our hyperloop class
 	TiClassDefinition classDef = kTiClassDefinitionEmpty;
 	classDef.className = "Hyperloop";
 	classDef.initialize = Initializer;
@@ -1102,7 +1112,7 @@ static BOOL isPlatformGUID(NSString *guid)
 	TiObjectRef globalObjectRef = TiContextGetGlobalObject(ctx);
 	TiValueRef exception = NULL;
 
-	// create our base constructor
+	// Create our base constructor
 	classDef.className = "HyperloopObject";
 	classDef.callAsConstructor = Constructor;
 	constructorClassRef = TiClassCreate(&classDef);
@@ -1121,7 +1131,7 @@ static BOOL isPlatformGUID(NSString *guid)
 	TiObjectSetProperty(ctx, globalObjectRef, constructorProp, constructor, kTiPropertyAttributeDontDelete, &exception);
 	assert(exception == NULL);
 
-	// register it with the Global Context
+	// Register it with the Global Context
 	TiStringRef href = TiStringCreateWithUTF8CString("Hyperloop");
 	TiObjectRef objectRef = HLObjectMake(ctx, objectClassRef, context);
 	assert(exception == NULL);
@@ -1135,7 +1145,7 @@ static BOOL isPlatformGUID(NSString *guid)
 		assert(exception == NULL);                                                                                                                                                \
 	}
 
-// add our implementations
+    // Add our implementations
 
 #if TARGET_OS_SIMULATOR
 	MAKECALLBACK(garbageCollect, GarbageCollect);
@@ -1162,7 +1172,7 @@ static BOOL isPlatformGUID(NSString *guid)
 		assert(exception == NULL);                                                                                                                                          \
 	}
 
-	// add our convertors
+	// Add our convertors
 
 	DEFINENUM(bool, Bool);
 	DEFINENUM(float, Float);
@@ -1186,27 +1196,27 @@ static BOOL isPlatformGUID(NSString *guid)
 }
 
 /**
- * this method is called after Titanium starts the context
+ * Called after Titanium starts the context
  */
-+ (void)didStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge
++ (void)didStartNewContext:(KrollContext *)krollContext bridge:(KrollBridge *)bridge
 {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] didStartNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] didStartNewContext %@", krollContext);
 #endif
 }
 
 /**
- * this method is called before Titanium shuts down the context
+ * Called before Titanium shuts down the context
  */
-+ (void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge
++ (void)willStopNewContext:(KrollContext *)krollContext bridge:(KrollBridge *)bridge
 {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", krollContext);
 #endif
 	if (context) {
 		[callbacks removeAllObjects];
 		[modules removeAllObjects];
-		TiGlobalContextRef ctx = (TiGlobalContextRef)[kroll context];
+		TiGlobalContextRef ctx = (TiGlobalContextRef)[krollContext context];
 		TiStringRef prop = TiStringCreateWithUTF8CString("Hyperloop");
 		TiObjectRef globalObjectRef = TiContextGetGlobalObject(ctx);
 		TiValueRef objectRef = TiObjectGetProperty(ctx, globalObjectRef, prop, NULL);
@@ -1230,12 +1240,12 @@ static BOOL isPlatformGUID(NSString *guid)
 }
 
 /**
- * this method is called after Titanium stops the context
+ * Called after Titanium stops the context
  */
-+ (void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge
++ (void)didStopNewContext:(KrollContext *)krollContext bridge:(KrollBridge *)bridge
 {
 #if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] didStopNewContext %@", kroll);
+	NSLog(@"[TRACE][HYPERLOOP] didStopNewContext %@", krollContext);
 #endif
 }
 
@@ -1253,8 +1263,10 @@ static BOOL isPlatformGUID(NSString *guid)
 @end
 
 #ifdef TIMODULE
-// define a module such that it can be resolved if required
 
+/**
+ * Define a module such that it can be resolved if required
+ */
 @interface HyperloopModule : TiModule
 @end
 
@@ -1262,13 +1274,11 @@ static BOOL isPlatformGUID(NSString *guid)
 
 #pragma - mark Hyperloop
 
-// this is generated for your module, please do not change it
 - (id)moduleGUID
 {
 	return @"bdaca69f-b316-4ce6-9065-7a61e1dafa39";
 }
 
-// this is generated for your module, please do not change it
 - (NSString *)moduleId
 {
 	return @"hyperloop";

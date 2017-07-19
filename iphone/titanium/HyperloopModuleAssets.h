@@ -3,11 +3,12 @@
  */
 #ifdef TIMODULE
 
-#import <Foundation/Foundation.h>
+@import Foundation;
 
-@interface HyperloopModuleAssets : NSObject
-{
+@interface HyperloopModuleAssets : NSObject {
+
 }
+
 - (NSData*) moduleAsset;
 - (NSData*) resolveModuleAsset:(NSString*)path;
 

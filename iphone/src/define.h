@@ -13,6 +13,9 @@
 
 #import "TiToJS.h"
 
+static NSString *stringWithoutGarbage(NSString *str);
+NSString *cleanupEncoding(NSString *encoding);
+
 #ifdef USE_JSCORE_FRAMEWORK
 extern BOOL isIOS9OrGreater();
 extern BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref);

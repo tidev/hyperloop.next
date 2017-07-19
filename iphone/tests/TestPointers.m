@@ -3,10 +3,11 @@
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <XCTest/XCTest.h>
-#import "pointer.h"
-#import "class.h"
-#import "utils.h"
+@import XCTest;
+
+#import "HyperloopPointer.h"
+#import "HyperloopClass.h"
+#import "HyperloopUtils.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
