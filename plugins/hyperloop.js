@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -15,16 +15,22 @@ exports.cliVersion = '>=3.2';
 exports.init = init;
 
 /**
- * main entry point for our plugin which looks for the platform specific
+ * Main entry-point for our plugin which looks for the platform specific
  * plugin to invoke
+ *
+ * @param {Object} logger - The Titanium CLI logger.
+ * @param {Object} config - The Titanium CLI config.
+ * @param {Object} cli - The Titanium CLI instance.
+ * @param {Object} appc - Reference to node-appc.
  */
 function init(logger, config, cli, appc) {
 	cli.on('build.pre.compile', function (builder, callback) {
 		var hook = cli.createHook('hyperloop:init', builder, function (finished) {
 			var platform = builder.platformName;
+			var deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
 
 			// see if we have a platform specific hyperloop and we're running for that target
-			if (builder.tiapp && builder.tiapp['deployment-targets'] && builder.tiapp['deployment-targets'][platform]) {
+			if (deploymentTargets && (deploymentTargets[platform] || deploymentTargets['ipad'])) {
 				var usingHyperloop = builder.tiapp.modules.some(function (m) {
 					return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
 				});
