@@ -3,9 +3,10 @@
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <XCTest/XCTest.h>
-#import "pointer.h"
-#import "utils.h"
+@import XCTest;
+
+#import "HyperloopPointer.h"
+#import "HyperloopUtils.h"
 
 @interface TestUtils : XCTestCase
 

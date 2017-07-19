@@ -3,7 +3,7 @@
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <Foundation/Foundation.h>
+@import Foundation;
 #import "define.h"
 
 @interface HyperloopClass : BASECLASS

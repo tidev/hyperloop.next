@@ -11,20 +11,22 @@
 		2452612D1BE5A1C700FF03D6 /* TestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2452612C1BE5A1C700FF03D6 /* TestView.swift */; };
 		2452612F1BE5A25100FF03D6 /* TestSwift.m in Sources */ = {isa = PBXBuildFile; fileRef = 2452612E1BE5A25100FF03D6 /* TestSwift.m */; };
 		2461FDA01BB0C286006D4D9E /* libhyperloop.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2461FD871BB08963006D4D9E /* libhyperloop.a */; settings = {ATTRIBUTES = (Required, ); }; };
-		2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDAB1BB0C3F2006D4D9E /* class.m */; };
+		2461FDAD1BB0C3F2006D4D9E /* HyperloopClass.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDAB1BB0C3F2006D4D9E /* HyperloopClass.m */; };
 		2461FDB31BB1DF01006D4D9E /* TestDispatch.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDB21BB1DF01006D4D9E /* TestDispatch.m */; };
 		2461FDBC1BB21348006D4D9E /* TestExtend.m in Sources */ = {isa = PBXBuildFile; fileRef = 2461FDBB1BB21348006D4D9E /* TestExtend.m */; };
 		247077751BB304E100150B9F /* HyperloopModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077721BB304E100150B9F /* HyperloopModule.m */; };
 		247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077741BB304E100150B9F /* HyperloopModuleAssets.m */; };
 		2470777A1BB3424200150B9F /* TitaniumMocks.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077791BB3424200150B9F /* TitaniumMocks.m */; };
-		2470779B1BB3A70300150B9F /* utils.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077991BB3A70300150B9F /* utils.m */; };
+		2470779B1BB3A70300150B9F /* HyperloopUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077991BB3A70300150B9F /* HyperloopUtils.m */; };
 		247077A51BB4494600150B9F /* TestPointers.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077A41BB4494600150B9F /* TestPointers.m */; };
-		247077AD1BB87FAE00150B9F /* pointer.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077AB1BB87FAE00150B9F /* pointer.m */; };
+		247077AD1BB87FAE00150B9F /* HyperloopStruct.m in Sources */ = {isa = PBXBuildFile; fileRef = 247077AB1BB87FAE00150B9F /* HyperloopStruct.m */; };
 		24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */; };
 		24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */; };
 		24B0355E1BC7237900F3D9E5 /* TestJS.m in Sources */ = {isa = PBXBuildFile; fileRef = 24B0355C1BC7233000F3D9E5 /* TestJS.m */; };
 		24B035601BC726E000F3D9E5 /* JavaScriptCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */; };
 		B68D53D41CAEED6600EBFE65 /* define.m in Sources */ = {isa = PBXBuildFile; fileRef = B68D53D31CAEED6600EBFE65 /* define.m */; };
+		DBCAF2B91F1EDB1F00FFDB9B /* HyperloopValue.m in Sources */ = {isa = PBXBuildFile; fileRef = DBCAF2B81F1EDB1F00FFDB9B /* HyperloopValue.m */; };
+		DBCAF2BC1F1EDB8000FFDB9B /* HyperloopPointer.m in Sources */ = {isa = PBXBuildFile; fileRef = DBCAF2BB1F1EDB8000FFDB9B /* HyperloopPointer.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,8 +59,8 @@
 		2461FD871BB08963006D4D9E /* libhyperloop.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libhyperloop.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2461FD9B1BB0C286006D4D9E /* Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Tests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2461FD9F1BB0C286006D4D9E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		2461FDAA1BB0C3F2006D4D9E /* class.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = class.h; path = src/class.h; sourceTree = "<group>"; };
-		2461FDAB1BB0C3F2006D4D9E /* class.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = class.m; path = src/class.m; sourceTree = "<group>"; };
+		2461FDAA1BB0C3F2006D4D9E /* HyperloopClass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopClass.h; path = src/HyperloopClass.h; sourceTree = "<group>"; };
+		2461FDAB1BB0C3F2006D4D9E /* HyperloopClass.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopClass.m; path = src/HyperloopClass.m; sourceTree = "<group>"; };
 		2461FDB21BB1DF01006D4D9E /* TestDispatch.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestDispatch.m; sourceTree = "<group>"; };
 		2461FDBB1BB21348006D4D9E /* TestExtend.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestExtend.m; sourceTree = "<group>"; };
 		247077711BB304E100150B9F /* HyperloopModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopModule.h; path = titanium/HyperloopModule.h; sourceTree = "<group>"; };
@@ -69,11 +71,11 @@
 		247077781BB3424200150B9F /* TitaniumMocks.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TitaniumMocks.h; sourceTree = "<group>"; };
 		247077791BB3424200150B9F /* TitaniumMocks.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TitaniumMocks.m; sourceTree = "<group>"; };
 		247077981BB3A5D900150B9F /* define.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = define.h; path = src/define.h; sourceTree = "<group>"; };
-		247077991BB3A70300150B9F /* utils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = utils.m; path = src/utils.m; sourceTree = "<group>"; };
-		2470779A1BB3A70300150B9F /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = utils.h; path = src/utils.h; sourceTree = "<group>"; };
+		247077991BB3A70300150B9F /* HyperloopUtils.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopUtils.m; path = src/HyperloopUtils.m; sourceTree = "<group>"; };
+		2470779A1BB3A70300150B9F /* HyperloopUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopUtils.h; path = src/HyperloopUtils.h; sourceTree = "<group>"; };
 		247077A41BB4494600150B9F /* TestPointers.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestPointers.m; sourceTree = "<group>"; };
-		247077AB1BB87FAE00150B9F /* pointer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = pointer.m; path = src/pointer.m; sourceTree = "<group>"; };
-		247077AC1BB87FAE00150B9F /* pointer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = pointer.h; path = src/pointer.h; sourceTree = "<group>"; };
+		247077AB1BB87FAE00150B9F /* HyperloopStruct.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopStruct.m; path = src/HyperloopStruct.m; sourceTree = "<group>"; };
+		247077AC1BB87FAE00150B9F /* HyperloopStruct.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopStruct.h; path = src/HyperloopStruct.h; sourceTree = "<group>"; };
 		24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopView.m; path = titanium/HyperloopView.m; sourceTree = "<group>"; };
 		24B0352B1BC47F2900F3D9E5 /* HyperloopView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopView.h; path = titanium/HyperloopView.h; sourceTree = "<group>"; };
 		24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = HyperloopViewProxy.m; path = titanium/HyperloopViewProxy.m; sourceTree = "<group>"; };
@@ -81,6 +83,10 @@
 		24B0355C1BC7233000F3D9E5 /* TestJS.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestJS.m; sourceTree = "<group>"; };
 		24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		B68D53D31CAEED6600EBFE65 /* define.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = define.m; path = src/define.m; sourceTree = "<group>"; };
+		DBCAF2B71F1EDB1F00FFDB9B /* HyperloopValue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HyperloopValue.h; sourceTree = "<group>"; };
+		DBCAF2B81F1EDB1F00FFDB9B /* HyperloopValue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HyperloopValue.m; sourceTree = "<group>"; };
+		DBCAF2BA1F1EDB8000FFDB9B /* HyperloopPointer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HyperloopPointer.h; sourceTree = "<group>"; };
+		DBCAF2BB1F1EDB8000FFDB9B /* HyperloopPointer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = HyperloopPointer.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -145,14 +151,18 @@
 		2461FDA61BB0C3D9006D4D9E /* Source */ = {
 			isa = PBXGroup;
 			children = (
-				247077AB1BB87FAE00150B9F /* pointer.m */,
-				247077AC1BB87FAE00150B9F /* pointer.h */,
-				247077991BB3A70300150B9F /* utils.m */,
-				2470779A1BB3A70300150B9F /* utils.h */,
+				247077AC1BB87FAE00150B9F /* HyperloopStruct.h */,
+				247077AB1BB87FAE00150B9F /* HyperloopStruct.m */,
+				DBCAF2B71F1EDB1F00FFDB9B /* HyperloopValue.h */,
+				DBCAF2B81F1EDB1F00FFDB9B /* HyperloopValue.m */,
+				DBCAF2BA1F1EDB8000FFDB9B /* HyperloopPointer.h */,
+				DBCAF2BB1F1EDB8000FFDB9B /* HyperloopPointer.m */,
+				2470779A1BB3A70300150B9F /* HyperloopUtils.h */,
+				247077991BB3A70300150B9F /* HyperloopUtils.m */,
+				2461FDAA1BB0C3F2006D4D9E /* HyperloopClass.h */,
+				2461FDAB1BB0C3F2006D4D9E /* HyperloopClass.m */,
 				247077981BB3A5D900150B9F /* define.h */,
 				B68D53D31CAEED6600EBFE65 /* define.m */,
-				2461FDAA1BB0C3F2006D4D9E /* class.h */,
-				2461FDAB1BB0C3F2006D4D9E /* class.m */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -160,10 +170,10 @@
 		247077701BB304CF00150B9F /* Titanium */ = {
 			isa = PBXGroup;
 			children = (
-				24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */,
 				24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */,
-				24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */,
+				24B0352D1BC4858500F3D9E5 /* HyperloopViewProxy.m */,
 				24B0352B1BC47F2900F3D9E5 /* HyperloopView.h */,
+				24B0352A1BC47F2900F3D9E5 /* HyperloopView.m */,
 				247077711BB304E100150B9F /* HyperloopModule.h */,
 				247077721BB304E100150B9F /* HyperloopModule.m */,
 				247077731BB304E100150B9F /* HyperloopModuleAssets.h */,
@@ -225,7 +235,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0700;
-				LastUpgradeCheck = 0700;
+				LastUpgradeCheck = 0830;
 				ORGANIZATIONNAME = "Jeff Haynie";
 				TargetAttributes = {
 					2461FD861BB08963006D4D9E = {
@@ -270,14 +280,16 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				247077AD1BB87FAE00150B9F /* pointer.m in Sources */,
+				247077AD1BB87FAE00150B9F /* HyperloopStruct.m in Sources */,
 				247077751BB304E100150B9F /* HyperloopModule.m in Sources */,
 				24B0352F1BC4858500F3D9E5 /* HyperloopViewProxy.m in Sources */,
 				247077761BB304E100150B9F /* HyperloopModuleAssets.m in Sources */,
+				DBCAF2B91F1EDB1F00FFDB9B /* HyperloopValue.m in Sources */,
 				B68D53D41CAEED6600EBFE65 /* define.m in Sources */,
+				DBCAF2BC1F1EDB8000FFDB9B /* HyperloopPointer.m in Sources */,
 				24B0352C1BC47F2900F3D9E5 /* HyperloopView.m in Sources */,
-				2470779B1BB3A70300150B9F /* utils.m in Sources */,
-				2461FDAD1BB0C3F2006D4D9E /* class.m in Sources */,
+				2470779B1BB3A70300150B9F /* HyperloopUtils.m in Sources */,
+				2461FDAD1BB0C3F2006D4D9E /* HyperloopClass.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -321,8 +333,10 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
@@ -364,8 +378,10 @@
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;

@@ -3,12 +3,13 @@
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <XCTest/XCTest.h>
-#import <JavaScriptCore/JavaScriptCore.h>
+@import XCTest;
+@import JavaScriptCore;
+
 #import "HyperloopModule.h"
-#import "pointer.h"
-#import "class.h"
-#import "utils.h"
+#import "HyperloopPointer.h"
+#import "HyperloopClass.h"
+#import "HyperloopUtils.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"

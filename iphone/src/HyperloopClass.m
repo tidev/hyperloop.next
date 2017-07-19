@@ -5,9 +5,9 @@
 #import <objc/runtime.h>
 #import <objc/message.h>
 #import "define.h"
-#import "class.h"
-#import "utils.h"
-#import "pointer.h"
+#import "HyperloopClass.h"
+#import "HyperloopUtils.h"
+#import "HyperloopPointer.h"
 
 @implementation HyperloopClass
 

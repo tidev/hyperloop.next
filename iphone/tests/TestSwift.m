@@ -3,8 +3,9 @@
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <XCTest/XCTest.h>
-#import "utils.h"
+@import XCTest;
+
+#import "HyperloopUtils.h"
 
 @interface TestSwift : XCTestCase
 
@@ -15,10 +16,11 @@
 - (void)testSwiftInvocation {
 	Class cls = NSClassFromString(@"_TtC5Tests8TestView");
 	XCTAssertNotNil(cls);
-	
+
 	id obj = [cls new];
 	id result = [HyperloopUtils invokeSelector:@selector(foo:y:) args:@[@1,@2] target:obj instance:YES];
-	XCTAssertEqualObjects(result, @3);
+
+    XCTAssertEqualObjects(result, @3);
 }
 
 @end

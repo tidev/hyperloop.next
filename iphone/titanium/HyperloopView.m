@@ -6,7 +6,7 @@
 
 #import "HyperloopView.h"
 #import "HyperloopModule.h"
-#import "pointer.h"
+#import "HyperloopPointer.h"
 
 TiObjectRef HyperloopGetWrapperForId(id obj);
 TiContextRef HyperloopCurrentContext();
@@ -23,11 +23,13 @@ TiContextRef HyperloopCurrentContext();
 		CGRect frame = [self.nativeView frame];
 		[self setFrame:frame];
 		[self setAutoresizingMask:UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth];
-		if ([view isKindOfClass:[HyperloopPointer class]]) {
+
+        if ([view isKindOfClass:[HyperloopPointer class]]) {
 			[self addSubview:[(HyperloopPointer *)view nativeObject]];
 		} else {
 			[self addSubview:self.nativeView];
 		}
+
 		if (!CGRectIsEmpty(frame)) {
 			[_proxy setValuesForKeysWithDictionary:@{
 				@"width" : NUMFLOAT(frame.size.width),
@@ -36,10 +38,12 @@ TiContextRef HyperloopCurrentContext();
 				@"top" : NUMFLOAT(frame.origin.y),
 			}];
 		}
+
 		[self.nativeView addObserver:self forKeyPath:@"frame" options:0 context:NULL];
 		[self.nativeView addObserver:self forKeyPath:@"bounds" options:0 context:NULL];
 		[self.nativeView addObserver:self forKeyPath:@"center" options:0 context:NULL];
 	}
+
 	return self;
 }
 

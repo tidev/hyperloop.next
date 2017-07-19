@@ -2,9 +2,9 @@
  * Hyperloop Library
  * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
-#import "utils.h"
-#import "pointer.h"
-#import "class.h"
+#import "HyperloopUtils.h"
+#import "HyperloopPointer.h"
+#import "HyperloopClass.h"
 #ifdef TIMODULE
 #import "HyperloopModule.h"
 #endif

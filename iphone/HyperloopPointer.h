@@ -1,64 +1,15 @@
-/**
- * Hyperloop Library
- * Copyright (c) 2015-Present by Appcelerator, Inc.
- */
-#import <Foundation/Foundation.h>
-#import "define.h"
+//
+//  HyperloopPointer.h
+//  hyperloop
+//
+//  Created by Hans Knöchel on 18.07.17.
+//  Copyright © 2017 Jeff Haynie. All rights reserved.
+//
 
-/**
- * class that encapsulates a C struct pointer
- */
-@interface HyperloopStruct : NSObject
+@import Foundation;
 
-@property(nonatomic, retain, readonly) NSString *encoding;
-@property(nonatomic, retain, readonly) NSString *flatencoding;
-@property(nonatomic, retain, readonly) NSMutableArray *encodings;
-@property(nonatomic, assign, readonly) void *pointer;
-@property(nonatomic, assign, readonly) NSUInteger size;
-@property(nonatomic, retain, readonly) NSMutableDictionary *objects;
-
-- (instancetype)initWithEncoding:(NSString *)cencoding pointer:(const void *)pointer;
-+ (instancetype)structWithEncoding:(NSString *)encoding pointer:(const void *)pointer;
-- (id)valueAtIndex:(NSUInteger)index;
-- (void)setValue:(id)v atIndex:(NSUInteger)index;
-- (void)valueAtIndex:(NSUInteger)index pointer:(void *)pointer;
-- (const void *)pointerValue;
-
-@end
-
-/**
- * Container that will hold the internal pointer to the value based on
- * the type of object it is.  Currently, it will either be a
- * NSString (variable size), Class, or NSValue (constant size).
- */
-@interface HyperloopValue : NSObject
-
-@property(nonatomic, retain, readonly) NSObject *object;
-@property(nonatomic, retain, readonly) Class clazz;
-@property(nonatomic, retain, readonly) NSString *selector;
-@property(nonatomic, assign, readonly, getter=isPointer) BOOL pointer;
-
-/**
- * create a pointer to a container object
- */
-- (instancetype)initWithObject:(NSObject *)object isPointer:(BOOL)isPointer;
-
-/**
- * create a pointer to a container class
- */
-- (instancetype)initWithClass:(Class)cls;
-
-/**
- * populate the void * with the underlying pointer value
- */
-- (void)getValue:(void *)ptr;
-
-/**
- * return the size of the underlying pointer memory
- */
-- (NSUInteger)length;
-
-@end
+#import "HyperloopValue.h"
+#import "HyperloopStruct.h"
 
 /**
  * Container that will container the underlying pointer object which will
@@ -101,8 +52,8 @@
 + (instancetype)encoding:(const char *)encoding;
 
 #define GETVALUE(type, name) \
-	-(type)name##Value;      \
-	+(type)name##Value : (id)value;
+-(type)name##Value;      \
++(type)name##Value : (id)value;
 
 GETVALUE(float, float);
 GETVALUE(int, int);
@@ -158,8 +109,8 @@ GETVALUE(NSString *, selector);
 - (NSUInteger)length;
 
 #define GETENC(name)             \
-	-(NSString *)name##Encoding; \
-	+(NSString *)name##Encoding;
+-(NSString *)name##Encoding; \
++(NSString *)name##Encoding;
 
 GETENC(bool);
 GETENC(int);

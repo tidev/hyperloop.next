@@ -5,7 +5,7 @@
 #ifdef TIMODULE
 
 #import "HyperloopViewProxy.h"
-#import "class.h"
+#import "HyperloopClass.h"
 
 @implementation HyperloopViewProxy
 
