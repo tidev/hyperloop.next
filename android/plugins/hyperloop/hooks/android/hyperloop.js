@@ -350,7 +350,7 @@ exports.cliVersion = '>=3.2';
 			},
 			// Handle AARs
 			function (next) {
-				async.each(aarFiles, function (file, cb) {
+				async.eachSeries(aarFiles, function (file, cb) {
 					handleAAR(file, function (err, foundJars) {
 						if (err) {
 							return cb(err);
