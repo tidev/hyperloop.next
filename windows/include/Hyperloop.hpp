@@ -14,6 +14,7 @@
 #include "Titanium/Module.hpp"
 #include <collection.h>
 #include <ppltasks.h>
+#include <unordered_map>
 
 using namespace HAL;
 
@@ -161,7 +162,7 @@ public:
 	virtual void postCallAsConstructor(const JSContext& js_context, const std::vector<JSValue>& arguments) override;
 
 	bool HasProperty(const JSString& property_name) const;
-	JSValue GetProperty(const JSString& property_name) const;
+	JSValue GetProperty(const JSString& property_name);
 	bool SetProperty(const JSString& property_name, const JSValue&);
 
 	virtual ~HyperloopInstance();
@@ -181,6 +182,10 @@ public:
 private:
 	Windows::Foundation::Collections::IMap<::Platform::String^, Windows::Foundation::EventRegistrationToken>^ tokens;
 	Windows::Foundation::Collections::IMap<::Platform::String^, TitaniumWindows_Hyperloop::Event^>^ events;
+#pragma warning(push)
+#pragma warning(disable : 4251)
+	std::unordered_map<std::string, JSValue> methods__;
+#pragma warning(pop)
 };
 
 class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExport<HyperloopModule>

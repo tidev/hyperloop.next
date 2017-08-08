@@ -388,13 +388,13 @@ bool HyperloopInstance::HasProperty(const JSString& property_name) const
 			return false;
 		}
 		const auto name = ConvertUTF8String(property_name);
-		return Method::HasMethod(type__, name) || Property::HasProperty(type__, name);
+		return (methods__.find(property_name) != methods__.end()) || Method::HasMethod(type__, name) || Property::HasProperty(type__, name);
 	} catch (...) {
 		return false;
 	}
 }
 
-JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
+JSValue HyperloopInstance::GetProperty(const JSString& js_property_name)
 {
 	if (type__.Name == nullptr) {
 		return get_context().CreateUndefined();
@@ -402,6 +402,10 @@ JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
 	const std::string property_name = js_property_name;
 	const auto rt_name = ConvertUTF8String(property_name);
 	const auto apiName = apiName__ + "." + property_name;
+
+	if (methods__.find(property_name) != methods__.end()) {
+		return methods__.at(property_name);
+	}
 
 	if (Method::HasMethod(type__, rt_name)) {
 		// Function
@@ -411,6 +415,8 @@ JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
 		function_ptr->set_apiName(apiName);
 		function_ptr->set_instance(instance__);
 		function_ptr->set_type(type__);
+
+		methods__.emplace(property_name, functionObj);
 
 		return functionObj;
 	} else if (Property::HasProperty(type__, rt_name)) {
