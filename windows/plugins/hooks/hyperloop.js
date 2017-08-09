@@ -5,6 +5,10 @@ var spawn = require('child_process').spawn,
     ejs  = require('ejs'),
     appc = require('node-appc');
 
+function isVS2017(data) {
+    return /^Visual Studio \w+ 2017/.test(data.windowsInfo.selectedVisualStudio.version); 
+}
+
 exports.cliVersion = ">=3.2";
 exports.init = function(logger, config, cli, nodeappc) {
     /*
@@ -21,19 +25,27 @@ exports.init = function(logger, config, cli, nodeappc) {
             function(next) {
                 runCmake(data, 'WindowsStore', 'ARM', '10.0', next);
             },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
-            },
         ];
 
+        var w81support = !isVS2017(data);
+
+        // Visual Studio 2017 doesn't support Windows/Phone 8.1 project anymore
+        if (w81support) {
+            tasks.push(function(next) {
+                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
+            });
+            tasks.push(function(next) {
+                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
+            });
+            tasks.push(function(next) {
+                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
+            });
+        }
+
+        var archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+
         var csharp_dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation');
-        ['phone', 'store', 'win10'].forEach(function(platform) {
+        archs.forEach(function(platform) {
             ['Debug', 'Release'].forEach(function(buildConfig) {
                 tasks.push(
                     function(next) {
@@ -53,7 +65,10 @@ exports.init = function(logger, config, cli, nodeappc) {
      * Copy dependencies
      */
     cli.on('build.module.pre.package', function (data, callback) {
-        ['phone', 'store', 'win10'].forEach(function(platform){
+        var w81support = !isVS2017(data),
+            archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+
+        archs.forEach(function(platform){
             ['ARM', 'x86'].forEach(function(arch){
                 var from = path.join(data.projectDir, 'reflection', 'HyperloopInvocation', 'bin', platform, 'Release'),
                     to = path.join(data.projectDir, 'build', 'Hyperloop', data.manifest.version, platform, arch);
@@ -97,7 +112,7 @@ function generateCMakeList(data, next) {
 
 function runCmake(data, platform, arch, sdkVersion, next) {
     var logger = data.logger,
-        generatorName = 'Visual Studio 14 2015' + (arch==='ARM' ? ' ARM' : ''),
+        generatorName = (isVS2017(data) ? 'Visual Studio 15 2017' : 'Visual Studio 14 2015')  + (arch==='ARM' ? ' ARM' : ''),
         cmakeProjectName = (sdkVersion === '10.0' ? 'Windows10' : platform) + '.' + arch,
         cmakeWorkDir = path.resolve(__dirname,'..','..',cmakeProjectName);
 
@@ -184,9 +199,9 @@ function runMSBuild(data, slnFile, buildConfig, callback) {
     logger.debug('Running MSBuild on solution: ' + slnFile);
 
     // Use spawn directly so we can pipe output as we go
-    var p = spawn(vsInfo.vcvarsall, [
-        '&&', 'MSBuild', '/p:Platform=Any CPU', '/p:Configuration=' + buildConfig, slnFile
-    ]);
+    var p = spawn((process.env.comspec || 'cmd.exe'), ['/S', '/C', '"', vsInfo.vsDevCmd.replace(/[ \(\)\&]/g, '^$&') +
+        ' && MSBuild /p:Platform="Any CPU" /p:Configuration=' + buildConfig + ' ' + slnFile + '"'
+    ], {windowsVerbatimArguments: true});
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
