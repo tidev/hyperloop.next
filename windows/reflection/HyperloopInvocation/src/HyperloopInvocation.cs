@@ -545,6 +545,14 @@ namespace HyperloopInvocation
 
         public static Property GetProperty(Type type, string name)
         {
+            PropertyInfo propertyInfo = type.GetRuntimeProperty(name);
+            if (propertyInfo != null)
+            {
+                Property property = new Property(name);
+                property.propertyInfo = propertyInfo;
+                return property;
+            }
+
             // Array-style property access such as object[0]
             int index = 0;
             if (Int32.TryParse(name, out index))
@@ -561,14 +569,6 @@ namespace HyperloopInvocation
                         return property;
                     }
                 }
-            }
-
-            PropertyInfo propertyInfo = type.GetRuntimeProperty(name);
-            if (propertyInfo != null)
-            {
-                Property property = new Property(name);
-                property.propertyInfo = propertyInfo;
-                return property;
             }
 
             // Enum
