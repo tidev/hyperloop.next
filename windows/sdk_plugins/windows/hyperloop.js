@@ -207,11 +207,25 @@ exports.cliVersion = '>=3.2';
 			externalReferences = [];
 
 		for (var i = 0; i < state.thirdpartyLibraries.length; i++) {
-			externalReferences.push({
-				Include: state.thirdpartyLibraries[i],
-				HintPath: path.join('..', '..', 'lib', platform, builder.arch, state.thirdpartyLibraries[i] + '.winmd')
-			});
+			var libDir = path.join(dest, '..', 'lib', platform, builder.arch),
+				relativeDir = path.join('lib', platform, builder.arch),
+				exts = ['.winmd','.dll'],
+				libraryName = state.thirdpartyLibraries[i];
+
+			for (var j = 0; j < exts.length; j++) {
+				var hintPath = path.resolve(path.join(libDir, libraryName + exts[j]));
+				if (fs.existsSync(hintPath)) {
+					externalReferences.push({
+						Include: libraryName,
+						HintPath: hintPath,
+						ContentPath: exts[j] === '.dll' ? path.join(relativeDir, libraryName + exts[j]) : null
+					});
+					break;
+				}
+			}
 		}
+
+		builder.hyperloopConfig.windows.thirdPartyReferences = externalReferences;
 
 		fs.readFile(template, 'utf8', function (err, data) {
 			if (err) throw err;
