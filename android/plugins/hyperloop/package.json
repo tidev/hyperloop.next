@@ -1,18 +1,40 @@
 {
   "name": "hyperloop",
-  "version": "2.0.0",
+  "version": "2.1.2",
   "description": "Access native Android and Java APIs from within Titanium.",
   "author": "Chris Williams",
   "license": "Appcelerator Software Subscription",
   "private": true,
+  "scripts": {
+    "test": "cross-env NODE_ENV=test nyc mocha"
+  },
   "dependencies": {
+    "appc-tasks": "^1.0.1",
     "async": "^1.5.0",
+    "babel-core": "^6.25.0",
+    "babel-preset-babili": "^0.1.4",
     "chalk": "^1.1.1",
     "ejs": "^2.3.4",
     "findit": "^2.0.0",
+    "fs-extra": "^2.0.0",
     "node-appc": "^0.2.33",
     "underscore": "^1.8.3",
-    "fs-extra": "^2.0.0",
     "xmldom": "^0.1.19"
+  },
+  "devDependencies": {
+    "chai": "^4.1.1",
+    "chai-as-promised": "^7.1.1",
+    "cross-env": "^5.0.4",
+    "mocha": "^3.5.0",
+    "mock-fs": "^4.4.1",
+    "nyc": "^11.1.0",
+    "sinon": "^3.1.0",
+    "tmp": "0.0.31"
+  },
+  "nyc": {
+    "reporter": [
+      "lcov",
+      "text"
+    ]
   }
 }

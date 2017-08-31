@@ -157,109 +157,99 @@ function safeName(name) {
  * Generate JS proxy wrappers from the metabase.
  * On completion, the callback will be called.
  *
- * @param {String}   output directory for JS wrappers
- * @param {Object}   The generated metabase
- * @param {Array}    Array of String, names of the classes to limit to. We need to expand to all dependencies
+ * @param {String} dir output directory for JS wrappers
+ * @param {Object} metabaseJSON The generated metabase
+ * @param {Object} options Object containing info about which classes to generate and remove
+ * @param {Array} options.classesToGenerate Array of class names to generate
+ * @param {Array} options.removedClasses Array of class names that can be removed from their JS package wrapper
+ * @param {Array} options.existingClasses Array of class names whose JS wrappers already exist on disk
  * @param {Function} callback Executed upon completion or error
  *
  * @returns {void}
  **/
-function generateFromJSON(dir, metabaseJSON, classes, callback) {
-	var className = '',
-		packages = {};
+function generateFromJSON(dir, metabaseJSON, options, callback) {
+	var packages = {};
+	var classes = options.classesToGenerate || [];
 
-	fs.emptyDirSync(dir);
-
-	// TODO Do we need to write the date? What should we use as the cache key? SHA/HASH of the json from metabase?
-	fs.writeFile(path.join(dir, 'version.json'), "{ 'version': " + String(Date.now()) + " }", function (err) {
-		if (err) {
-			callback(err);
-		}
-	});
-
-	classes = classes || [];
-	if (classes.length > 0) {
-		classes = expandDependencies(metabaseJSON, classes);
-	} else {
-		// empty array, means do them all
-		classes = Object.keys(metabaseJSON.classes);
-	}
-
-	// Write out our JS wrappers up to 25 at a time async
-	async.eachLimit(classes, 25, function(className, next) {
-		var json = metabaseJSON.classes[className],
-			dest = path.join(dir, className + '.js'),
-			parts = className.replace('$', '.').split('.'),
-			baseName = parts[parts.length - 1],
-			contents = '',
-			packageName = className.slice(0, className.lastIndexOf('.')),
-			packageArray = packages[packageName] || [],
-			packageParts = packageName.split('.');
-		packageArray.push(className);
-		packages[packageName] = packageArray;
-		// Generate package entries all the way up!
+	// Add packages from removed classes so their JS package wrapper will be updated
+	options.removedClasses.forEach(function(className) {
+		var packageName = className.slice(0, className.lastIndexOf('.'));
+		var packageParts = packageName.split('.');
+		packages[packageName] = packages[packageName] || [];
 		for (var i = 0; i < packageParts.length - 1; i++) {
 			var tmpPackageName = packageParts.slice(0, i + 1).join('.');
 			packages[tmpPackageName] = packages[tmpPackageName] || [];
 		}
+	});
 
-		json.name = className;
-		json.safeName = safeName(baseName);
-		contents = generateClass(json);
-		// TODO Don't write out contents if they haven't changed
-		fs.writeFile(dest, contents, function(err) {
-			if (err) {
-				next(err);
-			} else {
-				util.logger.trace('JS Wrapper for class ' + className + ' created...');
-				next();
+	async.series([
+		function writeClassWrappers(next) {
+			if (classes.length === 0) {
+				return next();
 			}
-		});
-	}, function (err, result) {
-		if (err) {
-			callback(err);
-		}
 
-		// Write out our JS package wrappers up to 10 at a time async
-		async.eachLimit(Object.keys(packages), 10, function(packageName, next) {
-			var parts = packageName.split('.'),
-				json = {
-					classes: packages[packageName],
-					name: packageName,
-					safeName: safeName(parts[parts.length - 1])
-				},
-				dest = path.join(dir, packageName + '.js'),
-				contents = '';
-			contents = generatePackage(json);
-			// TODO Don't write out contents if they haven't changed
-			fs.writeFile(dest, contents, function(err) {
-				if (err) {
-					next(err);
-				} else {
-					util.logger.trace('JS Wrapper for package ' + packageName + ' created...');
-					next();
+			async.eachLimit(classes, 25, function(className, next) {
+				var json = metabaseJSON.classes[className],
+					dest = path.join(dir, className + '.js'),
+					parts = className.replace('$', '.').split('.'),
+					baseName = parts[parts.length - 1],
+					contents = '',
+					packageName = className.slice(0, className.lastIndexOf('.')),
+					packageArray = packages[packageName] || [],
+					packageParts = packageName.split('.');
+				packageArray.push(className);
+				packages[packageName] = packageArray;
+				// Generate package entries all the way up!
+				for (var i = 0; i < packageParts.length - 1; i++) {
+					var tmpPackageName = packageParts.slice(0, i + 1).join('.');
+					packages[tmpPackageName] = packages[tmpPackageName] || [];
+				}
+
+				json.name = className;
+				json.safeName = safeName(baseName);
+				contents = generateClass(json);
+				fs.writeFile(dest, contents, function(err) {
+					if (err) {
+						next(err);
+					} else {
+						util.logger.trace('JS Wrapper for class ' + className + ' created...');
+						next();
+					}
+				});
+			}, next);
+		},
+		function (next) {
+			// Add any existing JS class wrappers to the JS package wrappers
+			options.existingClasses.forEach(function(className) {
+				var packageName = className.slice(0, className.lastIndexOf('.'));
+				if (packages[packageName]) {
+					packages[packageName].push(className);
 				}
 			});
-		}, callback);
-	});
+
+			// Write out our JS package wrappers up to 10 at a time async
+			async.eachLimit(Object.keys(packages), 10, function(packageName, done) {
+				var parts = packageName.split('.'),
+					json = {
+						classes: packages[packageName],
+						name: packageName,
+						safeName: safeName(parts[parts.length - 1])
+					},
+					dest = path.join(dir, packageName + '.js'),
+					contents = '';
+				contents = generatePackage(json);
+				fs.writeFile(dest, contents, function(err) {
+					if (err) {
+						done(err);
+					} else {
+						util.logger.trace('JS Wrapper for package ' + packageName + ' created...');
+						done();
+					}
+				});
+			}, next);
+		}
+	], callback);
 }
 
 exports.generateFromJSON = generateFromJSON;
-
-// standalone metabase/wrapper generator
-if (!module.parent) {
-	var outputDir = path.join(__dirname, 'hyperloop'),
-		ANDROID_API_LEVEL = 'android-10',
-		classpathToAdd = process.argv[2] || '~/Library/android-sdk-macosx/platforms/' + ANDROID_API_LEVEL + '/android.jar';
-	metabase.loadMetabase(classpathToAdd, {platform: ANDROID_API_LEVEL}, [], function(e, data) {
-		if (e) {
-			util.logger.error(e);
-		} else {
-			generateFromJSON(outputDir, data, function(err) {
-				if (err) {
-					util.logger.error(err);
-				}
-			});
-		}
-	});
-}
+exports.expandDependencies = expandDependencies;

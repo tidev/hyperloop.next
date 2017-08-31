@@ -1,5 +1,5 @@
 const fs =  require('fs-extra');
-const IncrementalTask = require('./incremental-task');
+const IncrementalFileTask = require('appc-tasks').IncrementalFileTask;
 const path = require('path');
 
 const REFERENCES_FILENAME = 'references.json';
@@ -13,15 +13,36 @@ const REFERENCES_FILENAME = 'references.json';
  * Hyperloop wrapper file and save that new file content so we can reuse it
  * on incremental builds.
  */
-class ScanReferencesTask extends IncrementalTask {
+class ScanReferencesTask extends IncrementalFileTask {
 
 	constructor(taskInfo) {
 		super(taskInfo);
 
-		this._outputDirectory = taskInfo.outputDirectory;
-		this._referencesPathAndFilename = path.join(this._outputDirectory, REFERENCES_FILENAME);
+		this._referencesPathAndFilename = null;
 		this._references = new Map();
 		this._metabase = null;
+	}
+
+	/**
+	 * Gets the output directory where reference data will be stored.
+	 *
+	 * @return {String} Full path to the output directory
+	 */
+	get outputDirectory() {
+		return this._outputDirectory;
+	}
+
+	/**
+	 * Sets the output directory where the references cache file will be generated
+	 * to.
+	 *
+	 * @param {String} outputPath Full path to the output directory
+	 */
+	set outputDirectory(outputPath) {
+		fs.ensureDirSync(outputPath);
+		this._outputDirectory = outputPath;
+		this.registerOutputPath(this.outputDirectory);
+		this._referencesPathAndFilename = path.join(this.outputDirectory, REFERENCES_FILENAME);
 	}
 
 	/**
@@ -43,6 +64,18 @@ class ScanReferencesTask extends IncrementalTask {
 		this._metabase = metabase;
 	}
 
+	/**
+	 * Gets the Hyperloop references metadata found across all source files
+	 *
+	 * @return {Map.<String, Object>} Map of filenames and Hyperloop references metadata
+	 */
+	get references() {
+		return this._references;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
 	get incrementalOutputs() {
 		return [this.outputDirectory];
 	}
@@ -60,7 +93,7 @@ class ScanReferencesTask extends IncrementalTask {
 		});
 		this.writeReferences();
 
-		return Promise.resolve(this._references);
+		return Promise.resolve();
 	}
 
 	/**
@@ -68,7 +101,7 @@ class ScanReferencesTask extends IncrementalTask {
 	 * Hyperloop related require statements and updates the reference map. Also
 	 * removes any references from files that were deleted.
 	 *
-	 * @param {Map} changedFiles Map of changed files and their state (new, changed, removed)
+	 * @param {Map} changedFiles Map of changed files and their state (created, changed, deleted)
 	 * @return {Promise}
 	 */
 	doIncrementalTaskRun(changedFiles) {
@@ -78,18 +111,18 @@ class ScanReferencesTask extends IncrementalTask {
 		}
 
 		changedFiles.forEach((state, pathAndFilename) => {
-			if (state === 'new' || state === 'changed') {
+			if (state === 'created' || state === 'changed') {
 				let hyperloopUsed = this.scanFileForHyperloopRequires(pathAndFilename);
 				if (!hyperloopUsed) {
 					this._references.delete(pathAndFilename);
 				}
-			} else if (state === 'removed') {
+			} else if (state === 'deleted') {
 				this._references.delete(pathAndFilename);
 			}
 		});
 		this.writeReferences();
 
-		return Promise.resolve(this._references);
+		return Promise.resolve();
 	}
 
 	/**
@@ -100,7 +133,7 @@ class ScanReferencesTask extends IncrementalTask {
 	loadResultAndSkip() {
 		let loaded = this.loadReferences();
 		if (loaded) {
-			return Promise.resolve(this._references);
+			return Promise.resolve();
 		} else {
 			return this.doFullTaskRun();
 		}
@@ -142,9 +175,11 @@ class ScanReferencesTask extends IncrementalTask {
 	}
 
 	/**
-	 * Scans a file for any requires to Java types, records
-	 * @param {[type]} pathAndFilename [description]
-	 * @return {[type]} [description]
+	 * Scans a file for any requires to Java types and records them in the internal
+	 * references map.
+	 *
+	 * @param {String} pathAndFilename Full path to the file to scan
+	 * @return {Boolean} True if the file contains requires to native types, false if not
 	 */
 	scanFileForHyperloopRequires(pathAndFilename) {
 		var result = this.extractAndReplaceHyperloopRequires(pathAndFilename);
@@ -159,6 +194,13 @@ class ScanReferencesTask extends IncrementalTask {
 		return false;
 	}
 
+	/**
+	 * Extracts the name of all used native types and replaces the requires to them
+	 * with the actual Hyperloop wrapper that represents that native type.
+	 *
+	 * @param {String} file Full path to the file to process
+	 * @return {Object} Object containing any found classes and the replaced file content
+	 */
 	extractAndReplaceHyperloopRequires(file) {
 		if (!fs.existsSync(file)) {
 			return null;
@@ -166,10 +208,10 @@ class ScanReferencesTask extends IncrementalTask {
 
 		var contents = fs.readFileSync(file, 'UTF-8'),
 			usedClasses = [],
-			requireRegex = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/ig;
+			requireRegex = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/ig;
 		this._logger.trace('Searching for hyperloop requires in: ' + file);
 		(contents.match(requireRegex) || []).forEach(m => {
-			var re = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/i.exec(m),
+			var re = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/i.exec(m),
 				className = re[1],
 				lastIndex,
 				validPackage = false,
@@ -215,6 +257,7 @@ class ScanReferencesTask extends IncrementalTask {
 				usedClasses.push(className);
 			}
 		});
+
 		return {
 			usedClasses: usedClasses,
 			replacedContent: contents
@@ -224,10 +267,10 @@ class ScanReferencesTask extends IncrementalTask {
 	/**
 	 * Replaces all occurrences of needle in haystack
 	 *
-	 * @param {[type]} haystack [description]
-	 * @param {[type]} needle [description]
-	 * @param {[type]} replaceStr [description]
-	 * @return {[type]} [description]
+	 * @param {String} haystack The string to search in
+	 * @param {String} needle String that should be replaced
+	 * @param {String} replaceStr String used to replace all occurrences of needle
+	 * @return {String} New string which has all occurrences of needle replaced
 	 */
 	replaceAll(haystack, needle, replaceStr) {
 		var newBuffer = haystack;

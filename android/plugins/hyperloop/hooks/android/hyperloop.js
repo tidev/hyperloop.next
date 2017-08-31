@@ -22,10 +22,10 @@ exports.cliVersion = '>=3.2';
 		DOMParser = require('xmldom').DOMParser,
 		async = require('async'),
 		metabase = require(path.join(__dirname, 'metabase')),
-		CopySourcesTask = require('./internal/tasks/copy-sources-task'),
-		GenerateMetabaseTask = require('./internal/tasks/generate-metabase-task'),
-		GenerateSourcesTask = require('./internal/tasks/generate-sources-task'),
-		ScanReferencesTask = require('./internal/tasks/scan-references-task');
+		CopySourcesTask = require('./tasks/copy-sources-task'),
+		GenerateMetabaseTask = require('./tasks/generate-metabase-task'),
+		GenerateSourcesTask = require('./tasks/generate-sources-task'),
+		ScanReferencesTask = require('./tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
 	var TI_MIN = '6.0.0';
@@ -42,12 +42,11 @@ exports.cliVersion = '>=3.2';
 		hyperloopBuildDir, // where we generate the JS wrappers during build time
 		hyperloopResources, // Where we copy the JS wrappers we need for runtime
 		afs,
-		references = {},
+		references = new Map(),
 		files = {},
 		jars = [],
 		aars = {},
-		cleanup = [],
-		requireRegex = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/ig;
+		cleanup = [];
 
 	/*
 	 Config.
@@ -155,16 +154,16 @@ exports.cliVersion = '>=3.2';
 		cli.on('build.android.copyResource', {
 			priority: 99999,
 			pre: function (data, finished) {
-				var sourcePathAndFilename = data.args[1];
-				if (references[sourcePathAndFilename]) {
+				var sourcePathAndFilename = data.args[0];
+				if (references.has(sourcePathAndFilename)) {
 					data.ctx._minifyJS = data.ctx.minifyJS;
 					data.ctx.minifyJS = true;
 				}
 				finished();
 			},
 			post: function (data, finished) {
-				var sourcePathAndFilename = data.args[1];
-				if (references[sourcePathAndFilename]) {
+				var sourcePathAndFilename = data.args[0];
+				if (references.has(sourcePathAndFilename)) {
 					data.ctx.minifyJS = data.ctx._minifyJS;
 					delete data.ctx._minifyJS;
 				}
@@ -174,13 +173,11 @@ exports.cliVersion = '>=3.2';
 
 		cli.on('build.android.compileJsFile', {
 			priority: 99999,
-			pre: function (build, finished) {
-				//TODO: switch to using the AST directly
-				var fn = build.args[1];
+			pre: function (data, finished) {
+				var fn = data.args[1];
 				if (files[fn]) {
-					// var ref = build.ctx._minifyJS ? 'contents' : 'original';
-					build.args[0]['original'] = files[fn];
-					build.args[0]['contents'] = files[fn];
+					data.args[0]['original'] = files[fn];
+					data.args[0]['contents'] = files[fn];
 					finished();
 				} else {
 					finished();
@@ -385,8 +382,8 @@ exports.cliVersion = '>=3.2';
 					logger: logger
 				});
 				task.builder = builder;
-				task.run().then(metabase => {
-					metabaseJSON = metabase;
+				task.run().then(() => {
+					metabaseJSON = task.metabase;
 					next();
 				}).catch(next);
 			},
@@ -414,17 +411,17 @@ exports.cliVersion = '>=3.2';
 						name: 'hyperloop:scanReferences',
 						incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'scanReferences'),
 						inputFiles: sourceFiles,
-						outputDirectory: path.join(hyperloopBuildDir, 'references'),
 						logger: logger
 					});
+					task.outputDirectory = path.join(hyperloopBuildDir, 'references');
 					task.metabase = metabaseJSON;
-					task.run().then((foundReferences) => {
-						references = foundReferences;
-						references.forEach((fileInfo, pathAndFilename) => {
+					task.postTaskRun = () => {
+						task.references.forEach((fileInfo, pathAndFilename) => {
+							references.set(pathAndFilename, fileInfo);
 							files[pathAndFilename] = fileInfo.replacedContent;
 						});
-						next();
-					}).catch(next);
+					};
+					task.run().then(next).catch(next);
 				});
 			},
 			function (next) {
@@ -432,9 +429,9 @@ exports.cliVersion = '>=3.2';
 					name: 'hyperloop:generateSources',
 					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'generateSources'),
 					inputFiles: sourceFiles,
-					outputDirectory: path.join(hyperloopBuildDir, 'js'),
 					logger: logger
 				});
+				task.outputDirectory = path.join(hyperloopBuildDir, 'js');
 				task.metabase = metabaseJSON;
 				task.references = references;
 				task.run().then(next).catch(next);
@@ -444,15 +441,18 @@ exports.cliVersion = '>=3.2';
 				var task = new CopySourcesTask({
 					name: 'hyperloop:copySources',
 					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'copySources'),
-					inputDirectory: hyperloopSourcesPath,
-					outputDirectory: path.join(builder.buildBinAssetsResourcesDir, 'hyperloop'),
 					logger: logger
 				});
-				task.addInputDirectory(hyperloopSourcesPath);
-				task.preTaskRun = function () {
-					task.inputFiles.forEach(pathAndFilename => {
-						var destinationPathAndFilename = path.join(task.outputDirectory, path.basename(pathAndFilename));
-						delete builder.lastBuildFiles[destinationPathAndFilename];
+				task.sourceDirectory = hyperloopSourcesPath;
+				task.outputDirectory = path.join(builder.buildBinAssetsResourcesDir, 'hyperloop');
+				task.builder = builder;
+				task.postTaskRun = function () {
+					// Make sure our copied files won't be deleted by the builder since we
+					// process them outside the build pipeline's copy resources phase
+					task.outputFiles.forEach(function(pathAndFilename) {
+						if (builder.lastBuildFiles[pathAndFilename]) {
+							delete builder.lastBuildFiles[pathAndFilename];
+						}
 					});
 				};
 				task.run().then(next).catch(next);
