@@ -10,15 +10,15 @@
 module.exports = HyperloopiOSBuilder;
 
 // set this to enforce a ios-min-version
-var IOS_MIN = '7.0';
+var IOS_MIN = '8.0';
 // set this to enforce a minimum Titanium SDK
-var TI_MIN = '5.4.0';
+var TI_MIN = '6.2.0';
 // set the iOS SDK minium
 var IOS_SDK_MIN = '9.0';
 // enum for ios javascript core
 var coreLib = {
-		JSCore: 'libhyperloop-jscore.a',
-		TiCore: 'libhyperloop-ticore.a'
+	JSCore: 'libhyperloop-jscore.a',
+	TiCore: 'libhyperloop-ticore.a'
 };
 
 var path = require('path'),
@@ -60,6 +60,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.parserState = null;
 	this.frameworks = {};
 	this.systemFrameworks = {};
+	this.thirdPartyFrameworks = {};
 	this.includes = [];
 	this.swiftSources = [];
 	this.swiftVersion = '3.0';
@@ -236,7 +237,7 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, symbols) {
 		if (!err) {
 			this.hasCocoaPods = symbols && Object.keys(symbols).length > 0;
-			this.cocoaPodsBuildSettings = settings;
+			this.cocoaPodsBuildSettings = settings || {};
 			symbols && Object.keys(symbols).forEach(function (k) {
 				this.frameworks[k] = symbols[k];
 				this.cocoaPodsProducts.push(k);
@@ -250,20 +251,16 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
  * Gets frameworks for any third-party dependencies defined in the Hyperloop config and compiles them.
  */
 HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThirdPartyFrameworks(callback) {
-	// if we have any custom includes, we need to also add them so we can reference them
-	if (!this.hyperloopConfig.ios.thirdparty) {
-		return callback();
-	}
-
 	var frameworks = this.frameworks;
+	var thirdPartyFrameworks = this.thirdPartyFrameworks;
 	var swiftSources = this.swiftSources;
 	var hyperloopBuildDir = this.hyperloopBuildDir;
-	var thirdparty = this.hyperloopConfig.ios.thirdparty;
+	var thirdparty = this.hyperloopConfig.ios.thirdparty || [];
 	var projectDir = this.builder.projectDir;
 	var xcodeAppDir = this.builder.xcodeAppDir;
 	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
 	var builder = this.builder;
-	var allHeaders = [];
+	var logger = this.logger;
 
 	function arrayifyAndResolve(it) {
 		if (it) {
@@ -274,71 +271,111 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 		return null;
 	}
 
-	async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
-		var lib = thirdparty[frameworkName];
+	/**
+	 * Processes any frameworks from modules or the app's platform/ios folder
+	 *
+	 * @param {Function} next Callback function
+	 */
+	function processFrameworks(next) {
+		if (!builder.frameworks || Object.keys(builder.frameworks).length === 0) {
+			return next();
+		}
 
-		async.series([
-			function (cb) {
-				var headers = arrayifyAndResolve(lib.header);
-				if (headers) {
-					Array.prototype.push.apply(allHeaders, headers);
-					hm.metabase.getUserFrameworks(
-						hyperloopBuildDir,
-						headers,
-						function (err, includes) {
-							if (!err && includes && includes[frameworkName]) {
-								frameworks[frameworkName] = includes[frameworkName];
-							}
-							cb(err);
-						},
-						frameworkName
-					);
-				} else {
-					cb();
+		async.each(Object.keys(builder.frameworks), function(frameworkName, cb) {
+			var frameworkInfo = builder.frameworks[frameworkName];
+			hm.metabase.generateUserFrameworkMetadata(frameworkInfo, hyperloopBuildDir, function(err, metadata) {
+				if (err) {
+					return cb(err);
 				}
-			},
 
-			function (cb) {
-				var resources = arrayifyAndResolve(lib.resource);
-				if (resources) {
-					var extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
-					async.eachLimit(resources, 5, function (dir, cb2) {
-						// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
-						// .xcmappingmodel, .xcassets, .storyboard)
-						hm.metabase.compileResources(dir, sdk, xcodeAppDir, false, function (err) {
-							if (!err) {
-								builder.copyDirSync(dir, xcodeAppDir, {
-									ignoreFiles: extRegExp
+				thirdPartyFrameworks[metadata.name] = metadata;
+				frameworks[metadata.name] = metadata.includes;
+				return cb();
+			});
+		}, next);
+	}
+
+	/**
+	 * Processes third-party dependencies that are configured in appc.js under the
+	 * hyperloop.ios.thirdparty key
+	 *
+	 * These can be both uncompiled Swift and Objective-C source files as well as
+	 * Frameworks.
+	 *
+	 * @param {Function} next Callback function
+	 */
+	function processConfiguredThirdPartySource(next) {
+		async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
+			var lib = thirdparty[frameworkName];
+
+			logger.debug('Generating includes for third-party source ' + frameworkName.green + ' (defined in appc.js)');
+			async.series([
+				function (cb) {
+					var headers = arrayifyAndResolve(lib.header);
+					if (headers) {
+						hm.metabase.generateUserSourceMappings(
+							hyperloopBuildDir,
+							headers,
+							function (err, includes) {
+								if (!err && includes && includes[frameworkName]) {
+									frameworks[frameworkName] = includes[frameworkName];
+								}
+								cb(err);
+							},
+							frameworkName
+						);
+					} else {
+						cb();
+					}
+				},
+
+				function (cb) {
+					var resources = arrayifyAndResolve(lib.resource);
+					if (resources) {
+						var extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
+						async.eachLimit(resources, 5, function (dir, cb2) {
+							// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
+							// .xcmappingmodel, .xcassets, .storyboard)
+							hm.metabase.compileResources(dir, sdk, xcodeAppDir, false, function (err) {
+								if (!err) {
+									builder.copyDirSync(dir, xcodeAppDir, {
+										ignoreFiles: extRegExp
+									});
+								}
+
+								cb2(err);
+							});
+						}, cb);
+					} else {
+						cb();
+					}
+				},
+
+				function (cb) {
+					// generate metabase for swift files (if found)
+					var sources = arrayifyAndResolve(lib.source);
+					var swiftRegExp = /\.swift$/;
+
+					sources && sources.forEach(function (dir) {
+						fs.readdirSync(dir).forEach(function (filename) {
+							if (swiftRegExp.test(filename)) {
+								swiftSources.push({
+									framework: frameworkName,
+									source: path.join(dir, filename)
 								});
 							}
-
-							cb2(err);
 						});
-					}, cb);
-				} else {
+					});
 					cb();
 				}
-			},
+			], next);
+		}, next);
+	}
 
-			function (cb) {
-				// generate metabase for swift files (if found)
-				var sources = arrayifyAndResolve(lib.source);
-				var swiftRegExp = /\.swift$/;
-
-				sources && sources.forEach(function (dir) {
-					fs.readdirSync(dir).forEach(function (filename) {
-						if (swiftRegExp.test(filename)) {
-							swiftSources.push({
-								framework: frameworkName,
-								source: path.join(dir, filename)
-							});
-						}
-					});
-				});
-				cb();
-			}
-		], next);
-	}, callback);
+	async.series([
+		processFrameworks,
+		processConfiguredThirdPartySource
+	], callback);
 };
 
 /**
@@ -346,14 +383,14 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
  */
 HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(callback) {
 	var that = this;
- 	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
- 		if (err) { return callback(err); }
+	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
+		if (err) { return callback(err); }
 		var versionMatch = stdout.match(/version\s(\d.\d)/);
 		if (versionMatch !== null) {
 			that.swiftVersion = versionMatch[1];
 		}
 		callback();
- 	});
+	});
 };
 
 /**
@@ -408,7 +445,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 
 				if (maybes.length) {
 					this.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
-						maybes.map(function (s) { return '"' + s + '"' }).join(' or ') + ' instead? (' + relPath + ')');
+						maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
 				}
 
 				return orig;
@@ -448,22 +485,22 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 			return "require('/" + ref + "')";
 		}.bind(this));
 
-		var needMigration = this.parserState.state.needMigration;
-		if (needMigration.length > 0) {
-			this.needMigration[sourceFilename] = needMigration;
+	var needMigration = this.parserState.state.needMigration;
+	if (needMigration.length > 0) {
+		this.needMigration[sourceFilename] = needMigration;
 
-			needMigration.forEach(function(token) {
-				newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
-			});
-		}
+		needMigration.forEach(function(token) {
+			newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
+		});
+	}
 
-		if (contents === newContents) {
-			this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
-			cb();
-		} else {
-			this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
-			fs.writeFile(destinationFilename, newContents, cb);
-		}
+	if (contents === newContents) {
+		this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
+		cb();
+	} else {
+		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
+		fs.writeFile(destinationFilename, newContents, cb);
+	}
 };
 
 /**
@@ -533,14 +570,17 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			}
 
 			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
-			var paths = source.split(" ");
+			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
+			var paths = source.split(' ');
 			paths.forEach(function(path) {
 				if (path === '$(inherited)') {
 					return;
 				}
 
 				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				searchPath = searchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', cocoaPodsConfigurationBuildDir);
 				searchPath = searchPath.replace(/"/g, '');
+
 				target.push(searchPath);
 			});
 		}.bind(this);
@@ -555,6 +595,12 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			extraHeaderSearchPaths.push(searchPath);
 			extraFrameworkSearchPaths.push(searchPath);
 		}.bind(this));
+	}
+	if (this.builder.frameworks) {
+		Object.keys(this.builder.frameworks).forEach(function(frameworkName) {
+			var frameworkInfo = this.builder.frameworks[frameworkName];
+			extraFrameworkSearchPaths.push(path.dirname(frameworkInfo.path));
+		}, this);
 	}
 
 	// Framwork umbrella headers are required to propery resolve forward declarations
@@ -777,6 +823,9 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			});
 		});
 	}
+	if (Object.keys(this.thirdPartyFrameworks).length > 0) {
+		thirdPartyFrameworksUsed = true;
+	}
 	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
 		return;
 	}
@@ -790,103 +839,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var mainTargetUuid = pbxProject.targets.filter(function (t) { return t.comment.replace(/^"/, '').replace(/"$/, '') === appName; })[0].value;
 	var mainTarget = xobjs.PBXNativeTarget[mainTargetUuid];
 	var mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
-
-	// find all the frameworks
-	var frameworks = {};
-	Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(function (id) {
-		if (xobjs.PBXFrameworksBuildPhase[id] && typeof xobjs.PBXFrameworksBuildPhase[id] === 'object') {
-			xobjs.PBXFrameworksBuildPhase[id].files.forEach(function (file) {
-				var name = xobjs.PBXBuildFile[file.value].fileRef_comment;
-				frameworks[name] = 1;
-			});
-		}
-	});
-
-	// once Titanium SDK 5.x is no longer supported, we can remove this shim
-	if (typeof this.builder.generateXcodeUuid !== 'function') {
-		var uuidIndex = 1;
-		var uuidRegExp =/^(0{18}\d{6})$/;
-		var lpad = this.appc.string.lpad;
-
-		Object.keys(xobjs).forEach(function (section) {
-			Object.keys(xobjs[section]).forEach(function (uuid) {
-				var m = uuid.match(uuidRegExp);
-				var n = m && parseInt(m[1]);
-				if (n && n > uuidIndex) {
-					uuidIndex = n + 1;
-				}
-			});
-		});
-
-		this.builder.generateXcodeUuid = function generateXcodeUuid() {
-			return lpad(uuidIndex++, 24, '0');
-		};
-	}
-
 	var generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
-
-	var frameworksGroup = xobjs.PBXGroup[mainGroupChildren.filter(function (child) { return child.comment === 'Frameworks'; })[0].value];
-	var frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXFrameworksBuildPhase[phase.value]; })[0].value];
-	var frameworkRegExp = /\.framework$/;
-	var frameworksToAdd = [];
-
-	// make sure our found frameworks are in the xcode project and if not found,
-	// we are going to add it
-	Object.keys(this.packages).forEach(function (pkg) {
-		if (this.systemFrameworks[pkg]) {
-			frameworksToAdd.push(pkg);
-		}
-	}, this);
-
-	// attempt to add any custom configured frameworks
-	if (this.hyperloopConfig.ios.xcodebuild && Array.isArray(this.hyperloopConfig.ios.xcodebuild.frameworks)) {
-		this.hyperloopConfig.ios.xcodebuild.frameworks.forEach(function (framework) {
-			framework && frameworksToAdd.push(framework);
-		});
-	}
-
-	// add the frameworks to the Xcode project
-	frameworksToAdd.forEach(function (framework) {
-		if (!frameworkRegExp.test(framework)) {
-			framework += '.framework';
-		}
-		if (frameworks[framework]) {
-			return;
-		}
-		frameworks[framework] = 1;
-
-		var fileRefUuid = generateUuid();
-		var buildFileUuid = generateUuid();
-
-		// add the file reference
-		xobjs.PBXFileReference[fileRefUuid] = {
-			isa: 'PBXFileReference',
-			lastKnownFileType: 'wrapper.framework',
-			name: '"' + framework + '"',
-			path: '"../../src/' + framework + '"',
-			sourceTree: '"<absolute>"'
-		};
-		xobjs.PBXFileReference[fileRefUuid + '_comment'] = framework;
-
-		// add the library to the Frameworks group
-		frameworksGroup.children.push({
-			value: fileRefUuid,
-			comment: framework
-		});
-
-		// add the build file
-		xobjs.PBXBuildFile[buildFileUuid] = {
-			isa: 'PBXBuildFile',
-			fileRef: fileRefUuid,
-			fileRef_comment: framework
-		};
-		xobjs.PBXBuildFile[buildFileUuid + '_comment'] = framework + ' in Frameworks';
-
-		frameworksBuildPhase.files.push({
-			value: buildFileUuid,
-			comment: framework + ' in Frameworks'
-		});
-	});
 
 	// create a Hyperloop group so that the code is nice and tidy in the Xcode project
 	var hyperloopGroupUuid = (mainGroupChildren.filter(function (child) { return child.comment === 'Hyperloop'; })[0] || {}).value;
@@ -949,18 +902,34 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		}, this);
 	}
 
-	// if we have any swift files, enable swift support
+	// check CocoaPods and local third-party frameworks for swift usage
+	if (!containsSwift) {
+		containsSwift = Object.keys(this.cocoaPodsBuildSettings).some(function (key) {
+			return key === 'EMBEDDED_CONTENT_CONTAINS_SWIFT';
+		});
+	}
+	if (!containsSwift) {
+		containsSwift = Object.keys(this.thirdPartyFrameworks).some(function (frameworksName) {
+			return this.thirdPartyFrameworks[frameworksName].usesSwift === true;
+		}, this);
+	}
+	// if we have any swift usage, enable swift support
 	if (containsSwift) {
-		var that = this;
 		Object.keys(xobjs.PBXNativeTarget).forEach(function (targetUuid) {
 			var target = xobjs.PBXNativeTarget[targetUuid];
 			if (target && typeof target === 'object') {
 				xobjs.XCConfigurationList[target.buildConfigurationList].buildConfigurations.forEach(function (buildConf) {
 					var buildSettings = xobjs.XCBuildConfiguration[buildConf.value].buildSettings;
-					buildSettings.EMBEDDED_CONTENT_CONTAINS_SWIFT = 'YES';
 
 					if (!buildSettings.SWIFT_VERSION) {
-						buildSettings.SWIFT_VERSION = that.swiftVersion;
+						buildSettings.SWIFT_VERSION = this.swiftVersion;
+					}
+
+					var embeddedContentMaximumSwiftVersion = '2.3';
+					if (this.appc.version.lte(this.swiftVersion, embeddedContentMaximumSwiftVersion)) {
+						buildSettings.EMBEDDED_CONTENT_CONTAINS_SWIFT = 'YES';
+					} else {
+						buildSettings.ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = 'YES';
 					}
 
 					// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
@@ -972,9 +941,9 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 						searchPaths += ' @executable_path/Frameworks';
 					}
 					buildSettings.LD_RUNPATH_SEARCH_PATHS = '"' + searchPaths.trim() + '"';
-				});
+				}, this);
 			}
-		});
+		}, this);
 	}
 
 	// add the source files to xcode to compile
@@ -1010,7 +979,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			sourceTree: '"<group>"'
 		};
 
-		xobjs.PBXGroup[groupUuid] = group
+		xobjs.PBXGroup[groupUuid] = group;
 		xobjs.PBXGroup[groupUuid + '_comment'] = groupName;
 
 		Object.keys(groups[groupName]).forEach(function (file) {
@@ -1205,7 +1174,7 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
  */
 HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	var args = data.args[1];
-	var quotesRegExp = /^\"(.*)\"$/;
+	var quotesRegExp = /^"(.*)"$/;
 	var substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
 
 	function splitValue(value) {

@@ -80,7 +80,7 @@ function processProtocolInheritance (protocols) {
 	 * @param {Number} logIntendationLevel Intendation level for debugging messages
 	 */
 	function mergeWithParentProtocols(protocol, logIntendationLevel) {
-		var logIntendationCharacter = "  ";
+		var logIntendationCharacter = '  ';
 		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
 		var parentProtocols = protocol.protocols;
 		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
@@ -209,6 +209,10 @@ function generateFromJSON (name, json, state, callback, includes) {
 			}
 		}
 
+		Object.keys(json.protocols).forEach(function (protocolName) {
+			var protocol = json.protocols[protocolName];
+			normalizeFramework(protocol, custom_frameworks);
+		});
 		processProtocolInheritance(json.protocols);
 
 		var sourceSet = {
@@ -239,13 +243,7 @@ function generateFromJSON (name, json, state, callback, includes) {
 					}
 				});
 			}
-			if (cls.thirdparty && includes) {
-				// consult our includes to potentially override the framework
-				// in which case we need to see if we have the custom class
-				// in the includes and use it's framework in this map
-				cls.framework = custom_frameworks[cls.filename] || cls.framework;
-			}
-			// TODO: add categories
+			normalizeFramework(cls, custom_frameworks);
 			sourceSet.classes[k] = genclass.generate(json, cls, state);
 		});
 
@@ -256,6 +254,7 @@ function generateFromJSON (name, json, state, callback, includes) {
 				// if we have leading underscores for struct names, trim them
 				struct.name = struct.name.replace(/^(_)+/g,'').trim();
 			}
+			normalizeFramework(struct, custom_frameworks);
 			sourceSet.structs[k] = genstruct.generate(json, struct);
 		});
 
@@ -264,18 +263,21 @@ function generateFromJSON (name, json, state, callback, includes) {
 		// define module based functions
 		json.functions && Object.keys(json.functions).forEach(function (k) {
 			var func = json.functions[k];
+			normalizeFramework(func, custom_frameworks);
 			var mod = makeModule(modules, func, state);
 			mod && mod.functions.push(func);
 		});
 		// define module based constant variables
 		json.vars && Object.keys(json.vars).forEach(function (k) {
 			var varobj = json.vars[k];
+			normalizeFramework(varobj, custom_frameworks);
 			var mod = makeModule(modules, varobj, state);
 			mod && mod.variables.push(varobj);
 		});
 		// define module based enums
 		json.enums && Object.keys(json.enums).forEach(function (k) {
 			var enumobj = json.enums[k];
+			normalizeFramework(enumobj, custom_frameworks);
 			var mod = makeModule(modules, enumobj, state);
 			if (mod && enumobj.values) {
 				Object.keys(enumobj.values).forEach(function (n) {
@@ -286,7 +288,11 @@ function generateFromJSON (name, json, state, callback, includes) {
 		// define blocks
 		json.blocks && Object.keys(json.blocks).forEach(function (k) {
 			var blocks = json.blocks[k];
-			var mod = makeModule(modules, {framework:k, filename:''}, state);
+			var frameworkName = k;
+			if (frameworkName[0] === '/') {
+				frameworkName = custom_frameworks[k] || k;
+			}
+			var mod = makeModule(modules, {framework: frameworkName, filename: ''}, state);
 			mod && blocks.forEach(function (block) {
 				block && mod.blocks.push(genblock.generateBlockWrapper(mod, json, block));
 			});
@@ -305,6 +311,32 @@ function generateFromJSON (name, json, state, callback, includes) {
 
 		callback(null, sourceSet, modules);
 	});
+}
+
+/**
+ * Takes a single metadata object and normalized the framework property on that object.
+ *
+ * The metabase parser will leave the framework property as the path to the header
+ * file the symbol was found in if it is not contained in a .framework package.
+ * This normalization will try to associate the path with a virtual third-party
+ * framework that is configured in the appc.js file, and replace it with the virtual
+ * framework name. Should the path be unknown we remove the framework property as
+ * it is a symbol which can not be associated to a specific framework and we can't
+ * handle such symbols currently.
+ *
+ * @param {Object} metadata Metabdata object for a symbol (class, struct etc)
+ * @param {Object} fileToFrameworkMap Map with all known mappings of header files to their framework
+ */
+function normalizeFramework(metadata, fileToFrameworkMap) {
+	if (metadata.framework[0] !== '/') {
+		return;
+	}
+
+	if (fileToFrameworkMap[metadata.filename]) {
+		metadata.framework = fileToFrameworkMap[metadata.filename];
+	} else {
+		delete metadata.framework;
+	}
 }
 
 /**

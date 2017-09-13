@@ -116,49 +116,20 @@ namespace hyperloop {
 	}
 
 	std::string Definition::getFramework () const {
-		size_t pos = filename.find(".framework");
-		if (pos != std::string::npos) {
-			return filename.substr(0, pos);
-		}
-		if (filename.find("/usr/include") == std::string::npos &&
-			filename.find("/usr/lib") == std::string::npos) {
-			size_t pos = filename.find_last_of("/");
-			if (pos != std::string::npos) {
-				size_t ppos = filename.find_last_of("/", pos - 1);
-				if (ppos == std::string::npos) {
-					return filename.substr(0, ppos);
-				}
-				return filename.substr(ppos + 1, pos - ppos - 1);
-			}
-		}
-		return filename;
+		size_t frameworkPosition = filename.find(".framework");
+		if (frameworkPosition != std::string::npos) {
+      size_t slashBeforeFrameworkPosition = filename.find_last_of("/", frameworkPosition);
+      return filename.substr(slashBeforeFrameworkPosition + 1, frameworkPosition - (slashBeforeFrameworkPosition + 1));
+    }
+
+    return filename;
 	}
 
 	void Definition::toJSONBase (Json::Value &kv) const {
 		kv["name"] = name;
-		std::string framework = getFramework();
-		if (framework != filename) {
-			if (framework.find("/") != std::string::npos) {
-				auto lpos = framework.find_last_of("/");
-				framework = framework.substr(lpos + 1);
-			}
-			kv["framework"] = framework;
-			auto pos = filename.find("/Headers/");
-			std::string fn = filename;
-			if (pos != std::string::npos) {
-				fn = filename.substr(pos + 9);
-			}
-			// if it looks like a CocoaPods header, trim that off too
-			pos = fn.find("Public/");
-			if (pos == 0) {
-				kv["filename"] = fn.substr(pos + 7);
-			} else {
-				kv["filename"] = fn;
-			}
-			kv["thirdparty"] = filename.find(".framework") == std::string::npos;
-		} else {
-			kv["filename"] = filename;
-		}
+		kv["framework"] = getFramework();
+    kv["thirdparty"] = !getContext()->isSystemLocation(filename);
+    kv["filename"] = filename;
 		kv["line"] = line;
 	}
 
