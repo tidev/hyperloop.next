@@ -34,13 +34,13 @@ function init(logger, config, cli, appc) {
 		post: function (builder, callback) {
 			var hook = cli.createHook('hyperloop:init', builder, function (finished) {
 				var platform = builder.platformName;
-			  var deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
+				var deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
 
-			  // see if we have a platform specific hyperloop and we're running for that target
-			  if (deploymentTargets && (deploymentTargets[platform] || deploymentTargets['ipad'])) {
-				  var usingHyperloop = builder.tiapp.modules.some(function (m) {
-					  return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
-				  });
+				// see if we have a platform specific hyperloop and we're running for that target
+				if (deploymentTargets && (deploymentTargets[platform] || deploymentTargets['ipad'])) {
+					var usingHyperloop = builder.tiapp.modules.some(function (m) {
+						return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
+					});
 
 					// make sure we have the module configured for hyperloop
 					if (usingHyperloop) {
