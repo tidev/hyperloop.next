@@ -591,7 +591,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	var ast = acorn.parse(buf, { locations: true }),
+	var ast = acorn.parse(buf, { ecmaVersion: 6, locations: true }),
 		mutated,
 		prop;
 
@@ -790,7 +790,16 @@ function makeHyperloopClassFromCall (state, node) {
 	classSpec.name = toJSObject(program, node.arguments[0]);
 	classSpec.extends = toJSObject(program, node.arguments[1], 'NSObject');
 	classSpec.implements = toJSObject(program, node.arguments[2]);
-	classSpec.variable = node.parentNode.declarations[0].id.name;
+	var declarationNode = null;
+	node.parentNode.declarations.forEach(function(declNode) {
+		if (declNode.init === node) {
+			declarationNode = declNode;
+		}
+	});
+	if (declarationNode === null) {
+		throw new JSParseError('Unable determine designated variable for Hyperloop.defineClass call.');
+	}
+	classSpec.variable = declarationNode.id.name;
 	classSpec.location = node.loc;
 	classSpec.importClasses = {};
 	classSpec.importClasses[classSpec.extends] = 1;
@@ -845,6 +854,9 @@ function encodeFriendlyType (type, imports) {
 		case 'object':
 		case 'NSObject': return '@';
 		default: {
+			if (type.indexOf('<') !== -1) {
+				type = type.substring(0, type.indexOf('<'));
+			}
 			imports && (imports[type] = 1);
 			return '[' + type + ']';
 		}

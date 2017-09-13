@@ -142,13 +142,7 @@ function loadMetabase(classpathToAdd, opts, callback) {
 		cacheDir: process.env.TMPDIR || process.env.TEMP || '/tmp'
 	});
 
-	// Cache key is based on classpath (JARs we're introspecting), testing flag, and contents of the metabase generator Java file
-	var parsedChecksum = crypto.createHash('sha1').update(
-			classpathToAdd
-			+ opts.isTest
-			+ fs.readFileSync(path.join(__dirname, 'src', 'JavaMetabaseGenerator.java'), 'utf8')
-	).digest('hex');
-
+	var parsedChecksum = calculateCacheToken(classpathToAdd, opts);
 	opts.cacheFile = path.join(opts.cacheDir, 'hyperloop_' + opts.platform + '_metabase.' + parsedChecksum + '.json.gz');
 
 	var cacheFile = opts.cacheFile,
@@ -165,7 +159,7 @@ function loadMetabase(classpathToAdd, opts, callback) {
 		//spinner.start(
 		//	'Generating system metabase'.green.bold,
 		//	'Generating system metabase will take up to a minute (or greater) depending on your ' +
-		//	'environment.' + 
+		//	'environment.' +
 		//	(opts.force ? '' : 'This file will be cached and will execute faster on subsequent builds.')
 		//);
 
@@ -189,7 +183,34 @@ function loadMetabase(classpathToAdd, opts, callback) {
 			});
 		});
 	}
-};
+}
+
+/**
+ * Calculate cache token based on classpath (JARs we're introspecting), testing
+ * flag, and contents of the metabase generator Java file.
+ *
+ * @param {Array|string} classPath Java CLASSPATH passed to the compiler
+ * @param {Object} opts Options object
+ * @return {string} The calculated cache token
+ */
+function calculateCacheToken(classPath, opts) {
+	if (typeof classPath === 'string') {
+		classPath = classPath.split(path.delimiter);
+	}
+	var classPathContentHashes = {};
+	classPath.forEach(function(jarPathAndFilename) {
+		if (!fs.existsSync(jarPathAndFilename)) {
+			throw new Error('Invalid CLASSPATH specified, file ' + jarPathAndFilename + ' does not exist.');
+		}
+		var hash = crypto.createHash('sha1').update(fs.readFileSync(jarPathAndFilename).toString()).digest('hex');
+		classPathContentHashes[jarPathAndFilename] = hash;
+	});
+	return crypto.createHash('sha1').update(
+		JSON.stringify(classPathContentHashes) +
+		opts.isTest +
+		fs.readFileSync(path.join(__dirname, 'src', 'JavaMetabaseGenerator.java'), 'utf8')
+	).digest('hex');
+}
 
 /**
  * Load the metabase from a cache file

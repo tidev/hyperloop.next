@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -34,12 +34,13 @@ function init(logger, config, cli, appc) {
 		post: function (builder, callback) {
 			var hook = cli.createHook('hyperloop:init', builder, function (finished) {
 				var platform = builder.platformName;
+			  var deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
 
-				// see if we have a platform specific hyperloop and we're running for that target
-				if (builder.tiapp && builder.tiapp['deployment-targets'] && builder.tiapp['deployment-targets'][platform]) {
-					var usingHyperloop = builder.tiapp.modules.some(function (m) {
-						return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
-					});
+			  // see if we have a platform specific hyperloop and we're running for that target
+			  if (deploymentTargets && (deploymentTargets[platform] || deploymentTargets['ipad'])) {
+				  var usingHyperloop = builder.tiapp.modules.some(function (m) {
+					  return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
+				  });
 
 					// make sure we have the module configured for hyperloop
 					if (usingHyperloop) {
