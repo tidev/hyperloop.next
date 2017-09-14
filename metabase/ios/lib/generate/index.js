@@ -334,6 +334,7 @@ function normalizeFramework(metadata, fileToFrameworkMap) {
 
 	if (fileToFrameworkMap[metadata.filename]) {
 		metadata.framework = fileToFrameworkMap[metadata.filename];
+		metadata.customSource = true;
 	} else {
 		delete metadata.framework;
 	}
