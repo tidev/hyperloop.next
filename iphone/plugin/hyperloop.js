@@ -589,12 +589,17 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
 	}
 	if (this.hyperloopConfig.ios.thirdparty) {
+		this.headers = [];
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
 			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
-			var searchPath = path.resolve(this.builder.projectDir, thirdPartyFrameworkConfig.header);
-			extraHeaderSearchPaths.push(searchPath);
-			extraFrameworkSearchPaths.push(searchPath);
-		}.bind(this));
+			var headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [thirdPartyFrameworkConfig.header];
+			headerPaths.forEach(function(headerPath) {
+				var searchPath = path.resolve(this.builder.projectDir, headerPath);
+				extraHeaderSearchPaths.push(searchPath);
+				extraFrameworkSearchPaths.push(searchPath);
+				this.headers.push(searchPath);
+			}, this);
+		}, this);
 	}
 	if (this.builder.frameworks) {
 		Object.keys(this.builder.frameworks).forEach(function(frameworkName) {
@@ -1241,6 +1246,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		addParam('HEADER_SEARCH_PATHS', '$(inherited)');
 		this.headers.forEach(function (header) {
 			addParam('HEADER_SEARCH_PATHS', header);
+			addParam('FRAMEWORK_SEARCH_PATHS', header);
 		});
 		//For some reason, when using ticore and having custom headers, the original header search path goes missing.
 		//FIX ME
