@@ -18,7 +18,7 @@ exports.init = init;
  * main entry point for our plugin which looks for the platform specific
  * plugin to invoke.
  *
- * A priority of 1200 to makes sure the Hyperloop plugin starts only after the
+ * A priority of 1300 to makes sure the Hyperloop plugin starts only after the
  + Android .aar transform hook and the framework integration hook on iOS. The
  + Hyperloop platform specific plugins require data from those hooks and that
  + makes sure they run in the right order.
@@ -30,7 +30,7 @@ exports.init = init;
  */
 function init(logger, config, cli, appc) {
 	cli.on('build.pre.compile', {
-		priority: 1200,
+		priority: 1300,
 		post: function (builder, callback) {
 			var hook = cli.createHook('hyperloop:init', builder, function (finished) {
 				var platform = builder.platformName;
