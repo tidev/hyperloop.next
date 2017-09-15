@@ -150,7 +150,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
@@ -170,7 +170,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
@@ -193,7 +193,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
