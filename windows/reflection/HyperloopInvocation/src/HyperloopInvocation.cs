@@ -197,8 +197,6 @@ namespace HyperloopInvocation
      */
     public sealed class Method
     {
-        public static int HitCount { get; set;  }
-        public static int MissedCount { get; set; }
         public static int CacheCount { get { return methodCache.Size(); } }
         private static LRUCache<Type, LRUCache<string, LRUCache<int, IList<Method>>>> methodCache;
         public string Name { get; set; }
@@ -266,6 +264,17 @@ namespace HyperloopInvocation
         {
             try
             {
+                var paramCount = parameters == null ? 0 : parameters.Length;
+
+                IList<Method> methods;
+                if (TryGetCachedMethod(type, name, paramCount, out methods))
+                {
+                    if (methods != null && methods.Count > 0)
+                    {
+                        return methods[0];
+                    }
+                }
+
                 MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
                 if (methodInfo == null)
                 {
@@ -280,6 +289,7 @@ namespace HyperloopInvocation
                         Method m = GetMethod(i, name, parameters);
                         if (m != null)
                         {
+                            UpdateCache(type, name, paramCount, m);
                             return m;
                         }
                     }
@@ -289,6 +299,7 @@ namespace HyperloopInvocation
                 {
                     Method method = new Method(name);
                     method.methodInfo = methodInfo;
+                    UpdateCache(type, name, paramCount, method);
                     return method;
                 }
             }
@@ -307,7 +318,6 @@ namespace HyperloopInvocation
                 LRUCache<int, IList<Method>> cachedParams;
                 if (cachedNames.TryGetValue(name, out cachedParams))
                 {
-                    HitCount++;
                     if (cachedParams == null)
                     {
                         // cachedParams can be null when we know there's no such method
@@ -322,9 +332,14 @@ namespace HyperloopInvocation
                     }
                 }
             }
-            MissedCount++;
             cachedMethods = null;
             return false;
+        }
+        private static void UpdateCache(Type type, string name, int expectedCount, Method method)
+        {
+            IList<Method> methodList = new List<Method>();
+            methodList.Add(method);
+            UpdateCache(type, name, expectedCount, methodList);
         }
         private static void UpdateCache(Type type, string name, int expectedCount, IList<Method> methodList)
         {
@@ -530,6 +545,14 @@ namespace HyperloopInvocation
 
         public static Property GetProperty(Type type, string name)
         {
+            PropertyInfo propertyInfo = type.GetRuntimeProperty(name);
+            if (propertyInfo != null)
+            {
+                Property property = new Property(name);
+                property.propertyInfo = propertyInfo;
+                return property;
+            }
+
             // Array-style property access such as object[0]
             int index = 0;
             if (Int32.TryParse(name, out index))
@@ -546,14 +569,6 @@ namespace HyperloopInvocation
                         return property;
                     }
                 }
-            }
-
-            PropertyInfo propertyInfo = type.GetRuntimeProperty(name);
-            if (propertyInfo != null)
-            {
-                Property property = new Property(name);
-                property.propertyInfo = propertyInfo;
-                return property;
             }
 
             // Enum

@@ -150,7 +150,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
@@ -170,7 +170,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
@@ -193,7 +193,7 @@ JSValue HyperloopPromiseCallback::CallAsFunction(const std::vector<JSValue>& js_
 				try {
 					const auto result = AsyncSupport::GetResults(generic_type__, native_object__);
 					const auto ctx = resolve.get_context();
-					const auto object = HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
+					const auto object = result == nullptr ? ctx.CreateNull() : HyperloopModule::Convert(ctx, ref new HyperloopInvocation::Instance(result->GetType(), result));
 					const std::vector<JSValue> args = { object };
 					static_cast<JSObject>(resolve)(args, resolve.get_context().get_global_object());
 				} catch (Platform::COMException^ e) {
@@ -388,13 +388,13 @@ bool HyperloopInstance::HasProperty(const JSString& property_name) const
 			return false;
 		}
 		const auto name = ConvertUTF8String(property_name);
-		return Method::HasMethod(type__, name) || Property::HasProperty(type__, name);
+		return (properties__.find(property_name) != properties__.end()) || (methods__.find(property_name) != methods__.end()) || Method::HasMethod(type__, name) || Property::HasProperty(type__, name);
 	} catch (...) {
 		return false;
 	}
 }
 
-JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
+JSValue HyperloopInstance::GetProperty(const JSString& js_property_name)
 {
 	if (type__.Name == nullptr) {
 		return get_context().CreateUndefined();
@@ -402,6 +402,15 @@ JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
 	const std::string property_name = js_property_name;
 	const auto rt_name = ConvertUTF8String(property_name);
 	const auto apiName = apiName__ + "." + property_name;
+
+	if (methods__.find(property_name) != methods__.end()) {
+		return methods__.at(property_name);
+	}
+
+	if (properties__.find(property_name) != properties__.end()) {
+		const auto prop = properties__.at(property_name);
+		return HyperloopModule::Convert(get_context(), prop->GetValue(instance__));
+	}
 
 	if (Method::HasMethod(type__, rt_name)) {
 		// Function
@@ -412,10 +421,13 @@ JSValue HyperloopInstance::GetProperty(const JSString& js_property_name) const
 		function_ptr->set_instance(instance__);
 		function_ptr->set_type(type__);
 
+		methods__.emplace(property_name, functionObj);
+
 		return functionObj;
 	} else if (Property::HasProperty(type__, rt_name)) {
 		// Property
 		const auto prop = Property::GetProperty(type__, rt_name);
+		properties__.emplace(property_name, prop);
 		return HyperloopModule::Convert(get_context(), prop->GetValue(instance__));
 	}
 
@@ -432,13 +444,16 @@ bool HyperloopInstance::SetProperty(const JSString& js_property_name, const JSVa
 	const auto rt_name = ConvertUTF8String(property_name);
 	const auto apiName = apiName__ + "." + property_name;
 
-	if (Method::HasMethod(type__, rt_name)) {
-		HAL::detail::ThrowRuntimeError("HyperloopInstance::SetProperty", "Unable to update " + apiName);
-	} else if (Property::HasProperty(type__, rt_name)) {
-		const auto prop = Property::GetProperty(type__, rt_name);
+	const auto prop_cached = properties__.find(property_name) != properties__.end();
+
+	if (prop_cached || Property::HasProperty(type__, rt_name)) {
+		const auto prop = prop_cached ? properties__.at(property_name) : Property::GetProperty(type__, rt_name);
 		const auto expected = prop->GetPropertyType();
 		prop->SetValue(instance__, HyperloopModule::Convert(value, expected));
+		properties__.emplace(property_name, prop);
 		return true;
+	} else if (Method::HasMethod(type__, rt_name)) {
+		HAL::detail::ThrowRuntimeError("HyperloopInstance::SetProperty", "Unable to update " + apiName);
 	}
 
 	return false;
