@@ -93,6 +93,7 @@ namespace hyperloop {
 			void setCurrent (Definition *current);
 			inline Definition* getCurrent() { return current; }
 			inline Definition* getPrevious() { return previous; }
+			bool isSystemLocation (const std::string &location) const;
 		private:
 			std::string sdkPath;
 			std::string minVersion;

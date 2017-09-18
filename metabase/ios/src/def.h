@@ -81,7 +81,7 @@ namespace hyperloop {
 			inline const std::string getName() const { return name; }
 			inline const std::string getFileName() const { return filename; }
 			inline const std::string getLine() const { return line; }
-			inline ParserContext* getContext() { return context; }
+			inline ParserContext* getContext() const { return context; }
 			inline CXCursor getCursor() { return cursor; }
 			std::string getFramework() const;
 

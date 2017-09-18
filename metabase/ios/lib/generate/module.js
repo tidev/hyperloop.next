@@ -67,7 +67,7 @@ function makeModule (json, module, state) {
  */
 function generate (json, mod, state) {
 	// for now, skip non frameworks
-	if (mod.framework.indexOf('/') >= 0) { return; }
+	if (mod.framework.indexOf('/') >= 0 || mod.customSource) { return; }
 	// generate the objective-c module
 	var m = makeModule(json, mod, state);
 	var found = json.classes[mod.name];
@@ -77,8 +77,11 @@ function generate (json, mod, state) {
 		m.class.obj_class_method.length ||
 		Object.keys(m.class.static_variables).length ||
 		m.class.blocks.length) {
-		if (mod.filename && mod.filename.indexOf('/') > 0) {
-			m.import = mod.filename;
+		if (mod.filename.match(/-Swift\.h$/)) {
+			m.import = mod.framework + '/' + mod.filename;
+			if (m.frameworks[mod.framework]) {
+				delete m.frameworks[mod.framework];
+			}
 		} else {
 			m.frameworks[mod.framework] = 1;
 		}

@@ -9,7 +9,7 @@ function makeClass (json, cls, state) {
 	var entry = {
 		class: {
 			name: cls.name,
-			mangledName: cls.language === 'swift' ? swift.generateSwiftMangledClassName(state.appName, cls.name) : cls.name,
+			fqcn: generateFullyQualifiedClassName(cls, state),
 			instance_properties: [],
 			class_properties: [],
 			instance_methods: [],
@@ -68,6 +68,30 @@ function makeClass (json, cls, state) {
 	});
 	entry.renderedImports = util.makeImports(json, entry.imports);
 	return entry;
+}
+
+/**
+ * Generates the appropriate fully qualified name for a class.
+ *
+ * This handles cases where we need three different class names:
+ *  - The default Objective-C class name
+ *  - The mangled class name for Swift classes
+ *  - A combination of FrameworkName.ClassName for Objective-C classes that were
+ *    impported from the Objective-C interface header of a Swift module.
+ *
+ * @param {Object} cls Class metadata object
+ * @param {Object} state Parser state
+ * @return {String} Fully qualified class name
+ */
+function generateFullyQualifiedClassName(cls, state) {
+	var fullyQualifiedClassName = cls.name;
+	if (cls.language === 'swift') {
+		fullyQualifiedClassName = swift.generateSwiftMangledClassName(state.appName, cls.name);
+	} else if (cls.filename === cls.framework + '-Swift.h') {
+		fullyQualifiedClassName = cls.framework + '.' + cls.name;
+	}
+
+	return fullyQualifiedClassName;
 }
 
 /**
