@@ -14,7 +14,7 @@ def packageVersion = ''
 def appc = new AppcCLI(steps)
 appc.environment = 'prod'
 
-node {
+node('osx || linux') {
 	stage('Checkout') {
 		// checkout scm
 		// Hack for JENKINS-37658 - see https://support.cloudbees.com/hc/en-us/articles/226122247-How-to-Customize-Checkout-for-Pipeline-Multibranch
@@ -29,17 +29,24 @@ node {
 	stage('Setup') {
 		def packageJSON = jsonParse(readFile('package.json'))
 		packageVersion = packageJSON['version']
-
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 			sh 'npm i -g npm' // install latest npm
-			// Now do top-level linting
 			sh 'npm install'
-			sh 'npm test'
-
-			// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
-			// So we need to stash it all, not per-platform directories
-			stash includes: '**/*', name: 'source'
-		} // nodejs
+			try {
+				sh 'npm test'
+			} finally {
+				// record results even if tests/coverage 'fails'
+				if (fileExists('junit_report.xml')) {
+					junit 'junit_report.xml'
+				}
+				if (fileExists('coverage/cobertura-coverage.xml')) {
+					step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+				}
+			}
+		}
+		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
+		// So we need to stash it all, not per-platform directories
+		stash includes: '**/*', name: 'source'
 	} // stage
 } // node
 
