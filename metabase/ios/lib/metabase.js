@@ -65,7 +65,7 @@ function getPlistForFramework (info, callback) {
 /**
  * Creates a MD5 hash from the given string data.
  *
- * @param {String} data Data the hash will be genreated for
+ * @param {String} data Data the hash will be generated for
  * @return {String} The generated MD5 hash
  */
 function createHashFromString (data) {
@@ -433,7 +433,7 @@ function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes,
  * and their header file.
  *
  * Frameworks written in Swift are currently only supported if they provide an
- * ObjC Interface Header.
+ * ObjC interface header.
  *
  * @param {Object} frameworkMetadata Metadata object containing all Framework related info
  * @param {Object} includes Map of class names and their header file
@@ -475,7 +475,7 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 				var objcInterfaceHeaderFilename = objcInterfaceHeaderMatch[1];
 				var headerPathAndFilename = path.join(frameworkHeadersPath, objcInterfaceHeaderFilename);
 				if (!fs.existsSync(headerPathAndFilename)) {
-					return callback(new Error('Objective-C interface header file for swift based framework ' + frameworkName.green + ' not found at expected path ' + headerPathAndFilename.cyan + '.'));
+					return callback(new Error('Objective-C interface header for Swift-based framework ' + frameworkName.green + ' not found at expected path ' + headerPathAndFilename.cyan + '.'));
 				}
 				util.logger.trace('Swift based framework detected, parsing Objective-C interface header ' + objcInterfaceHeaderFilename.cyan);
 				extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
@@ -1042,12 +1042,12 @@ function generateCocoaPods (cachedir, builder, callback) {
 	}
 
 	runPodInstallIfRequired(basedir, function (err) {
-		if (err) { 
-      return callback(err); 
+		if (err) {
+      return callback(err);
     }
 
     runCocoaPodsBuild(basedir, builder, function (err) {
-			if (err) { 
+			if (err) {
         return callback(err);
       }
 

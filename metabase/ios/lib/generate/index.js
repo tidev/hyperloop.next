@@ -314,14 +314,14 @@ function generateFromJSON (name, json, state, callback, includes) {
 }
 
 /**
- * Takes a single metadata object and normalized the framework property on that object.
+ * Takes a single metadata object and normalizes the framework property on that object.
  *
  * The metabase parser will leave the framework property as the path to the header
  * file the symbol was found in if it is not contained in a .framework package.
  * This normalization will try to associate the path with a virtual third-party
  * framework that is configured in the appc.js file, and replace it with the virtual
  * framework name. Should the path be unknown we remove the framework property as
- * it is a symbol which can not be associated to a specific framework and we can't
+ * it is a symbol which cannot be associated to a specific framework and we can't
  * handle such symbols currently.
  *
  * @param {Object} metadata Metabdata object for a symbol (class, struct etc)

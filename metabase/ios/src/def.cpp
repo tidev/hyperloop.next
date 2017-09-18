@@ -118,18 +118,18 @@ namespace hyperloop {
 	std::string Definition::getFramework () const {
 		size_t frameworkPosition = filename.find(".framework");
 		if (frameworkPosition != std::string::npos) {
-      size_t slashBeforeFrameworkPosition = filename.find_last_of("/", frameworkPosition);
-      return filename.substr(slashBeforeFrameworkPosition + 1, frameworkPosition - (slashBeforeFrameworkPosition + 1));
-    }
+			size_t slashBeforeFrameworkPosition = filename.find_last_of("/", frameworkPosition);
+			return filename.substr(slashBeforeFrameworkPosition + 1, frameworkPosition - (slashBeforeFrameworkPosition + 1));
+		}
 
-    return filename;
+		return filename;
 	}
 
 	void Definition::toJSONBase (Json::Value &kv) const {
 		kv["name"] = name;
 		kv["framework"] = getFramework();
-    kv["thirdparty"] = !getContext()->isSystemLocation(filename);
-    kv["filename"] = filename;
+		kv["thirdparty"] = !getContext()->isSystemLocation(filename);
+		kv["filename"] = filename;
 		kv["line"] = line;
 	}
 

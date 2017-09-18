@@ -15,10 +15,10 @@ exports.cliVersion = '>=3.2';
 exports.init = init;
 
 /**
- * main entry point for our plugin which looks for the platform specific
+ * Main entry point for our plugin which looks for the platform specific
  * plugin to invoke.
  *
- * A priority of 1300 to makes sure the Hyperloop plugin starts only after the
+ * A priority of 1300 makes sure the Hyperloop plugin starts only after the
  + Android .aar transform hook and the framework integration hook on iOS. The
  + Hyperloop platform specific plugins require data from those hooks and that
  + makes sure they run in the right order.
