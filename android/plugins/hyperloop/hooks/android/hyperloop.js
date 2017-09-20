@@ -16,10 +16,8 @@ exports.cliVersion = '>=3.2';
 	var path = require('path'),
 		findit = require('findit'),
 		fs = require('fs-extra'),
-		crypto = require('crypto'),
 		chalk = require('chalk'),
 		appc = require('node-appc'),
-		DOMParser = require('xmldom').DOMParser,
 		async = require('async'),
 		metabase = require(path.join(__dirname, 'metabase'));
 
@@ -213,8 +211,8 @@ exports.cliVersion = '>=3.2';
 				next();
 			},
 			/**
-			 * Manually adds JARs from module's lib directory and any JARs contained
-			 * in AARs
+			 * Manually adds JARs from module's lib directory, any JARs contained
+			 * in AARs and from the android platform folder.
 			 *
 			 * The dupe check is duplicate code as the AndroidBuilder does the same in
 			 * compileJavaClasses method, but that is too late in the build pipeline
@@ -226,51 +224,79 @@ exports.cliVersion = '>=3.2';
 			 */
 			function (next) {
 				var jarRegExp = /\.jar$/;
-				builder.modules.forEach(function(module) {
-					var libDir = path.join(module.modulePath, 'lib');
-					fs.existsSync(libDir) && fs.readdirSync(libDir).forEach(function (name) {
-						var jarFile = path.join(libDir, name);
-						if (jarRegExp.test(name) && fs.existsSync(jarFile)) {
-							var jarHash = builder.hash(fs.readFileSync(jarFile).toString());
-							if (!jarHashes[jarHash]) {
-								jars.push(jarFile);
-								jarHashes[jarHash] = 1;
-							} else {
-								logger.debug('Excluding duplicate jar file %s from metabase generation', jarFile.cyan);
+				var jarPaths = [];
+
+				async.series([
+					function scanModuleLibraries(done) {
+						async.each(builder.modules, function(module, cb) {
+							var libDir = path.join(module.modulePath, 'lib');
+							fs.readdir(libDir, function(err, libraryEntries) {
+								if (err) {
+									cb();
+								}
+
+								libraryEntries.forEach(function(entryName) {
+									var jarFile = path.join(libDir, entryName);
+									if (jarRegExp.test(entryName)) {
+										jarPaths.push(jarFile);
+									}
+								});
+
+								cb();
+							});
+						}, done);
+					},
+					function scanAndroidLibraries(done) {
+						builder.androidLibraries.forEach(function (libraryInfo) {
+							libraryInfo.jars.forEach(function (libraryJarPathAndFilename) {
+								jarPaths.push(libraryJarPathAndFilename);
+							});
+						});
+
+						done();
+					},
+					function scanPlatformDirectory(done) {
+						if (!afs.exists(platformAndroid)) {
+							return done();
+						}
+						findit(platformAndroid)
+							.on('file', function (file) {
+								if (path.extname(file) === '.jar') {
+									jarPaths.push(file);
+								}
+							})
+							.on('end', done);
+					},
+					function generateHashes(done) {
+						async.each(jarPaths, function(jarPathAndFilename, cb) {
+							fs.readFile(jarPathAndFilename, function(err, buffer) {
+								if (err) {
+									cb();
+								}
+
+								var jarHash = builder.hash(buffer.toString());
+								jarHashes[jarHash] = jarHashes[jarHash] || [];
+								jarHashes[jarHash].push(jarPathAndFilename);
+
+								cb();
+							});
+						}, done);
+					},
+					function filterDuplicates(done) {
+						Object.keys(jarHashes).forEach(function (hash) {
+							jars.push(jarHashes[hash][0]);
+
+							if (jarHashes[hash].length > 1) {
+								logger.debug('Duplicate jar libraries detected, using only the first of the following libraries for metabase generation:');
+								jarHashes[hash].forEach(function (jarPathAndFilename) {
+									logger.debug('  ' + jarPathAndFilename.cyan);
+								});
 							}
-						}
-					}, this);
-				});
+						});
 
-				builder.androidLibraries.forEach(function (libraryInfo) {
-					libraryInfo.jars.forEach(function (libraryJarPathAndFilename) {
-						var jarHash = builder.hash(fs.readFileSync(libraryJarPathAndFilename).toString());
-						if (!jarHashes[jarHash]) {
-							jars.push(libraryJarPathAndFilename);
-							jarHashes[jarHash] = 1;
-						} else {
-							logger.debug('Excluding duplicate jar file %s from metabase generation', libraryJarPathAndFilename.cyan);
-						}
-					}, this);
-				}, this);
-
-				next();
-			},
-			/**
-			 * Finds additional 3rd-party JARs that are exclusive to Hyperloop usage
-			 * @param {Function} next Callback function
-			 */
-			function (next) {
-				if (!afs.exists(platformAndroid)) {
-					return next();
-				}
-				findit(platformAndroid)
-					.on('file', function (file) {
-						if (path.extname(file) === '.jar') {
-							jars.push(file);
-						}
-					})
-					.on('end', next);
+						done();
+					}
+				], next);
 			},
 			// Do metabase generation from JARs
 			function (next) {
@@ -280,10 +306,10 @@ exports.cliVersion = '>=3.2';
 				// we can map requires by containing JAR
 
 				// Simple way may be to generate a "metabase" per-JAR
-				logger.trace("Generating metabase for JARs: " + jars);
+				logger.trace('Generating metabase for JARs: ' + jars);
 				metabase.metabase.loadMetabase(jars, {platform: 'android-' + builder.realTargetSDK}, function (err, json) {
 					if (err) {
-						logger.error("Failed to generated metabase: " + err);
+						logger.error('Failed to generated metabase: ' + err);
 						return next(err);
 					}
 					metabaseJSON = json;
