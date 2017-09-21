@@ -45,10 +45,10 @@ class GenerateMetabaseTask extends BaseFileTask {
 	 * @return {Promise}
 	 */
 	runTaskAction() {
-		let inputFiles = Array.from(this.inputFiles);
+		const inputFiles = Array.from(this.inputFiles);
 		this.logger.trace('Generating metabase for JARs: ' + inputFiles);
 		return new Promise((resolve, reject) => {
-			metabase.metabase.loadMetabase(Array.from(inputFiles), {platform: 'android-' + this._builder.realTargetSDK}, (err, json) => {
+			metabase.metabase.loadMetabase(inputFiles, {platform: 'android-' + this._builder.realTargetSDK}, (err, json) => {
 				if (err) {
 					this.logger.error('Failed to generated metabase: ' + err);
 					return reject(err);

@@ -105,14 +105,14 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	doIncrementalTaskRun(changedFiles) {
-		let fullBuild = !this.loadReferences();
+		const fullBuild = !this.loadReferences();
 		if (fullBuild) {
 			return this.doFullTaskRun();
 		}
 
 		changedFiles.forEach((state, pathAndFilename) => {
 			if (state === 'created' || state === 'changed') {
-				let hyperloopUsed = this.scanFileForHyperloopRequires(pathAndFilename);
+				const hyperloopUsed = this.scanFileForHyperloopRequires(pathAndFilename);
 				if (!hyperloopUsed) {
 					this._references.delete(pathAndFilename);
 				}
@@ -131,7 +131,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	loadResultAndSkip() {
-		let loaded = this.loadReferences();
+		const loaded = this.loadReferences();
 		if (loaded) {
 			return Promise.resolve();
 		} else {
@@ -150,7 +150,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		}
 
 		try {
-			let referencesObj = JSON.parse(fs.readFileSync(this._referencesPathAndFilename));
+			const referencesObj = JSON.parse(fs.readFileSync(this._referencesPathAndFilename));
 			this._references = new Map();
 			Object.keys(referencesObj).forEach(pathAndFilename => {
 				this._references.set(pathAndFilename, referencesObj[pathAndFilename]);
@@ -169,7 +169,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		this._references.forEach((fileInfo, pathAndFilename) => {
 			referencesObj[pathAndFilename] = fileInfo;
 		});
-		let referencesJson = JSON.stringify(referencesObj);
+		const referencesJson = JSON.stringify(referencesObj);
 		fs.ensureDirSync(path.dirname(this._referencesPathAndFilename));
 		fs.writeFileSync(this._referencesPathAndFilename, referencesJson);
 	}
@@ -182,8 +182,8 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {Boolean} True if the file contains requires to native types, false if not
 	 */
 	scanFileForHyperloopRequires(pathAndFilename) {
-		var result = this.extractAndReplaceHyperloopRequires(pathAndFilename);
-		if (result !== null && result.usedClasses.length > 0) {
+		const result = this.extractAndReplaceHyperloopRequires(pathAndFilename);
+		if (result && result.usedClasses.length > 0) {
 			this._references.set(pathAndFilename, {
 				usedClasses: result.usedClasses,
 				replacedContent: result.replacedContent
@@ -206,61 +206,60 @@ class ScanReferencesTask extends IncrementalFileTask {
 			return null;
 		}
 
-		var contents = fs.readFileSync(file, 'UTF-8'),
-			usedClasses = [],
-			requireRegex = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/ig;
+		let originalSource = fs.readFileSync(file, 'UTF-8');
+		let modifiedSource = originalSource;
+		let usedClasses = [];
+		const requireRegex = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/ig;
 		this._logger.trace('Searching for hyperloop requires in: ' + file);
-		(contents.match(requireRegex) || []).forEach(m => {
-			var re = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/i.exec(m),
-				className = re[1],
-				lastIndex,
-				validPackage = false,
-				type,
-				ref,
-				str,
-				packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
+		let requireMatch;
+		while ((requireMatch = requireRegex.exec(originalSource)) !== null) {
+			let requireStatement = requireMatch[0];
+			let className = requireMatch[1];
 
 			// Is this a Java type we found in the JARs/APIs?
 			this._logger.trace('Checking require for: ' + className);
 
 			// Look for requires using wildcard package names and assume all types under that namespace!
 			if (className.indexOf('.*') == className.length - 2) {
+				const packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
+				let validPackage = false;
 				// Check that it's a valid package name and search for all the classes directly under that package!
-				for (var mClass in this.metabase.classes) {
+				for (let mClass in this.metabase.classes) {
 					if (mClass.match(packageRegexp)) {
 						usedClasses.push(mClass);
 						validPackage = true;
 					}
 				}
 				if (validPackage) {
-					ref = 'hyperloop/' + className.slice(0, className.length - 2); // drop the .* ending
-					str = 'require(\'' + ref + '\')';
-					contents = this.replaceAll(contents, m, str);
+					const ref = 'hyperloop/' + className.slice(0, className.length - 2); // drop the .* ending
+					let str = 'require(\'' + ref + '\')';
+					modifiedSource = this.replaceAll(modifiedSource, requireStatement, str);
 				}
 			} else {
 				// single type
-				type = this.metabase.classes[className];
+				let lastIndex;
+				let type = this.metabase.classes[className];
 				if (!type) {
 					// fallback for using dot notation to refer to nested class
 					lastIndex = className.lastIndexOf('.');
 					className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
 					type = this.metabase.classes[className];
 					if (!type) {
-						return;
+						continue;
 					}
 				}
 				// Looks like it's a Java type, so let's hack it and add it to our list!
 				// replace the require to point to our generated file path
-				ref = 'hyperloop/' + className;
-				str = 'require(\'' + ref + '\')';
-				contents = this.replaceAll(contents, m, str);
+				const ref = 'hyperloop/' + className;
+				let str = 'require(\'' + ref + '\')';
+				modifiedSource = this.replaceAll(modifiedSource, requireStatement, str);
 				usedClasses.push(className);
 			}
-		});
+		}
 
 		return {
 			usedClasses: usedClasses,
-			replacedContent: contents
+			replacedContent: modifiedSource
 		};
 	}
 
@@ -273,16 +272,16 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {String} New string which has all occurrences of needle replaced
 	 */
 	replaceAll(haystack, needle, replaceStr) {
-		var newBuffer = haystack;
-		while (1) {
-			var index = newBuffer.indexOf(needle);
-			if (index < 0) {
-				break;
-			}
-			var before = newBuffer.substring(0, index),
-				after = newBuffer.substring(index + needle.length);
+		const length = needle.length;
+		let newBuffer = haystack;
+		let index = -1;
+
+		while ((index = newBuffer.indexOf(needle)) >= 0) {
+			const before = newBuffer.substring(0, index);
+			const after = newBuffer.substring(index + length);
 			newBuffer = before + replaceStr + after;
 		}
+
 		return newBuffer;
 	}
 

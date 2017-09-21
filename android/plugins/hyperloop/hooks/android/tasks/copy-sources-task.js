@@ -101,10 +101,10 @@ class CopySourcesTask extends IncrementalFileTask {
 		fs.emptyDirSync(this.outputDirectory);
 
 		if (this.shouldMinifiyJs()) {
-			let sourceFiles = fs.readdirSync(this.sourceDirectory);
+			const sourceFiles = fs.readdirSync(this.sourceDirectory);
 			return Promise.all(sourceFiles.map(sourceFilename => {
-				let sourcePathAndFilename = path.join(this.sourceDirectory, sourceFilename);
-				let destinationPathAndFilename = path.join(this.outputDirectory, sourceFilename);
+				const sourcePathAndFilename = path.join(this.sourceDirectory, sourceFilename);
+				const destinationPathAndFilename = path.join(this.outputDirectory, sourceFilename);
 				return this.minifyJsAndWrite(sourcePathAndFilename, destinationPathAndFilename);
 			}));
 		} else {
@@ -120,15 +120,15 @@ class CopySourcesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	doIncrementalTaskRun(changedFiles) {
-		let fullBuild = !this.canDoIncrementalRun();
+		const fullBuild = !this.canDoIncrementalRun();
 		if (fullBuild) {
 			return this.doFullTaskRun();
 		}
 
 		let syncPromises = [];
 		changedFiles.forEach((state, pathAndFilename) => {
-			let promise = new Promise((resolve, reject) => {
-				let destinationPathAndFilename = path.join(this.outputDirectory, path.basename(pathAndFilename));
+			const promise = new Promise((resolve, reject) => {
+				const destinationPathAndFilename = path.join(this.outputDirectory, path.basename(pathAndFilename));
 				if (state === 'created' || state === 'changed') {
 					if (this.shouldMinifiyJs()) {
 						this.minifyJsAndWrite(pathAndFilename, destinationPathAndFilename).then(resolve, reject);
@@ -162,7 +162,7 @@ class CopySourcesTask extends IncrementalFileTask {
 	 * @return {Boolean} True if the changes can be applied incrementally, false if a full run is required
 	 */
 	canDoIncrementalRun() {
-		let buildManifest = this._builder.buildManifest;
+		const buildManifest = this._builder.buildManifest;
 
 		if (buildManifest.deployType !== this._builder.deployType) {
 			this.logger.trace(`Deploy type changed from ${buildManifest.deployType} to ${this._builder.deployType}, doing full task run.`);

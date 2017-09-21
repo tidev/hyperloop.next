@@ -73,6 +73,9 @@ class GenerateSourcesTask extends IncrementalFileTask {
 		this._references = references;
 	}
 
+	/**
+	 * @inheritdoc
+	 */
 	get incrementalOutputs() {
 		return [this.outputDirectory, this._classListPathAndFilename];
 	}
@@ -91,11 +94,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 			return Promise.resolve();
 		}
 
-		let classesToGenerate = [];
-		this.references.forEach(fileInfo => {
-			classesToGenerate = classesToGenerate.concat(fileInfo.usedClasses);
-		});
-		classesToGenerate = metabase.generate.expandDependencies(this.metabase, classesToGenerate);
+		const classesToGenerate = metabase.generate.expandDependencies(this.metabase, this.getAllReferencedClasses());
 
 		return this.generateSources(classesToGenerate, [])
 			.then(() => {
@@ -117,37 +116,50 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	doIncrementalTaskRun(changedFiles) {
-		let fullBuild = !this.loadClassList();
+		const fullBuild = !this.loadClassList();
 		if (fullBuild) {
 			return this.doFullTaskRun();
 		}
 
+		const expandedClassList = metabase.generate.expandDependencies(this.metabase, this.getAllReferencedClasses());
+		const classesToGenerate = expandedClassList.filter(className => !this._generatedClasses.has(className));
+		const classesToRemove = Array.from(this._generatedClasses).filter(className => expandedClassList.indexOf(className) === -1);
+
+		return this.removeUnusedClasses(classesToRemove)
+			.then(() => this.generateSources(classesToGenerate, classesToRemove))
+			.then(() => {
+				classesToGenerate.forEach(className => this._generatedClasses.add(className));
+				classesToRemove.forEach(className => this._generatedClasses.delete(className));
+			})
+			.then(() => this.writeClassList());
+	}
+
+	/**
+	 * Gets a list of all referenced native types
+	 *
+	 * @return {Array.<String>} Array of referenced native types
+	 */
+	getAllReferencedClasses() {
 		let referencedClasses = [];
 		this.references.forEach(fileInfo => {
 			referencedClasses = referencedClasses.concat(fileInfo.usedClasses);
 		});
+		return referencedClasses;
+	}
 
-		let expandedClassList = metabase.generate.expandDependencies(this.metabase, referencedClasses);
-		let classesToGenerate = expandedClassList.filter(className => !this._generatedClasses.has(className));
-
-		let removedClasses = [];
-		this._generatedClasses.forEach(className => {
-			if (expandedClassList.indexOf(className) === -1) {
+	/**
+	 * Removes any unused class wrappers from the output directoy
+	 *
+	 * @param {Array.<String>} classesToRemove Array of class names
+	 * @return {Promise}
+	 */
+	removeUnusedClasses(classesToRemove) {
+		return Promise.all(classesToRemove.map(className => {
+			return new Promise(resolve => {
 				let classPathAndFilename = path.join(this.outputDirectory, className + '.js');
-				if (fs.existsSync(classPathAndFilename)) {
-					this.logger.trace('Removing unused wrapper ' + classPathAndFilename);
-					fs.unlinkSync(classPathAndFilename);
-				}
-				removedClasses.push(className);
-			}
-		});
-
-		return this.generateSources(classesToGenerate, removedClasses)
-			.then(() => {
-				classesToGenerate.forEach(className => this._generatedClasses.add(className));
-				removedClasses.forEach(className => this._generatedClasses.delete(className));
-			})
-			.then(() => this.writeClassList());
+				fs.unlink(classPathAndFilename, () => resolve());
+			});
+		}));
 	}
 
 	/**
@@ -165,7 +177,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 		}
 
 		return new Promise((resolve, reject) => {
-			let options = {
+			const options = {
 				classesToGenerate: classesToGenerate,
 				removedClasses: removedClasses,
 				existingClasses: Array.from(this._generatedClasses)
@@ -183,7 +195,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	/**
 	 * Loads the class list used in incremental task runs
 	 *
-	 * @return {boolean} True if the files was loaded succesfully, false if not
+	 * @return {Boolean} True if the files was loaded succesfully, false if not
 	 */
 	loadClassList() {
 		if (!fs.existsSync(this._classListPathAndFilename)) {
