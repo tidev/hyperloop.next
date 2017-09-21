@@ -17,8 +17,8 @@
     "ejs": "^2.3.4",
     "findit": "^2.0.0",
     "fs-extra": "^2.0.0",
+    "lodash": "^4.17.4",
     "node-appc": "^0.2.33",
-    "underscore": "^1.8.3",
     "xmldom": "^0.1.19"
   },
   "devDependencies": {
