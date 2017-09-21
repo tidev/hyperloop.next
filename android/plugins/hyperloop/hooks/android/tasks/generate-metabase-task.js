@@ -12,7 +12,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 	/**
 	 * Constructs a new task for metabase generation
 	 *
-	 * @param {Obejct} taskInfo
+	 * @param {Object} taskInfo
 	 */
 	constructor(taskInfo) {
 		super(taskInfo);
