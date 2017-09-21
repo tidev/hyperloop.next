@@ -34,7 +34,7 @@
   "nyc": {
     "reporter": [
       "lcov",
-      "text"
+      "cobertura"
     ]
   }
 }
