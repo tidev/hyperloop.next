@@ -150,20 +150,12 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					// sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
 					dir('windows') {
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-						writeFile file: 'build.properties', text: """
-titanium.platform=${activeSDKPath}/android
-android.platform=${androidSDK}/platforms/android-${androidAPILevel}
-google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
-"""
 						// FIXME We should have a module clean command!
 						// manually clean
 						sh 'rm -rf build/'
 						sh 'rm -rf dist/'
 						sh 'rm -rf libs/'
 						appc.loggedIn {
-							// Even setting config needs login, ugh
-							sh "appc ti config android.sdkPath ${androidSDK}"
-							sh "appc ti config android.ndkPath ${androidNDK}"
 							sh 'appc run -p windows --build-only'
 						} // appc.loggedIn
 						stash includes: 'dist/hyperloop-windows-*.zip', name: 'windows-zip'
