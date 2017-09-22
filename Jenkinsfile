@@ -30,7 +30,7 @@ node {
 		def packageJSON = jsonParse(readFile('package.json'))
 		packageVersion = packageJSON['version']
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh 'npm install'
+			sh 'npm install --production'
 		}
 		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
@@ -84,6 +84,20 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh "appc ti config android.ndkPath ${androidNDK}"
 								sh 'appc run -p android --build-only'
 							} // appc.loggedIn
+							// This doesn't package up the Android hyperloop plugin hook!
+							// We need to unzip, and hack it in!
+							dir('dist') {
+								sh 'rm -f hyperloop-android.jar'
+								sh "unzip hyperloop-android-${packageVersion}.zip"
+								sh "rm -rf hyperloop-android-${packageVersion}.zip"
+								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
+								// copy top-level plugin hook
+								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
+								// copy top-level node_modules folder into the hook folder!
+								sh 'cp -R ../../node_modules plugins/hyperloop/node_modules'
+								// Now zip it back up
+								sh "zip -r hyperloop-android-${packageVersion}.zip ."
+							}
 							stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
 						} // dir
 					} // withEnv
@@ -165,6 +179,19 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only'
 							} // appc.loggedIn
+							// This doesn't package up the Windows hyperloop plugin hook!
+							// We need to unzip, and hack it in!
+							dir('dist') {
+								sh "unzip hyperloop-windows-${packageVersion}.zip"
+								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
+								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
+								// copy top-level plugin hook
+								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
+								// copy top-level node_modules folder into the hook folder!
+								sh 'cp -R ../../node_modules plugins/hyperloop/node_modules'
+								// Now zip it back up
+								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
+							}
 							stash includes: 'hyperloop-windows-*.zip', name: 'windows-zip'
 						} // dir
 					} // nodejs

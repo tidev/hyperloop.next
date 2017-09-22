@@ -63,10 +63,15 @@
 
 	<target name="post.dist" description="Include plugins folder in module zip">
 		<!-- NPM Install for plugin hook -->
-		<exec executable="npm" dir="${basedir}/plugins/hyperloop" failonerror="true">
+		<exec executable="npm" dir="${basedir}/../" failonerror="true">
 			<arg value="install"/>
 			<arg value="--production"/>
 		</exec>
+
+		<!-- copy node_modules from top-level into our hook directory -->
+		<copy todir="${basedir}/plugins/hyperloop/node_modules">
+			<fileset dir="${basedir}/../node_modules"/>
+		</copy>
 
 		<!-- Remove some test directories from NPM packages manually -->
 		<delete dir="${basedir}/plugins/hyperloop/node_modules/ejs/test"/>

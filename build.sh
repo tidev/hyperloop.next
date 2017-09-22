@@ -106,6 +106,7 @@ rm -rf libs/*
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
+# FIXME Use appc cli to build!
 ant test dist
 if [ $? -ne 0 ];
 then

@@ -48,21 +48,13 @@ xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITION
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
 
 echo "\nPackaging iOS module..."
-# make sure to update the plugin with the latest version in it's package.json
-node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/package.json
 
 cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/hooks/hyperloop.js
 cp plugin/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
 cp plugin/filter.sh build/zip/plugins/hyperloop/hooks/ios
+cp -R ../node_modules build/zip/plugins/hyperloop/node_modules
 cp ../LICENSE build/zip/plugins/hyperloop
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
-
-# Install findit, need package.json there first on npm5
-echo "Installing npm dependency..."
-cd build/zip/plugins/hyperloop
-npm install findit --production >/dev/null 2>&1
-rm -rf node_modules/findit/test
-cd $CWD
 
 # package the metabase into the .zip
 echo "Packaging metabase..."
