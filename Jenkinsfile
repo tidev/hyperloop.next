@@ -2,7 +2,7 @@
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '4.7.3'
+def nodeVersion = '6.9.5'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
 def sdkVersion = '6.2.0.GA'
