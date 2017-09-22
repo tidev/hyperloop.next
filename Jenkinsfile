@@ -179,7 +179,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							} // appc.loggedIn
 							// This doesn't package up the Windows hyperloop plugin hook!
 							// We need to unzip, and hack it in!
-							dir('dist') {
+							sh 'mkdir zip/'
+							sh 'mv hyperloop-windows-${packageVersion}.zip zip/hyperloop-windows-${packageVersion}.zip'
+							dir('zip') {
 								sh "unzip hyperloop-windows-${packageVersion}.zip"
 								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
