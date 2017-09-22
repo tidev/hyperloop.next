@@ -140,27 +140,29 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 		},
 		'windows': {
 			node('windows && (vs2015 || vs2017)') {
-				unstash 'source'
+				ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
+					unstash 'source'
 
-				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					appc.install()
-					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						appc.install()
+						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
-					echo 'Building Windows module...'
-					// sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
-					dir('windows') {
-						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-						// FIXME We should have a module clean command!
-						// manually clean
-						sh 'rm -rf build/'
-						sh 'rm -rf dist/'
-						sh 'rm -rf libs/'
-						appc.loggedIn {
-							sh 'appc run -p windows --build-only'
-						} // appc.loggedIn
-						stash includes: 'dist/hyperloop-windows-*.zip', name: 'windows-zip'
-					} // dir
-				} // nodejs
+						echo 'Building Windows module...'
+						// sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
+						dir('windows') {
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							// FIXME We should have a module clean command!
+							// manually clean
+							sh 'rm -rf build/'
+							sh 'rm -rf dist/'
+							sh 'rm -rf libs/'
+							appc.loggedIn {
+								sh 'appc run -p windows --build-only'
+							} // appc.loggedIn
+							stash includes: 'dist/hyperloop-windows-*.zip', name: 'windows-zip'
+						} // dir
+					} // nodejs
+				} // ws
 			} // node
 		},
 		failFast: true
