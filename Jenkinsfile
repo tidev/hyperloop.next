@@ -138,6 +138,39 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 				} // nodejs
 			} // node
 		},
+		'windows': {
+			node('windows && (vs2015 || vs2017)') {
+				unstash 'source'
+
+				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					appc.install()
+					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+
+					echo 'Building Windows module...'
+					// sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
+					dir('windows') {
+						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+						writeFile file: 'build.properties', text: """
+titanium.platform=${activeSDKPath}/android
+android.platform=${androidSDK}/platforms/android-${androidAPILevel}
+google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
+"""
+						// FIXME We should have a module clean command!
+						// manually clean
+						sh 'rm -rf build/'
+						sh 'rm -rf dist/'
+						sh 'rm -rf libs/'
+						appc.loggedIn {
+							// Even setting config needs login, ugh
+							sh "appc ti config android.sdkPath ${androidSDK}"
+							sh "appc ti config android.ndkPath ${androidNDK}"
+							sh 'appc run -p windows --build-only'
+						} // appc.loggedIn
+						stash includes: 'dist/hyperloop-windows-*.zip', name: 'windows-zip'
+					} // dir
+				} // nodejs
+			} // node
+		},
 		failFast: true
 	)
 }
@@ -152,13 +185,16 @@ stage('Package') {
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
 		unstash 'android-zip'
+		unstash 'windows-zip'
 
-		echo 'Creating combined zip with iOS and Android ...'
+		echo 'Creating combined zip with iOS, Windows, and Android ...'
 		dir('dist') {
 			sh "unzip hyperloop-android-${packageVersion}.zip"
 			sh "rm -f hyperloop-android-${packageVersion}.zip"
 			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
+			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
+			sh "rm -f hyperloop-windows-${packageVersion}.zip"
 
 			// Here we extract and force the version of the plugin into the folder structure
 			sh 'mkdir -p temp'
