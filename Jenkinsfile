@@ -148,20 +148,27 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
 						echo 'Building Windows module...'
-						// sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
+						// FIXME How the hell is Windows OK with these shell commands?
 						dir('windows') {
 							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 							// FIXME We should have a module clean command!
 							// manually clean
 							sh 'rm -rf build/'
 							sh 'rm -rf dist/'
-							sh 'rm -rf libs/'
+							sh 'rm -rf Windows10.ARM/'
+							sh 'rm -rf Windows10.Win32/'
+							sh 'rm -rf WindowsPhone.ARM/'
+							sh 'rm -rf WindowsPhone.Win32/'
+							sh 'rm -rf WindowsStore.Win32/'
+							sh 'rm -f CMakeLists.txt'
+							sh 'rm -f hyperloop-windows-*.zip'
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only'
 							} // appc.loggedIn
-							stash includes: 'dist/hyperloop-windows-*.zip', name: 'windows-zip'
+							stash includes: 'hyperloop-windows-*.zip', name: 'windows-zip'
 						} // dir
 					} // nodejs
+					deleteDir() // wipe workspace
 				} // ws
 			} // node
 		},
@@ -178,8 +185,10 @@ stage('Package') {
 		unstash 'iphone-zip'
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
-		unstash 'android-zip'
 		unstash 'windows-zip'
+		sh "mv hyperloop-windows-${packageVersion}.zip dist/"
+
+		unstash 'android-zip'
 
 		echo 'Creating combined zip with iOS, Windows, and Android ...'
 		dir('dist') {
