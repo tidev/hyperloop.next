@@ -29,9 +29,6 @@ node {
 	stage('Setup') {
 		def packageJSON = jsonParse(readFile('package.json'))
 		packageVersion = packageJSON['version']
-		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh 'npm install --production'
-		}
 		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
 		stash includes: '**/*', name: 'source'
@@ -93,8 +90,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								// copy top-level node_modules folder into the hook folder!
-								sh 'cp -R ../../node_modules plugins/hyperloop/node_modules'
+								dir ('plugins/hyperloop/hooks/android') {
+									sh 'npm install --production'
+								}
 								// Now zip it back up
 								sh "zip -r hyperloop-android-${packageVersion}.zip ."
 							}
@@ -187,6 +185,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
+								dir ('plugins/hyperloop/hooks/windows') {
+									sh 'npm install --production'
+								}
 								// copy top-level node_modules folder into the hook folder!
 								sh 'cp -R ../../node_modules plugins/hyperloop/node_modules'
 								// Now zip it back up
