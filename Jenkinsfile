@@ -90,12 +90,12 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
 								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
 									sh 'npm install --production'
 								}
 								// Now remove the package-lock.json!
 								sh 'rm -rf plugins/hyperloop/hooks/android/package-lock.json'
+								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
 								// Now zip it back up
 								sh "zip -r hyperloop-android-${packageVersion}.zip ."
 							}
@@ -191,12 +191,12 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
 								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies
 									sh 'npm install --production'
 								}
 								// Now remove the package-lock.json!
 								sh 'rm -rf plugins/hyperloop/hooks/windows/package-lock.json'
+								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
 								// Now zip it back up
 								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
 							}

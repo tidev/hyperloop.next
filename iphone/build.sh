@@ -62,6 +62,7 @@ echo "Installing npm dependency..."
 cd build/zip/plugins/hyperloop/hooks/ios
 npm install findit --production >/dev/null 2>&1
 rm -rf node_modules/findit/test
+rm -rf package-lock.json
 cd $CWD
 
 # package the metabase into the .zip
@@ -77,6 +78,7 @@ tar xfz *.tgz
 rm -rf *.tgz
 cd package
 npm i --production >/dev/null 2>&1
+rm -rf package-lock.json
 rm -rf unittest
 mkdir -p $METABASE
 cp -R * $METABASE
