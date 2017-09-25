@@ -32,6 +32,10 @@ node('osx || linux') {
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 			sh 'npm i -g npm' // install latest npm
 			sh 'npm install'
+			// HACK We need to install the dependencies of the android hook to eb able to run tests on it
+			dir('android/plugins/hyperloop') {
+				sh 'npm install'
+			}
 			try {
 				sh 'npm test'
 			} finally {

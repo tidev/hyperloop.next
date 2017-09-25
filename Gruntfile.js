@@ -10,7 +10,7 @@ module.exports = function (grunt) {
 	// Project configuration.
 	grunt.initConfig({
 		appcJs: {
-			src: [ 'Gruntfile.js', 'android/plugins/hyperloop/hooks/**/*.js', 'iphone/plugin/*.js', 'plugins/**/*.js' ]
+			src: [ 'Gruntfile.js', 'android/plugins/hyperloop/hooks/**/*.js', 'iphone/plugin/*.js', 'plugins/**/*.js', 'windows/plugins/hyperloop/hooks/**/*.js' ]
 		},
 		clangFormat: {
 			src: iosSrc
@@ -18,22 +18,25 @@ module.exports = function (grunt) {
 		ios_format: {
 			src: iosSrc
 		},
-		// mocha_istanbul: {
-		// 	coverage: {
-		// 		src: 'test',
-		// 		options: {
-		// 			ignoreLeaks: false,
-		// 			check: {
-		// 				statements: 80,
-		// 				branches: 80,
-		// 				functions: 80,
-		// 				lines: 80
-		// 			},
-		// 			reporter: 'mocha-jenkins-reporter',
-		// 			reportFormats: [ 'lcov', 'cobertura' ]
-		// 		}
-		// 	}
-		// }
+		clean: {
+			cover: [ 'coverage' ]
+		},
+		mocha_istanbul: {
+			coverage: {
+				src: 'android/plugins/hyperloop/test',
+				options: {
+					ignoreLeaks: false,
+					check: {
+						statements: 80,
+						branches: 80,
+						functions: 80,
+						lines: 80
+					},
+					reporter: 'mocha-jenkins-reporter',
+					reportFormats: [ 'lcov', 'cobertura' ]
+				}
+			}
+		}
 	});
 
 	grunt.registerMultiTask('ios_format', 'Validates the iOS source code formatting.', function () {
@@ -90,13 +93,14 @@ module.exports = function (grunt) {
 	});
 
 	// Load grunt plugins for modules
-	// grunt.loadNpmTasks('grunt-mocha-test');
+	grunt.loadNpmTasks('grunt-mocha-istanbul');
 	grunt.loadNpmTasks('grunt-appc-js');
 	grunt.loadNpmTasks('grunt-clang-format');
-	// grunt.loadNpmTasks('grunt-contrib-clean');
+	grunt.loadNpmTasks('grunt-contrib-clean');
 
 	// register tasks
+	grunt.registerTask('test', [ 'clean:cover', 'mocha_istanbul:coverage' ]);
 	grunt.registerTask('lint', [ 'appcJs', 'ios_format' ]);
 	grunt.registerTask('format', [ 'clangFormat' ]);
-	grunt.registerTask('default', [ 'lint' ]);
+	grunt.registerTask('default', [ 'lint', 'test' ]);
 };

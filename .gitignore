@@ -22,3 +22,5 @@ metabase/ios/bin/metabase
 # Coverage directory and nyc output
 coverage
 .nyc_output
+
+junit_report.xml
