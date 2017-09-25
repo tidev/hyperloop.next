@@ -135,16 +135,16 @@ function extractImplementations (fn, files) {
  */
 function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 	var skip = [],
-		frameworkPath = path.resolve(path.join(sdkPath,'System/Library/Frameworks')),
-		frameworks = fs.readdirSync(frameworkPath).filter(function(n){ return /\.framework$/.test(n) && !!~~skip.indexOf(n); }),
+		frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks')),
+		frameworks = fs.readdirSync(frameworksPath).filter(function(n){ return /\.framework$/.test(n) && !!~~skip.indexOf(n); }),
 		iosMinVersionSemver = appleVersionToSemver(iosMinVersion),
 		mapping = {};
 
 	async.each(frameworks, function (fw, next) {
-		var hd = path.join(frameworkPath, fw, 'Headers'),
+		var hd = path.join(frameworksPath, fw, 'Headers'),
 			fp = path.join(hd, fw.replace('.framework','.h'));
 		if (fs.existsSync(fp)) {
-			getPlistForFramework(path.join(frameworkPath, fw, 'Info.plist'), function (err, p) {
+			getPlistForFramework(path.join(frameworksPath, fw, 'Info.plist'), function (err, p) {
 				if (err) { return next(err); }
 				// check min version
 				if (p && p.MinimumOSVersion) {
@@ -155,11 +155,10 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 				if (p && p.UIDeviceFamily) {
 					// TODO: check device family we are targeting
 				}
-				var files = {};
-				fs.readdirSync(hd).forEach(function (n) {
-					extractImplementations(path.join(hd, n), files);
-				});
-				mapping[fw.replace('.framework', '')] = files;
+
+				var frameworkName = fw.replace('.framework', '');
+				var frameworkPath = path.join(frameworksPath, fw);
+				extractImplementationsFromFramework(frameworkName, frameworkPath, mapping);
 				next();
 			});
 		}
@@ -169,6 +168,47 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 	}, function (err) {
 		return callback(err, mapping);
 	});
+}
+
+/**
+ * Extracts Objective-C interface implementations from all available header
+ * files inside the given framework.
+ *
+ * This will include implementations from nested sub-frameworks that will be
+ * mapped to the parent framework.
+ *
+ * @param {String} frameworkName Name of the framework
+ * @param {String} frameworkPath Full path to the framwork
+ * @param {Object} includes Object with all include mappings
+ */
+function extractImplementationsFromFramework(frameworkName, frameworkPath, includes) {
+	var implementationToHeaderFileMap = includes[frameworkName] || {};
+	var headerFiles = collectFrameworkHeaders(frameworkPath);
+	headerFiles.forEach(function(headerFile) {
+		extractImplementations(headerFile, implementationToHeaderFileMap);
+	});
+	includes[frameworkName] = implementationToHeaderFileMap;
+}
+
+/**
+ * Iterates over a framework's Headers directory and any nested frameworks to
+ * collect the paths to all available header files of a framework.
+ *
+ * @param {String} frameworkPath Full path to the framwork
+ * @return {Array} List with paths to all found header files
+ */
+function collectFrameworkHeaders(frameworkPath) {
+	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+	var headerFiles = getAllHeaderFiles([frameworkHeadersPath]);
+	var nestedFrameworksPath = path.join(frameworkPath, 'Frameworks');
+	if (fs.existsSync(nestedFrameworksPath)) {
+		fs.readdirSync(nestedFrameworksPath).forEach(function (subFrameworkEntry) {
+			var nestedFrameworkPath = path.join(nestedFrameworksPath, subFrameworkEntry);
+			headerFiles = headerFiles.concat(collectFrameworkHeaders(nestedFrameworkPath));
+		});
+	}
+
+	return headerFiles;
 }
 
 /**
@@ -440,27 +480,13 @@ function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes,
  * @param {Function} callback Callback function
  */
 function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
-	/**
-	 * Convenience function to extract implementations from a header file and
-	 * store that under the framework name in the includes map.
-	 *
-	 * @param {String} headerPathAndFilename Full path and file to the header file
-	 * @param {String} frameworkName Name of the framework the header belongs to
-	 */
-	function extractImplementationsFromHeader (headerPathAndFilename, frameworkName) {
-		var implementationToHeaderFileMap = includes[frameworkName] || {};
-		extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
-		includes[frameworkName] = implementationToHeaderFileMap;
-	}
-
 	var frameworkName = frameworkMetadata.name;
 	var frameworkPath = frameworkMetadata.path;
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
 	util.logger.trace('Generating includes for ' + frameworkMetadata.type + ' framework ' + frameworkName.green + ' (' + frameworkPath + ')');
 	if (frameworkMetadata.type === 'dynamic') {
 		var modulesPath = path.join(frameworkPath, 'Modules');
-		var moduleEntries = fs.readdirSync(modulesPath);
-		if (moduleEntries.length > 1) {
+		if (fs.existsSync(modulesPath) && fs.readdirSync(modulesPath).length > 1) {
 			// Dynamic frameworks containing Swift modules need to have an Objective-C
 			// interface header defined to be usable
 			frameworkMetadata.usesSwift = true;
@@ -478,24 +504,20 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 					return callback(new Error('Objective-C interface header for Swift-based framework ' + frameworkName.green + ' not found at expected path ' + headerPathAndFilename.cyan + '.'));
 				}
 				util.logger.trace('Swift based framework detected, parsing Objective-C interface header ' + objcInterfaceHeaderFilename.cyan);
-				extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
+				var implementationToHeaderFileMap = includes[frameworkName] || {};
+				extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
+				includes[frameworkName] = implementationToHeaderFileMap;
 			} else {
 				// TODO: New Swift metabase generator required to support pure Swift frameworks
 				return callback(new Error('Incompatible framework ' + frameworkName + ' detected. Frameworks with Swift modules are only supported if they contain an Objective-C interface header.'));
 			}
 		} else {
 			util.logger.trace('Objective-C only framework, parsing all header files');
-
-			var headerFiles = getAllHeaderFiles([frameworkPath]);
-			headerFiles.forEach(function (headerPathAndFilename) {
-				extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
-			});
+			extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 		}
 	} else if (frameworkMetadata.type === 'static') {
-		var headerFiles = getAllHeaderFiles([frameworkPath]);
-		headerFiles.forEach(function (headerPathAndFilename) {
-			extractImplementationsFromHeader(headerPathAndFilename, frameworkName);
-		});
+		util.logger.trace('Static framework, parsing all header files');
+		extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 	} else {
 		return callback(new Error('Invalid framework metadata, unknown type: ' + frameworkMetadata.type));
 	}
