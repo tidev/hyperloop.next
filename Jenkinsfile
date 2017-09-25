@@ -90,7 +90,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								dir ('plugins/hyperloop/hooks/android') {
+								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
 									sh 'npm install --production'
 								}
 								// Now zip it back up
@@ -188,15 +188,13 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								dir ('plugins/hyperloop/hooks/windows') {
+								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies
 									sh 'npm install --production'
 								}
-								// copy top-level node_modules folder into the hook folder!
-								sh 'cp -R ../../node_modules plugins/hyperloop/node_modules'
 								// Now zip it back up
 								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
 							}
-							stash includes: 'hyperloop-windows-*.zip', name: 'windows-zip'
+							stash includes: 'zip/hyperloop-windows-*.zip', name: 'windows-zip'
 						} // dir
 					} // nodejs
 					deleteDir() // wipe workspace
@@ -217,7 +215,7 @@ stage('Package') {
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
 		unstash 'windows-zip'
-		sh "mv hyperloop-windows-${packageVersion}.zip dist/"
+		sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
 
 		unstash 'android-zip'
 
