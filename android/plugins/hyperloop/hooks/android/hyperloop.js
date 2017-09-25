@@ -16,10 +16,8 @@ exports.cliVersion = '>=3.2';
 	var path = require('path'),
 		findit = require('findit'),
 		fs = require('fs-extra'),
-		crypto = require('crypto'),
 		chalk = require('chalk'),
 		appc = require('node-appc'),
-		DOMParser = require('xmldom').DOMParser,
 		async = require('async'),
 		metabase = require(path.join(__dirname, 'metabase')),
 		CopySourcesTask = require('./tasks/copy-sources-task'),
@@ -28,7 +26,7 @@ exports.cliVersion = '>=3.2';
 		ScanReferencesTask = require('./tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '6.0.0';
+	var TI_MIN = '6.1.0';
 
 	/*
 	 State.
@@ -44,7 +42,7 @@ exports.cliVersion = '>=3.2';
 		afs,
 		references = new Map(),
 		files = {},
-		jars = [],
+		exclusiveJars = [],
 		aars = {},
 		cleanup = [];
 
@@ -61,28 +59,6 @@ exports.cliVersion = '>=3.2';
 	}
 
 	module.exports = HyperloopAndroidBuilder;
-
-	/**
-	 * Generates the sha1 for a file's contents
-	 * @param  {String}   file Path to the file
-	 * @param  {Function} next callback function. Receives a String result
-	 */
-	function sha1(file, next) {
-		var hash = crypto.createHash('sha1'),
-			stream = fs.createReadStream(file);
-
-		stream.on('data', function (data) {
-			hash.update(data, 'utf8')
-		});
-
-		stream.on('error', function (e) {
-			return next(e);
-		})
-
-		stream.on('end', function () {
-			return next(null, hash.digest('hex'));
-		})
-	}
 
 	HyperloopAndroidBuilder.prototype.init = function (next) {
 		var builder = this.builder;
@@ -185,130 +161,25 @@ exports.cliVersion = '>=3.2';
 			}
 		});
 
-		cli.on('build.android.removeFiles', {
-			priority: 99999,
-			post: function (build, finished) {
-				logger.debug('removing temporary hyperloop files');
-				cleanup.forEach(function (fn) {
-					logger.debug('removing %s', fn);
-					fs.unlinkSync(fn);
-				});
-
-				fs.removeSync(filesDir);
+		cli.on('build.android.dexer', {
+			pre: function (data, finished) {
+				// Add Hyperloop exclusive JARs
+				data.args[1] = data.args[1].concat(exclusiveJars);
 				finished();
 			}
 		});
 
-		cli.on('build.android.aapt', {
-			pre: function (data) {
-				var args = data.args[1],
-					index = args.indexOf('--extra-packages'),
-					extraPackages = args[index + 1],
-					packageNames = [],
-					extraArgs = [];
-
-				// Iterate over the AARs
-				Object.keys(aars).forEach(function (key) {
-					var packageName = aars[key];
-					packageNames.push(packageName);
-					extraArgs.push('-S');
-					extraArgs.push(path.join(hyperloopBuildDir, key, 'res'));
-				});
-				if (packageNames.length > 0) {
-					data.args[1][index + 1] = extraPackages.concat(':' + packageNames.join(':'));
-					data.args[1] = data.args[1].concat(extraArgs);
-				}
-			}
-		});
-
-		cli.on('build.android.dexer', {
-			pre: function (data, finished) {
-				var uniqueJars = [], // the args we're building back up, eliminating duplicate JARs
-					shas = {}, // SHA1 of each JAR
-					basenames = {};
-				// Add hyperloop JARs
-				data.args[1] = data.args[1].concat(jars.slice(1));
-				// TIMOB-23697 Don't add duplicate jar entries
-				// http://tools.android.com/recent/dealingwithdependenciesinandroidprojects
-				async.eachSeries(data.args[1], function(jarFile, callback) {
-					var basename = path.basename(jarFile),
-						extension = path.extname(basename);
-					// Special case for classes.jar. Assume they're from AARs and the AARs are unique
-					if (extension == '.jar' && basename != 'classes.jar') {
-
-						sha1(jarFile, function (e, hash) {
-							if (e) {
-								return callback(e);
-							}
-
-							// Unique SHA1
-							if (!shas.hasOwnProperty(hash)) {
-								// But not unique basename
-								if (basenames.hasOwnProperty(basename)) {
-									// But we have a base JAR name clash
-									// Error out and tell user we have two JARs with the same name and different contents.
-									// Ask them to manually resolve by:
-									// Deleting one, or renaming one (to keep both)
-									return callback('Conflicting JAR files: ' + jarFile + ', and ' + basenames[basename].path + ' have different contents. Please resolve by deleting one of them, or renaming one if you\'re certain their contents aren\'t duplicates.');
-								}
-								// Unique jar (unique sha and basename)
-								uniqueJars.push(jarFile); // Keep it in our listing...
-								shas[hash] = { // record it's sha for comparison
-									path: jarFile
-								};
-								basenames[basename] = { // record details about it in case we get a clash
-									sha: hash,
-									path: jarFile
-								};
-							} else {
-								// Same SHA1 as another JAR, skip this one assuming it's a duplicate
-								logger.debug('Skipping duplicate JAR: ' + jarFile + ' (duplicates ' + shas[hash].path + ')');
-							}
-							callback();
-						});
-					} else {
-						// Either not a JAR, or a classes.jar that likely came from an AAR
-						uniqueJars.push(jarFile);
-						callback();
-					}
-				}, function(err) {
-					if (err) {
-						logger.error(err.toString());
-						process.exit(1);
-					}
-
-					// Special case for android-support-v4.jar and android-support-v13.jar
-					if (basenames.hasOwnProperty('android-support-v4.jar') && basenames.hasOwnProperty('android-support-v13.jar')) {
-						var specialCase = [];
-						// Remove v4!
-						for (var i = 0; i < uniqueJars.length; i++) {
-							var jarFile = uniqueJars[i],
-								basename = path.basename(jarFile);
-							if (basename != 'android-support-v4.jar') {
-								specialCase.push(jarFile);
-							}
-						}
-						uniqueJars = specialCase;
-					}
-					data.args[1] = uniqueJars;
-					finished();
-				});
-			}
-		});
-
 		prepareBuild(builder, next);
-	};
 
-	/*
-	 Hooks.
-	 */
+	};
 
 	/**
 	 * Sets up the build for using the hyperloop module.
 	 */
 	function prepareBuild(builder, callback) {
 		var metabaseJSON,
-			aarFiles = [],
+			jars,
+			jarHashes = {},
 			sourceFolders = [resourcesDir],
 			sourceFiles = [],
 			platformAndroid = path.join(cli.argv['project-dir'], 'platform', 'android');
@@ -330,43 +201,110 @@ exports.cliVersion = '>=3.2';
 			 */
 			function (next) {
 				var depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
-				var supportLibraryFilenames = depMap.libraries.appcompat;
-				async.each(supportLibraryFilenames, function(libraryFilename, cb) {
+				var libraryFilenames = depMap.libraries.appcompat;
+				libraryFilenames = libraryFilenames.concat(depMap.libraries.design || []);
+				libraryFilenames.forEach(function(libraryFilename) {
 					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
-					if (afs.exists(libraryPathAndFilename)) {
-						jars.push(libraryPathAndFilename);
-						cb();
-					} else {
-						cb(new Error('Android Support Library not found at expected path ' + libraryPathAndFilename));
+					if (!afs.exists(libraryPathAndFilename)) {
+						return;
 					}
-				}, next);
+
+					if (builder.isExternalAndroidLibraryAvailable(libraryPathAndFilename)) {
+						return;
+					}
+
+					jars.push(libraryPathAndFilename);
+				});
+
+				next();
 			},
-			// Find 3rd-party JARs and AARs
+			/**
+			 * Manually adds JARs from module's lib directory, any JARs contained
+			 * in AARs and from the android platform folder.
+			 *
+			 * The dupe check is duplicate code as the AndroidBuilder does the same in
+			 * compileJavaClasses method, but that is too late in the build pipeline
+			 * so we can't use it. Once the AndroidBuilder gets an overhaul we can
+			 * consider removing this and simply require a pre filtered list directly
+			 * from the builder.
+			 *
+			 * @param {Function} next Callback function
+			 */
 			function (next) {
-				if (!afs.exists(platformAndroid)) {
-					return next();
-				}
-				findit(platformAndroid)
-					.on('file', function (file, stat) {
-						if (path.extname(file) === '.jar') {
-							jars.push(file);
-						} else if (path.extname(file) === '.aar') {
-							aarFiles.push(file);
+				var jarRegExp = /\.jar$/;
+				var jarPaths = [];
+
+				async.series([
+					function scanModuleLibraries(done) {
+						async.each(builder.modules, function(module, cb) {
+							var libDir = path.join(module.modulePath, 'lib');
+							fs.readdir(libDir, function(err, libraryEntries) {
+								if (err) {
+									cb();
+								}
+
+								libraryEntries.forEach(function(entryName) {
+									var jarFile = path.join(libDir, entryName);
+									if (jarRegExp.test(entryName)) {
+										jarPaths.push(jarFile);
+									}
+								});
+
+								cb();
+							});
+						}, done);
+					},
+					function scanAndroidLibraries(done) {
+						builder.androidLibraries.forEach(function (libraryInfo) {
+							libraryInfo.jars.forEach(function (libraryJarPathAndFilename) {
+								jarPaths.push(libraryJarPathAndFilename);
+							});
+						});
+
+						done();
+					},
+					function scanPlatformDirectory(done) {
+						if (!afs.exists(platformAndroid)) {
+							return done();
 						}
-					})
-					.on('end', next);
-			},
-			// Handle AARs
-			function (next) {
-				async.eachSeries(aarFiles, function (file, cb) {
-					handleAAR(file, function (err, foundJars) {
-						if (err) {
-							return cb(err);
-						}
-						jars = jars.concat(foundJars);
-						cb();
-					});
-				}, next);
+						findit(platformAndroid)
+							.on('file', function (file) {
+								if (path.extname(file) === '.jar') {
+									jarPaths.push(file);
+								}
+							})
+							.on('end', done);
+					},
+					function generateHashes(done) {
+						async.each(jarPaths, function(jarPathAndFilename, cb) {
+							fs.readFile(jarPathAndFilename, function(err, buffer) {
+								if (err) {
+									cb();
+								}
+
+								var jarHash = builder.hash(buffer.toString());
+								jarHashes[jarHash] = jarHashes[jarHash] || [];
+								jarHashes[jarHash].push(jarPathAndFilename);
+
+								cb();
+							});
+						}, done);
+					},
+					function filterDuplicates(done) {
+						Object.keys(jarHashes).forEach(function (hash) {
+							jars.push(jarHashes[hash][0]);
+
+							if (jarHashes[hash].length > 1) {
+								logger.debug('Duplicate jar libraries detected, using only the first of the following libraries for metabase generation:');
+								jarHashes[hash].forEach(function (jarPathAndFilename) {
+									logger.debug('  ' + jarPathAndFilename.cyan);
+								});
+							}
+						});
+
+						done();
+					}
+				], next);
 			},
 			// Do metabase generation from JARs
 			function (next) {
@@ -464,102 +402,5 @@ exports.cliVersion = '>=3.2';
 
 			callback();
 		});
-
-		/**
-		 * handles an aar file for the build process:
-		 * extracting like a zipfile
-		 * copying resources around
-		 *
-		 * http://tools.android.com/tech-docs/new-build-system/aar-format
-		 *
-		 * @returns {Array[String]} paths to JAR files we extracted
-		 **/
-		function handleAAR(aarFile, finished) {
-			var basename = path.basename(aarFile, '.aar'),
-				extractedDir = path.join(hyperloopBuildDir, basename),
-				foundJars = [path.join(extractedDir, 'classes.jar')];
-
-			// Create destination dir
-			fs.emptyDirSync(extractedDir);
-
-			async.series([
-				// Unzip aar file to destination
-				function (next) {
-					appc.zip.unzip(aarFile, extractedDir, {}, next);
-				},
-				// Then handle it's contents in parallel operations
-				function (next) {
-					async.parallel([
-						// Extract package name from AndroidManifest.xml
-						function (cb) {
-							var manifestFile = path.join(extractedDir, 'AndroidManifest.xml'),
-								contents = fs.readFileSync(manifestFile).toString(),
-								doc = new DOMParser().parseFromString(contents, 'text/xml').documentElement;
-
-							// Map from the folder name we're storing under to the specified package in manifest
-							aars[basename] = doc.getAttribute('package');
-							cb();
-						},
-						// copy assets
-						function (cb) {
-							var src = path.join(extractedDir, 'assets'),
-								dest = path.join(cli.argv['project-dir'], 'build', 'android', 'assets');
-							// assets is optional, skip if doesn't exist!
-							if (!afs.exists(src)) {
-								return cb();
-							}
-							afs.copyDirRecursive(src, dest, cb, {logger: logger});
-						},
-						// Find libs/*.jar
-						function (cb) {
-							var libsDir = path.join(extractedDir, 'libs');
-							// directory is optional
-							if (!afs.exists(libsDir)) {
-								return cb();
-							}
-							findit(libsDir)
-								.on('file', function (file, stat) {
-									if (path.extname(file) !== '.jar') {
-										return;
-									}
-									foundJars.push(file);
-								})
-								.on('end', cb);
-						},
-						// Native .so files
-						function (cb) {
-							var jniDir = path.join(extractedDir, 'jni'),
-								buildLibs = path.join(cli.argv['project-dir'], 'build', 'android', 'libs');
-
-							// directory is optional
-							if (!afs.exists(jniDir)) {
-								return cb();
-							}
-
-							findit(jniDir)
-								.on('file', function (file, stat) {
-									if (path.extname(file) !== '.so') {
-										return;
-									}
-									var dest = path.join(buildLibs, path.relative(jniDir, file));
-									// make dest dir
-									fs.mkdirsSync(path.dirname(dest));
-									// copy .so over
-									afs.copyFileSync(file, dest, {logger: logger});
-								})
-								.on('end', cb);
-						}], next);
-				}
-			],
-			function (err, results) {
-				if (err) {
-					logger.error('Failed to extract/handle aar zip: %s', chalk.cyan(aarFile) + '\n');
-					return finished(err, foundJars);
-				}
-				logger.debug("Processed AAR file : " + aarFile);
-				finished(null, foundJars);
-			});
-		}
-
 	}
 })();
