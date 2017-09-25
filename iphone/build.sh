@@ -3,7 +3,7 @@
 # Script buid building and packaging the Hyperloop iOS package
 #
 CWD=`pwd`
-METABASE=$CWD/build/zip/plugins/hyperloop/node_modules/hyperloop-metabase
+METABASE=$CWD/build/zip/plugins/hyperloop/hooks/ios/node_modules/hyperloop-metabase
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
@@ -49,19 +49,20 @@ lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperl
 
 echo "\nPackaging iOS module..."
 # make sure to update the plugin with the latest version in it's package.json
-node -e "j=JSON.parse(require('fs').readFileSync('plugin/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/package.json
+node -e "j=JSON.parse(require('fs').readFileSync('plugins/hyperloop/hooks/ios/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/hooks/ios/package.json
 
 cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/hooks/hyperloop.js
-cp plugin/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
-cp plugin/filter.sh build/zip/plugins/hyperloop/hooks/ios
+cp plugins/hyperloop/hooks/ios/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
+cp plugins/hyperloop/hooks/ios/filter.sh build/zip/plugins/hyperloop/hooks/ios
 cp ../LICENSE build/zip/plugins/hyperloop
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 
 # Install findit, need package.json there first on npm5
 echo "Installing npm dependency..."
-cd build/zip/plugins/hyperloop
+cd build/zip/plugins/hyperloop/hooks/ios
 npm install findit --production >/dev/null 2>&1
 rm -rf node_modules/findit/test
+rm -rf package-lock.json
 cd $CWD
 
 # package the metabase into the .zip
@@ -77,6 +78,7 @@ tar xfz *.tgz
 rm -rf *.tgz
 cd package
 npm i --production >/dev/null 2>&1
+rm -rf package-lock.json
 rm -rf unittest
 mkdir -p $METABASE
 cp -R * $METABASE

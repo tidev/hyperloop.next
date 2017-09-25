@@ -63,16 +63,16 @@
 
 	<target name="post.dist" description="Include plugins folder in module zip">
 		<!-- NPM Install for plugin hook -->
-		<exec executable="npm" dir="${basedir}/plugins/hyperloop" failonerror="true">
+		<exec executable="npm" dir="${basedir}/plugins/hyperloop/hooks/android" failonerror="true">
 			<arg value="install"/>
 			<arg value="--production"/>
 		</exec>
 
 		<!-- Remove some test directories from NPM packages manually -->
-		<delete dir="${basedir}/plugins/hyperloop/node_modules/ejs/test"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules/findit/example"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules/findit/test"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules/node-appc/test"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/ejs/test"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/findit/example"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/findit/test"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/node-appc/test"/>
 
 		<!-- Include hyperloop wrappers into module zip -->
 		<zip destfile="${dist}/${module.id}-android-${manifest.version}.zip" update="true">

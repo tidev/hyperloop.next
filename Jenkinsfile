@@ -2,7 +2,7 @@
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '4.7.3'
+def nodeVersion = '6.9.5'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
 def sdkVersion = '6.2.0.GA'
@@ -29,9 +29,6 @@ node {
 	stage('Setup') {
 		def packageJSON = jsonParse(readFile('package.json'))
 		packageVersion = packageJSON['version']
-		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh 'npm install'
-		}
 		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
 		// So we need to stash it all, not per-platform directories
 		stash includes: '**/*', name: 'source'
@@ -84,6 +81,28 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh "appc ti config android.ndkPath ${androidNDK}"
 								sh 'appc run -p android --build-only'
 							} // appc.loggedIn
+							// This doesn't package up the Android hyperloop plugin hook!
+							// We need to unzip, and hack it in!
+							dir('dist') {
+								sh 'rm -f hyperloop-android.jar'
+								sh "unzip hyperloop-android-${packageVersion}.zip"
+								sh "rm -rf hyperloop-android-${packageVersion}.zip"
+								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
+								sh 'rm -rf plugins/hyperloop/test' // wipe android hook tests
+								// copy top-level plugin hook
+								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
+								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
+									sh 'npm install --production'
+								}
+								// Now remove the package-lock.json!
+								sh 'rm -rf plugins/hyperloop/hooks/android/package-lock.json'
+								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
+								// Remove docs and examples
+								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
+								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
+								// Now zip it back up
+								sh "zip -r hyperloop-android-${packageVersion}.zip ."
+							}
 							stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
 						} // dir
 					} // withEnv
@@ -138,6 +157,63 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 				} // nodejs
 			} // node
 		},
+		'windows': {
+			node('windows && (vs2015 || vs2017)') {
+				ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
+					unstash 'source'
+
+					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						appc.install()
+						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+
+						echo 'Building Windows module...'
+						// FIXME How the hell is Windows OK with these shell commands?
+						dir('windows') {
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							// FIXME We should have a module clean command!
+							// manually clean
+							sh 'rm -rf build/'
+							sh 'rm -rf dist/'
+							sh 'rm -rf Windows10.ARM/'
+							sh 'rm -rf Windows10.Win32/'
+							sh 'rm -rf WindowsPhone.ARM/'
+							sh 'rm -rf WindowsPhone.Win32/'
+							sh 'rm -rf WindowsStore.Win32/'
+							sh 'rm -f CMakeLists.txt'
+							sh 'rm -f hyperloop-windows-*.zip'
+							appc.loggedIn {
+								sh 'appc run -p windows --build-only'
+							} // appc.loggedIn
+							// This doesn't package up the Windows hyperloop plugin hook!
+							// We need to unzip, and hack it in!
+							sh 'rm -rf zip/'
+							sh 'mkdir zip/'
+							sh "mv hyperloop-windows-${packageVersion}.zip zip/hyperloop-windows-${packageVersion}.zip"
+							dir('zip') {
+								sh "unzip hyperloop-windows-${packageVersion}.zip"
+								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
+								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
+								// copy top-level plugin hook
+								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
+								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies
+									sh 'npm install --production'
+								}
+								// Now remove the package-lock.json!
+								sh 'rm -rf plugins/hyperloop/hooks/windows/package-lock.json'
+								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
+								// Remove docs and examples
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
+								// Now zip it back up
+								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
+							}
+							stash includes: 'zip/hyperloop-windows-*.zip', name: 'windows-zip'
+						} // dir
+					} // nodejs
+					deleteDir() // wipe workspace
+				} // ws
+			} // node
+		},
 		failFast: true
 	)
 }
@@ -151,14 +227,19 @@ stage('Package') {
 		unstash 'iphone-zip'
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
+		unstash 'windows-zip'
+		sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
+
 		unstash 'android-zip'
 
-		echo 'Creating combined zip with iOS and Android ...'
+		echo 'Creating combined zip with iOS, Windows, and Android ...'
 		dir('dist') {
 			sh "unzip hyperloop-android-${packageVersion}.zip"
 			sh "rm -f hyperloop-android-${packageVersion}.zip"
 			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
+			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
+			sh "rm -f hyperloop-windows-${packageVersion}.zip"
 
 			// Here we extract and force the version of the plugin into the folder structure
 			sh 'mkdir -p temp'
@@ -168,7 +249,7 @@ stage('Package') {
 			sh "cp -R temp/* plugins/hyperloop/${packageVersion}"
 			sh 'rm -rf temp'
 
-			sh "zip -q -r hyperloop-${packageVersion}.zip *"
+			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
 			sh 'rm -rf plugins'
 		}
