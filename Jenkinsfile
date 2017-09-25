@@ -88,6 +88,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh "unzip hyperloop-android-${packageVersion}.zip"
 								sh "rm -rf hyperloop-android-${packageVersion}.zip"
 								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
+								sh 'rm -rf plugins/hyperloop/test' // wipe android hook tests
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
 								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
@@ -96,6 +97,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								// Now remove the package-lock.json!
 								sh 'rm -rf plugins/hyperloop/hooks/android/package-lock.json'
 								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
+								// Remove docs and examples
+								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
+								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
 								// Now zip it back up
 								sh "zip -r hyperloop-android-${packageVersion}.zip ."
 							}
@@ -197,6 +201,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								// Now remove the package-lock.json!
 								sh 'rm -rf plugins/hyperloop/hooks/windows/package-lock.json'
 								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
+								// Remove docs and examples
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
 								// Now zip it back up
 								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
 							}
@@ -242,7 +249,7 @@ stage('Package') {
 			sh "cp -R temp/* plugins/hyperloop/${packageVersion}"
 			sh 'rm -rf temp'
 
-			sh "zip -q -r hyperloop-${packageVersion}.zip *"
+			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
 			sh 'rm -rf plugins'
 		}
