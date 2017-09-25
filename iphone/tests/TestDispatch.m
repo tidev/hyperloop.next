@@ -1,12 +1,13 @@
 /**
  * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <XCTest/XCTest.h>
-#import "class.h"
-#import "pointer.h"
-#import "utils.h"
+@import XCTest;
+
+#import "HyperloopClass.h"
+#import "HyperloopPointer.h"
+#import "HyperloopUtils.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"

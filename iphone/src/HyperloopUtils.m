@@ -1,10 +1,10 @@
 /**
  * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
-#import "utils.h"
-#import "pointer.h"
-#import "class.h"
+#import "HyperloopUtils.h"
+#import "HyperloopPointer.h"
+#import "HyperloopClass.h"
 #ifdef TIMODULE
 #import "HyperloopModule.h"
 #endif
@@ -13,20 +13,20 @@
 
 #ifndef TIMODULE
 @interface KrollContext : NSObject
--(TiContextRef)context;
+- (TiContextRef)context;
 @end
 
 @interface KrollCallback : NSObject
--(TiObjectRef)function;
+- (TiObjectRef)function;
 @end
 #endif
 
 TiObjectRef HyperloopGetWrapperForId(id obj);
-TiValueRef NSObjectToJSObject (id object);
-TiContextRef HyperloopCurrentContext ();
-NSString *cleanEncoding (NSString *encoding);
-KrollCallback* HyperloopGetCallbackForIdentifier (NSString *identifier);
-id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *exception);
+TiValueRef NSObjectToJSObject(id object);
+TiContextRef HyperloopCurrentContext();
+NSString *cleanEncoding(NSString *encoding);
+KrollCallback *HyperloopGetCallbackForIdentifier(NSString *identifier);
+id TiValueRefToId(TiContextRef ctx, const TiValueRef value, TiValueRef *exception);
 
 @implementation HyperloopUtils
 
@@ -34,7 +34,8 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
  * given an argument for an NSInvocation, attempt to unmarshal any special
  * argument types and set them in the invocation at index
  */
-+(id)unmarshalObject:(NSInvocation *)invocation arg:(id)arg index:(NSUInteger)index {
++ (id)unmarshalObject:(NSInvocation *)invocation arg:(id)arg index:(NSUInteger)index
+{
 #if defined(DEBUG_INVOKE) && DEBUG_INVOKE == 1
 	NSLog(@"[DEBUG] unmarshalObject %@ -> %@ at %zu", invocation, [arg class], index);
 #endif
@@ -105,30 +106,29 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 		const char *type = [cleanEncoding([NSString stringWithUTF8String:[sig getArgumentTypeAtIndex:index]]) UTF8String];
 
 		if (type[0] != '@') {
+#define SETVALUE(c, typev, sel)                                                                                                                                                                      \
+	case c: {                                                                                                                                                                                        \
+		typev value;                                                                                                                                                                                 \
+		if ([arg isEqual:[NSNull null]]) {                                                                                                                                                           \
+			if (invocation) {                                                                                                                                                                        \
+				[invocation setArgument:&arg atIndex:index];                                                                                                                                         \
+			} else {                                                                                                                                                                                 \
+				return arg;                                                                                                                                                                          \
+			}                                                                                                                                                                                        \
+		} else if ([arg respondsToSelector:@selector(sel)]) {                                                                                                                                        \
+			value = [arg sel];                                                                                                                                                                       \
+			if (invocation) {                                                                                                                                                                        \
+				[invocation setArgument:&value atIndex:index];                                                                                                                                       \
+			} else {                                                                                                                                                                                 \
+				return arg;                                                                                                                                                                          \
+			}                                                                                                                                                                                        \
+		} else {                                                                                                                                                                                     \
+			@throw [NSException exceptionWithName:@"InvalidArgumentType" reason:[NSString stringWithFormat:@"cannot convert argument type for [%@ %s] (%s)", [arg class], #sel, type] userInfo:nil]; \
+		}                                                                                                                                                                                            \
+		break;                                                                                                                                                                                       \
+	}
 
-			#define SETVALUE(c, typev, sel) \
-			case c: {\
-				typev value;\
-				if ([arg isEqual:[NSNull null]]) {\
-					if (invocation) {\
-						[invocation setArgument:&arg atIndex:index];\
-					} else {\
-						return arg;\
-					}\
-				} else if ([arg respondsToSelector:@selector(sel)]) {\
-					value = [arg sel];\
-					if (invocation) {\
-						[invocation setArgument:&value atIndex:index];\
-					} else {\
-						return arg; \
-					} \
-				} else {\
-					@throw [NSException exceptionWithName:@"InvalidArgumentType" reason:[NSString stringWithFormat:@"cannot convert argument type for [%@ %s] (%s)",[arg class], #sel, type] userInfo:nil]; \
-				}\
-				break;\
-			}\
-
-			switch (type [0]) {
+			switch (type[0]) {
 				SETVALUE('i', int, intValue);
 				SETVALUE('f', float, floatValue);
 				SETVALUE('d', double, doubleValue);
@@ -167,15 +167,14 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 				}
 			}
 
-			#undef SETVALUE
+#undef SETVALUE
 
 		} else {
 			if (invocation) {
 				[invocation setArgument:&arg atIndex:index];
 			}
 		}
-	}
-	else {
+	} else {
 		if (invocation) {
 			NSLog(@"[ERROR] Not sure the type of %@ (%@) at %lu", arg, [arg class], (unsigned long)index);
 			[invocation setArgument:&arg atIndex:index];
@@ -184,40 +183,41 @@ id TiValueRefToId (TiContextRef ctx, const TiValueRef value, TiValueRef *excepti
 	return arg;
 }
 
+#define GETVALUE(enc, type, name)                 \
+	case enc: {                                   \
+		type value;                               \
+		[invocation getReturnValue:&value];       \
+		return [NSNumber numberWith##name:value]; \
+		break;                                    \
+	}
 
-#define GETVALUE(enc, type, name) \
-case enc: {\
-	type value;\
-	[invocation getReturnValue:&value];\
-	return [NSNumber numberWith##name:value];\
-	break;\
-}\
+#define GETVALUEOBJ(enc, type)                                                                                    \
+	case enc: {                                                                                                   \
+		type __autoreleasing value = nil;                                                                         \
+		[invocation getReturnValue:&value];                                                                       \
+		if (!value)                                                                                               \
+			return value;                                                                                         \
+		if ([value isKindOfClass:[HyperloopPointer class]]) {                                                     \
+			result = (id)value;                                                                                   \
+		} else {                                                                                                  \
+			result = [HyperloopPointer pointer:(__bridge const void *)value encoding:signature.methodReturnType]; \
+		}                                                                                                         \
+		break;                                                                                                    \
+	}
 
-#define GETVALUEOBJ(enc, type) \
-case enc: {\
-	type __autoreleasing value = nil;\
-	[invocation getReturnValue:&value];\
-    if (!value) return value; \
-	if ([value isKindOfClass:[HyperloopPointer class]]) {\
-		result = (id)value;\
-	} else {\
-		result = [HyperloopPointer pointer:(__bridge const void *)value encoding:signature.methodReturnType];\
-	}\
-	break;\
-}\
-
-#define GETVALUEOBJ2(enc, type) \
-case enc: {\
-	type value = nil;\
-	[invocation getReturnValue:&value];\
-	result = [HyperloopPointer pointer:value encoding:signature.methodReturnType];\
-	break;\
-}\
+#define GETVALUEOBJ2(enc, type)                                                        \
+	case enc: {                                                                        \
+		type value = nil;                                                              \
+		[invocation getReturnValue:&value];                                            \
+		result = [HyperloopPointer pointer:value encoding:signature.methodReturnType]; \
+		break;                                                                         \
+	}
 
 /**
  * invoke a selector and return the result
  */
-+(id)invokeSelector:(SEL)aSelector args:(NSArray *)args target:(id)obj instance:(BOOL)instanceMethod {
++ (id)invokeSelector:(SEL)aSelector args:(NSArray *)args target:(id)obj instance:(BOOL)instanceMethod
+{
 #if defined(DEBUG_INVOKE) && DEBUG_INVOKE == 1
 	NSLog(@"[DEBUG] invokeSelector %@ (%@) -> %@ (%d)", NSStringFromSelector(aSelector), args, [obj class], (int)instanceMethod);
 #endif
@@ -248,8 +248,8 @@ case enc: {\
 		args = nil;
 	}
 	if ([obj respondsToSelector:aSelector]) {
-		NSMethodSignature* signature = [obj methodSignatureForSelector:aSelector];
-		NSInvocation* invocation = [NSInvocation invocationWithMethodSignature:signature];
+		NSMethodSignature *signature = [obj methodSignatureForSelector:aSelector];
+		NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
 		[invocation retainArguments];
 		[invocation setSelector:aSelector];
 		[invocation setTarget:obj];
@@ -261,11 +261,13 @@ case enc: {\
 		}
 
 		for (NSUInteger i = 2; i < numberOfArgs; i++) {
-			id arg = [args objectAtIndex:i-2];
+			id arg = [args objectAtIndex:i - 2];
 #if defined(DEBUG_INVOKE) && DEBUG_INVOKE == 1
-			NSLog(@"[DEBUG] arg %lu %@", i-2, [arg class]);
+			NSLog(@"[DEBUG] arg %lu %@", i - 2, [arg class]);
 #endif
-			[HyperloopUtils unmarshalObject:invocation arg:arg index:i];
+			[HyperloopUtils unmarshalObject:invocation
+			                            arg:arg
+			                          index:i];
 		}
 #if defined(DEBUG_INVOKE) && DEBUG_INVOKE == 1
 		NSLog(@"[DEBUG] calling invoke on %@ -> %@", [obj class], NSStringFromSelector(aSelector));
@@ -280,7 +282,7 @@ case enc: {\
 			ch = type[i++];
 		}
 		if (length) {
-			HyperloopPointer * result = nil;
+			HyperloopPointer *result = nil;
 			switch (ch) {
 				GETVALUE('i', int, Int);
 				GETVALUE('f', float, Float);
@@ -345,7 +347,8 @@ case enc: {\
 /**
  * attempt to return a string value for object val
  */
-+(NSString *)stringify:(id)val {
++ (NSString *)stringify:(id)val
+{
 	if (val == nil) {
 		return nil;
 	}
@@ -369,7 +372,8 @@ case enc: {\
 /**
  * attempt to return a boolean value for object val
  */
-+(BOOL)booleanify:(id)val {
++ (BOOL)booleanify:(id)val
+{
 	if ([val respondsToSelector:@selector(boolValue)]) {
 		return [val boolValue];
 	}
@@ -379,13 +383,14 @@ case enc: {\
 /**
  * invoke a callback
  */
-+(void)invokeCallback:(id)callback args:(NSArray *)args thisObject:(id)thisObject {
++ (void)invokeCallback:(id)callback args:(NSArray *)args thisObject:(id)thisObject
+{
 	TiContextRef context = HyperloopCurrentContext();
 	TiValueRef *jsArgs = NULL;
 	if (args) {
 		jsArgs = (TiValueRef *)malloc(sizeof(TiValueRef) * [args count]);
 		for (size_t c = 0; c < [args count]; c++) {
-			jsArgs [c] = NSObjectToJSObject(args[c]);
+			jsArgs[c] = NSObjectToJSObject(args[c]);
 			TiValueProtect(context, jsArgs[c]);
 		}
 	}
@@ -415,14 +420,15 @@ case enc: {\
 /**
  * invoke a custom callback and return a result (if specified)
  */
-+(id)invokeCustomCallback:(NSArray *)args identifier:(NSString *)identifier thisObject:(id)sender {
-	KrollCallback* callback = HyperloopGetCallbackForIdentifier(identifier);
++ (id)invokeCustomCallback:(NSArray *)args identifier:(NSString *)identifier thisObject:(id)sender
+{
+	KrollCallback *callback = HyperloopGetCallbackForIdentifier(identifier);
 	TiContextRef context = HyperloopCurrentContext();
 	TiValueRef *jsArgs = NULL;
 	if (args) {
 		jsArgs = (TiValueRef *)malloc(sizeof(TiValueRef) * [args count]);
 		for (size_t c = 0; c < [args count]; c++) {
-			jsArgs [c] = NSObjectToJSObject(args[c]);
+			jsArgs[c] = NSObjectToJSObject(args[c]);
 			TiValueProtect(context, jsArgs[c]);
 		}
 	}
