@@ -156,6 +156,7 @@ rm -rf plugins
 mkdir -p plugins/hyperloop/$VERSION
 cp -R temp/* plugins/hyperloop/$VERSION
 rm -rf temp
+rm -rf plugins/hyperloop/$VERSION/test/
 cp -R ../windows/sdk_plugins/windows plugins/hyperloop/$VERSION/hooks/
 zip -q -r hyperloop-$VERSION.zip *
 rm -rf modules
