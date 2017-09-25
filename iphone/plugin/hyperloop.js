@@ -589,6 +589,9 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
 	}
 	if (this.hyperloopConfig.ios.thirdparty) {
+		// Throw a deprecation warning regarding thirdparty-references in the appc.js
+		this.logger.warn('Using the \'thirdparty\' section of the appc.js has been deprecated in Hyperloop 2.2.0 and will be removed in 3.0.0. Frameworks are referenced automatically since Hyperloop 2.2.0+ and do not need to be referenced manually anymore.');
+		
 		this.headers = [];
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
 			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
