@@ -19,7 +19,11 @@ exports.cliVersion = '>=3.2';
 		chalk = require('chalk'),
 		appc = require('node-appc'),
 		async = require('async'),
-		metabase = require(path.join(__dirname, 'metabase'));
+		metabase = require(path.join(__dirname, 'metabase')),
+		CopySourcesTask = require('./tasks/copy-sources-task'),
+		GenerateMetabaseTask = require('./tasks/generate-metabase-task'),
+		GenerateSourcesTask = require('./tasks/generate-sources-task'),
+		ScanReferencesTask = require('./tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
 	var TI_MIN = '6.1.0';
@@ -36,12 +40,11 @@ exports.cliVersion = '>=3.2';
 		hyperloopBuildDir, // where we generate the JS wrappers during build time
 		hyperloopResources, // Where we copy the JS wrappers we need for runtime
 		afs,
-		references = {},
+		references = new Map(),
 		files = {},
 		exclusiveJars = [],
 		aars = {},
-		cleanup = [],
-		requireRegex = /require\s*\(\s*[\\"']+([\w_\/-\\.\\*]+)[\\"']+\s*\)/ig;
+		cleanup = [];
 
 	/*
 	 Config.
@@ -126,27 +129,31 @@ exports.cliVersion = '>=3.2';
 
 		cli.on('build.android.copyResource', {
 			priority: 99999,
-			pre: function (build, finished) {
-				build.ctx._minifyJS = build.ctx.minifyJS;
-				build.ctx.minifyJS = true;
+			pre: function (data, finished) {
+				var sourcePathAndFilename = data.args[0];
+				if (references.has(sourcePathAndFilename)) {
+					data.ctx._minifyJS = data.ctx.minifyJS;
+					data.ctx.minifyJS = true;
+				}
 				finished();
 			},
-			post: function (build, finished) {
-				build.ctx.minifyJS = build.ctx._minifyJS;
-				delete build.ctx._minifyJS;
+			post: function (data, finished) {
+				var sourcePathAndFilename = data.args[0];
+				if (references.has(sourcePathAndFilename)) {
+					data.ctx.minifyJS = data.ctx._minifyJS;
+					delete data.ctx._minifyJS;
+				}
 				finished();
 			}
 		});
 
 		cli.on('build.android.compileJsFile', {
 			priority: 99999,
-			pre: function (build, finished) {
-				//TODO: switch to using the AST directly
-				var fn = build.args[1];
+			pre: function (data, finished) {
+				var fn = data.args[1];
 				if (files[fn]) {
-					// var ref = build.ctx._minifyJS ? 'contents' : 'original';
-					build.args[0]['original'] = files[fn];
-					build.args[0]['contents'] = files[fn];
+					data.args[0]['original'] = files[fn];
+					data.args[0]['contents'] = files[fn];
 					finished();
 				} else {
 					finished();
@@ -174,6 +181,7 @@ exports.cliVersion = '>=3.2';
 			jars,
 			jarHashes = {},
 			sourceFolders = [resourcesDir],
+			sourceFiles = [],
 			platformAndroid = path.join(cli.argv['project-dir'], 'platform', 'android');
 
 		logger.info('Starting ' + HL + ' assembly');
@@ -306,43 +314,93 @@ exports.cliVersion = '>=3.2';
 				// we can map requires by containing JAR
 
 				// Simple way may be to generate a "metabase" per-JAR
-				logger.trace('Generating metabase for JARs: ' + jars);
-				metabase.metabase.loadMetabase(jars, {platform: 'android-' + builder.realTargetSDK}, function (err, json) {
-					if (err) {
-						logger.error('Failed to generated metabase: ' + err);
-						return next(err);
-					}
-					metabaseJSON = json;
-					next();
+				var task = new GenerateMetabaseTask({
+					name: 'hyperloop:generateMetabase',
+					inputFiles: jars,
+					logger: logger
 				});
+				task.builder = builder;
+				task.run().then(() => {
+					metabaseJSON = task.metabase;
+					next();
+				}).catch(next);
 			},
 			function (next) {
 				// Need to generate the metabase first to know the full set of possible native requires as a filter when we look at requires in user's JS!
 				// look for any reference to hyperloop native libraries in our JS files
 				async.each(sourceFolders, function(folder, cb) {
 					findit(folder)
-						.on('file', function (file, stat) {
+						.on('file', function (file) {
 							// Only consider JS files.
 							if (path.extname(file) !== '.js') {
 								return;
 							}
-							match(file);
+							sourceFiles.push(file);
 						})
 						.on('end', function () {
 							cb();
 						});
-					}, function(err) {
-						if (err) {
-							return next(err);
-						}
-						generateSourceFiles(copyNativeReferences);
-						next();
+				}, function(err) {
+					if (err) {
+						return next(err);
+					}
+
+					var task = new ScanReferencesTask({
+						name: 'hyperloop:scanReferences',
+						incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'scanReferences'),
+						inputFiles: sourceFiles,
+						logger: logger
 					});
+					task.outputDirectory = path.join(hyperloopBuildDir, 'references');
+					task.metabase = metabaseJSON;
+					task.postTaskRun = () => {
+						task.references.forEach((fileInfo, pathAndFilename) => {
+							references.set(pathAndFilename, fileInfo);
+							files[pathAndFilename] = fileInfo.replacedContent;
+						});
+					};
+					task.run().then(next).catch(next);
+				});
+			},
+			function (next) {
+				var task = new GenerateSourcesTask({
+					name: 'hyperloop:generateSources',
+					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'generateSources'),
+					inputFiles: sourceFiles,
+					logger: logger
+				});
+				task.outputDirectory = path.join(hyperloopBuildDir, 'js');
+				task.metabase = metabaseJSON;
+				task.references = references;
+				task.run().then(next).catch(next);
+			},
+			function (next) {
+				var hyperloopSourcesPath = path.join(hyperloopBuildDir, 'js');
+				var task = new CopySourcesTask({
+					name: 'hyperloop:copySources',
+					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'copySources'),
+					logger: logger
+				});
+				task.sourceDirectory = hyperloopSourcesPath;
+				task.outputDirectory = path.join(builder.buildBinAssetsResourcesDir, 'hyperloop');
+				task.builder = builder;
+				task.postTaskRun = function () {
+					// Make sure our copied files won't be deleted by the builder since we
+					// process them outside the build pipeline's copy resources phase
+					task.outputFiles.forEach(function(pathAndFilename) {
+						if (builder.lastBuildFiles[pathAndFilename]) {
+							delete builder.lastBuildFiles[pathAndFilename];
+						}
+					});
+				};
+				task.run().then(next).catch(next);
 			}
 		], function (err) {
 			if (err) {
 				return callback(err);
 			}
+
+			callback();
 		});
 	}
 })();

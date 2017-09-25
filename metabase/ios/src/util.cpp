@@ -825,12 +825,12 @@ namespace hyperloop {
 	 * return source location into map for a given cursor
 	 */
 	void getSourceLocation (CXCursor cursor, const ParserContext *ctx, std::map<std::string, std::string> &map) {
-		auto sl = clang_getCursorLocation(cursor);
-		unsigned line, column, offset;
+		auto sourceLocation = clang_getCursorLocation(cursor);
 		CXFile file;
-		clang_getFileLocation(sl, &file, &line, &column, &offset);
-		auto filename = replace(replace(CXStringToString(clang_getFileName(file)), ctx->getSDKPath(), ""),"/System/Library/Frameworks/", "");
-		map["filename"] = filename;
+		unsigned line, column, offset;
+		clang_getFileLocation(sourceLocation, &file, &line, &column, &offset);
+		auto filePathAndName = CXStringToString(clang_getFileName(file));
+		map["filename"] = filePathAndName;
 		map["line"] = hyperloop::toString(line);
 	}
 

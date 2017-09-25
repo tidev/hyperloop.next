@@ -268,16 +268,20 @@ namespace hyperloop {
 		this->current = current;
 	}
 
-	bool isSystemLocation (const std::string &location) {
-		// at this point, the location should not start with a slash if a system framework
-		// since we already looped off the /Developer path
-		if (location.at(0) == (char)'/') {
-			if (location.find("/usr/include/") == std::string::npos &&
-				location.find("/usr/lib/") == std::string::npos) {
-				return false;
-			}
+	bool ParserContext::isSystemLocation (const std::string &location) const {
+		if (location.find(this->getSDKPath()) != std::string::npos) {
+			return true;
 		}
-		return true;
+
+		if (location.find("/usr/include/") != std::string::npos) {
+			return true;
+		}
+
+		if (location.find("/usr/lib/") != std::string::npos) {
+			return true;
+		}
+
+		return false;
 	}
 
 	/**
@@ -305,7 +309,7 @@ namespace hyperloop {
 		getSourceLocation(cursor, ctx, location);
 		ctx->updateLocation(location);
 
-		if (ctx->excludeSystemAPIs() && isSystemLocation(location["filename"])) {
+		if (ctx->excludeSystemAPIs() && ctx->isSystemLocation(location["filename"])) {
 			return CXChildVisit_Continue;
 		}
 
