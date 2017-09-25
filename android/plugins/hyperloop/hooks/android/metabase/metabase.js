@@ -1,7 +1,7 @@
 /**
  * Android metabase generation
  */
-var _ = require('underscore'),
+var _ = require('lodash'),
 	fs = require('fs'),
 	path = require('path'),
 	spawn = require('child_process').spawn,
