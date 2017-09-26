@@ -8,8 +8,8 @@
 
 @import Foundation;
 
-#import "HyperloopValue.h"
 #import "HyperloopStruct.h"
+#import "HyperloopValue.h"
 
 /**
  * Container that will container the underlying pointer object which will
@@ -18,15 +18,15 @@
  */
 @interface HyperloopPointer : BASECLASS
 
-@property(nonatomic, retain, readonly) HyperloopValue *value;
-@property(nonatomic, assign, readonly) void *pointer;
-@property(nonatomic, assign, readonly) BOOL assign;
-@property(nonatomic, retain, readonly) NSString *encoding;
-@property(nonatomic, retain, readonly) HyperloopStruct *structure;
-@property(nonatomic, retain, readonly) NSString *framework;
-@property(nonatomic, retain, readonly) NSString *classname;
+@property (nonatomic, retain, readonly) HyperloopValue *value;
+@property (nonatomic, assign, readonly) void *pointer;
+@property (nonatomic, assign, readonly) BOOL assign;
+@property (nonatomic, retain, readonly) NSString *encoding;
+@property (nonatomic, retain, readonly) HyperloopStruct *structure;
+@property (nonatomic, retain, readonly) NSString *framework;
+@property (nonatomic, retain, readonly) NSString *classname;
 #ifndef TIMODULE
-@property(nonatomic, retain) id nativeObject;
+@property (nonatomic, retain) id nativeObject;
 #endif
 
 /**
@@ -52,8 +52,8 @@
 + (instancetype)encoding:(const char *)encoding;
 
 #define GETVALUE(type, name) \
--(type)name##Value;      \
-+(type)name##Value : (id)value;
+  -(type)name##Value;        \
+  +(type)name##Value : (id)value;
 
 GETVALUE(float, float);
 GETVALUE(int, int);
@@ -108,9 +108,9 @@ GETVALUE(NSString *, selector);
  */
 - (NSUInteger)length;
 
-#define GETENC(name)             \
--(NSString *)name##Encoding; \
-+(NSString *)name##Encoding;
+#define GETENC(name)           \
+  -(NSString *)name##Encoding; \
+  +(NSString *)name##Encoding;
 
 GETENC(bool);
 GETENC(int);

@@ -9,9 +9,9 @@
 @interface HyperloopClass : BASECLASS
 
 #ifndef TIMODULE
-@property(nonatomic, retain) id nativeObject;
+@property (nonatomic, retain) id nativeObject;
 #endif
-@property(nonatomic, retain) Class customClass;
+@property (nonatomic, retain) Class customClass;
 
 /**
  * create a new instance using classname

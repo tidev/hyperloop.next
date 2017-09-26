@@ -5,8 +5,8 @@
 #define STR(a) #a
 
 #ifdef TIMODULE
-#import "TiBase.h"
 #import "KrollCallback.h"
+#import "TiBase.h"
 #endif
 
 #define BASECLASS NSObject<HyperloopBase>
@@ -38,18 +38,18 @@ TiObjectRef TiObjectCallAsConstructor(TiContextRef ctx, TiObjectRef object, size
 #endif
 
 #define RELEASE_AND_CHECK(s) \
-	{                        \
-		if (s) {             \
-			s = nil;         \
-		}                    \
-	}
+  {                          \
+    if (s) {                 \
+      s = nil;               \
+    }                        \
+  }
 
 #if defined(DEBUG)
 #if TARGET_OS_SIMULATOR
-#define REMEMBER(p)                                                                                                                                                                                        \
-	{                                                                                                                                                                                                      \
-		HyperloopTrackAddObject((__bridge void *)(p), [NSString stringWithFormat:@"%p (%@) (%s:%d)\n%@", p, [p class], __FILE__, __LINE__, [[NSThread callStackSymbols] componentsJoinedByString:@"\n"]]); \
-	}
+#define REMEMBER(p)                                                                                                                                                                                    \
+  {                                                                                                                                                                                                    \
+    HyperloopTrackAddObject((__bridge void *)(p), [NSString stringWithFormat:@"%p (%@) (%s:%d)\n%@", p, [p class], __FILE__, __LINE__, [[NSThread callStackSymbols] componentsJoinedByString:@"\n"]]); \
+  }
 #define FORGET(p) HyperloopTrackRemoveObject((__bridge void *)(p))
 extern void HyperloopTrackAddObject(void *p, id description);
 extern void HyperloopTrackRemoveObject(void *p);
@@ -61,29 +61,29 @@ extern void HyperloopTrackDumpAll();
 
 #ifndef REMEMBER
 #define REMEMBER(p) \
-	{               \
-	}
+  {                 \
+  }
 #define FORGET(p) \
-	{             \
-	}
+  {               \
+  }
 #endif
 
-#define ARCRetain(...)                                               \
-	{                                                                \
-		void *retainedThing = (__bridge_retained void *)__VA_ARGS__; \
-		retainedThing = retainedThing;                               \
-	}
+#define ARCRetain(...)                                           \
+  {                                                              \
+    void *retainedThing = (__bridge_retained void *)__VA_ARGS__; \
+    retainedThing = retainedThing;                               \
+  }
 
-#define ARCRelease(...)                                           \
-	{                                                             \
-		void *retainedThing = (__bridge void *)__VA_ARGS__;       \
-		id unretainedThing = (__bridge_transfer id)retainedThing; \
-		unretainedThing = nil;                                    \
-	}
+#define ARCRelease(...)                                       \
+  {                                                           \
+    void *retainedThing = (__bridge void *)__VA_ARGS__;       \
+    id unretainedThing = (__bridge_transfer id)retainedThing; \
+    unretainedThing = nil;                                    \
+  }
 
 @protocol HyperloopBase
 
 @required
-@property(nonatomic, retain) id nativeObject;
+@property (nonatomic, retain) id nativeObject;
 
 @end

@@ -43,4 +43,3 @@
 + (BOOL)booleanify:(id)val;
 
 @end
-

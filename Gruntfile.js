@@ -5,7 +5,12 @@ const async = require('async'),
 
 module.exports = function (grunt) {
 
-	const iosSrc = [ 'iphone/**/*.h', 'iphone/**/*.m' ];
+	const iosSrc = [
+		'iphone/*.h', 'iphone/*.m',
+		'iphone/src/*.h', 'iphone/src/*.m',
+		'iphone/tests/*.h', 'iphone/tests/*.m',
+		'iphone/titanium/*.h', 'iphone/titanium/*.m',
+	];
 
 	// Project configuration.
 	grunt.initConfig({

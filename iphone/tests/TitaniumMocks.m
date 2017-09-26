@@ -8,7 +8,8 @@
 
 @end
 
-void TiLogMessage () {
+void TiLogMessage()
+{
 }
 
 @interface TiModule : NSObject
@@ -18,7 +19,6 @@ void TiLogMessage () {
 @implementation TiModule
 
 @end
-
 
 NSString *TI_APPLICATION_GUID = @"71d018ca-c202-4478-9111-a59dac17bebd";
 NSString *TI_APPLICATION_DEPLOYTYPE = @"development";

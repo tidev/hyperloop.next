@@ -18,22 +18,22 @@
 /**
  * The Hyperloop object.
  */
-@property(nonatomic, retain, readonly) NSObject *object;
+@property (nonatomic, retain, readonly) NSObject *object;
 
 /**
  * The class of the Hyperloop object.
  */
-@property(nonatomic, retain, readonly) Class clazz;
+@property (nonatomic, retain, readonly) Class clazz;
 
 /**
  * The selector used to call the native classes.
  */
-@property(nonatomic, retain, readonly) NSString *selector;
+@property (nonatomic, retain, readonly) NSString *selector;
 
 /**
  * Whether or not the Hyperloop object is a pointer.
  */
-@property(nonatomic, assign, readonly, getter=isPointer) BOOL pointer;
+@property (nonatomic, assign, readonly, getter=isPointer) BOOL pointer;
 
 /**
  * Create a pointer to a container object.

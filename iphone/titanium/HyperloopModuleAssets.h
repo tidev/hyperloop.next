@@ -6,11 +6,10 @@
 @import Foundation;
 
 @interface HyperloopModuleAssets : NSObject {
-
 }
 
-- (NSData*) moduleAsset;
-- (NSData*) resolveModuleAsset:(NSString*)path;
+- (NSData *)moduleAsset;
+- (NSData *)resolveModuleAsset:(NSString *)path;
 
 @end
 

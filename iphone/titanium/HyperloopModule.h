@@ -20,4 +20,3 @@
 + (NSException *)JSValueRefToNSException:(TiValueRef)exception;
 
 @end
-

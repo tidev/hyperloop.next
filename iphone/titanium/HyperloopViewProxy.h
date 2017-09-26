@@ -12,7 +12,7 @@
  */
 @interface HyperloopViewProxy : TiViewProxy
 
-@property(nonatomic, retain) id nativeView;
+@property (nonatomic, retain) id nativeView;
 
 @end
 

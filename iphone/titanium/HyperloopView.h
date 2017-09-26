@@ -14,12 +14,12 @@
 /**
  * The native view to be set from the view proxy.
  */
-@property(nonatomic, retain) UIView *nativeView;
+@property (nonatomic, retain) UIView *nativeView;
 
 /**
  * The native proxy linked to this HyperloopView instance.
  */
-@property(nonatomic, retain) id nativeProxy;
+@property (nonatomic, retain) id nativeProxy;
 
 /**
  * Designated initializer to wrap a native view inside a given proxy
