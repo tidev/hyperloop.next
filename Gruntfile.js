@@ -10,7 +10,7 @@ module.exports = function (grunt) {
 	// Project configuration.
 	grunt.initConfig({
 		appcJs: {
-			src: [ 'Gruntfile.js', 'android/plugins/hyperloop/hooks/**/*.js', 'iphone/plugin/*.js', 'plugins/**/*.js', 'windows/plugins/hyperloop/hooks/**/*.js' ]
+			src: [ 'Gruntfile.js', 'android/plugins/hyperloop/hooks/**/*.js', 'iphone/plugin/*.js', 'plugins/**/*.js', 'windows/plugins/hyperloop/hooks/**/*.js', 'windows/sdk_plugins/**/*.js' ]
 		},
 		clangFormat: {
 			src: iosSrc
