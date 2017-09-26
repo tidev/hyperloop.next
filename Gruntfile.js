@@ -15,32 +15,23 @@ module.exports = function (grunt) {
 	// Project configuration.
 	grunt.initConfig({
 		appcJs: {
-			src: [ 'Gruntfile.js', 'android/plugins/hyperloop/hooks/**/*.js', 'iphone/plugin/*.js', 'plugins/**/*.js', 'windows/plugins/hyperloop/hooks/**/*.js', 'windows/sdk_plugins/**/*.js' ]
+			src: [
+				'Gruntfile.js',
+				'android/plugins/hyperloop/hooks/android/*.js',
+				'android/plugins/hyperloop/hooks/android/metabase/*.js',
+				'android/plugins/hyperloop/hooks/android/tasks/*.js',
+				'android/plugins/hyperloop/hooks/android/test/*.js',
+				'iphone/plugins/hyperloop/hooks/ios/*.js',
+				'plugins/**/*.js',
+				'windows/plugins/hyperloop/hooks/**/*.js',
+				'windows/sdk_plugins/**/*.js'
+			]
 		},
 		clangFormat: {
 			src: iosSrc
 		},
 		ios_format: {
 			src: iosSrc
-		},
-		clean: {
-			cover: [ 'coverage' ]
-		},
-		mocha_istanbul: {
-			coverage: {
-				src: 'android/plugins/hyperloop/test',
-				options: {
-					ignoreLeaks: false,
-					check: {
-						statements: 80,
-						branches: 80,
-						functions: 80,
-						lines: 80
-					},
-					reporter: 'mocha-jenkins-reporter',
-					reportFormats: [ 'lcov', 'cobertura' ]
-				}
-			}
 		}
 	});
 
@@ -98,14 +89,11 @@ module.exports = function (grunt) {
 	});
 
 	// Load grunt plugins for modules
-	grunt.loadNpmTasks('grunt-mocha-istanbul');
 	grunt.loadNpmTasks('grunt-appc-js');
 	grunt.loadNpmTasks('grunt-clang-format');
-	grunt.loadNpmTasks('grunt-contrib-clean');
 
 	// register tasks
-	grunt.registerTask('test', [ 'clean:cover', 'mocha_istanbul:coverage' ]);
 	grunt.registerTask('lint', [ 'appcJs', 'ios_format' ]);
 	grunt.registerTask('format', [ 'clangFormat' ]);
-	grunt.registerTask('default', [ 'lint', 'test' ]);
+	grunt.registerTask('default', [ 'lint' ]);
 };

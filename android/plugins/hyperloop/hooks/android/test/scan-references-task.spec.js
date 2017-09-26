@@ -1,3 +1,5 @@
+/* eslint no-unused-expressions: "off" */
+'use strict';
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const expect = chai.expect;
@@ -245,7 +247,7 @@ describe('ScanReferencesTask', () => {
 			references.set(pathAndFilename, testReferenceMetadata);
 			task._references = references;
 			task.writeReferences();
-			expect(fs.readFileSync(task._referencesPathAndFilename).toString()).to.be.equal(JSON.stringify({ [pathAndFilename]: testReferenceMetadata}));
+			expect(fs.readFileSync(task._referencesPathAndFilename).toString()).to.be.equal(JSON.stringify({ [pathAndFilename]: testReferenceMetadata }));
 		});
 	});
 

@@ -1,3 +1,5 @@
+/* eslint no-unused-expressions: "off" */
+'use strict';
 const babel = require('babel-core');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');

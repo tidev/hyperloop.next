@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -10,19 +10,19 @@
 module.exports = HyperloopiOSBuilder;
 
 // set this to enforce a ios-min-version
-var IOS_MIN = '8.0';
+const IOS_MIN = '8.0';
 // set this to enforce a minimum Titanium SDK
-var TI_MIN = '6.2.0';
+const TI_MIN = '6.2.0';
 // set the iOS SDK minium
-var IOS_SDK_MIN = '9.0';
+const IOS_SDK_MIN = '9.0';
 // enum for ios javascript core
-var coreLib = {
+const coreLib = {
 	JSCore: 'libhyperloop-jscore.a',
 	TiCore: 'libhyperloop-ticore.a'
 };
 
-var path = require('path'),
-	exec = require('child_process').exec,
+const path = require('path'),
+	exec = require('child_process').exec, // eslint-disable-line security/detect-child-process
 	hm = require('hyperloop-metabase'),
 	fs = require('fs-extra'),
 	crypto = require('crypto'),
@@ -81,6 +81,8 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 
 /**
  * called for each JS resource to process them
+ * @param {Builder} builder builder
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
 	try {
@@ -107,7 +109,7 @@ HyperloopiOSBuilder.prototype.init = function init(callback) {
 };
 
 HyperloopiOSBuilder.prototype.run = function run(builder, callback) {
-	var start = Date.now();
+	const start = Date.now();
 	this.logger.info('Starting ' + HL + ' assembly');
 	this.appc.async.series(this, [
 		'generateSourceFiles',
@@ -146,11 +148,11 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 	}
 
 	// check that hyperloop module was found in the tiapp.xml
-	var usingHyperloop = this.builder.tiapp.modules.some(function (m) {
+	const usingHyperloop = this.builder.tiapp.modules.some(function (m) {
 		return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf('ios') !== -1 || m.platform.indexOf('iphone') !== -1);
 	});
 	if (!usingHyperloop) {
-		var pkg = require(path.join(__dirname, '..', 'package.json'));
+		const pkg = require('./package.json');
 		this.logger.error('You cannot use the Hyperloop compiler without configuring the module.');
 		this.logger.error('Add the following to your tiapp.xml <modules> section:');
 		this.logger.error('');
@@ -214,11 +216,13 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
 			return true;
 		}
+		return false;
 	}, this);
 };
 
 /**
  * Gets the system frameworks from the Hyperloop Metabase.
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks(callback) {
 	hm.metabase.getSystemFrameworks(this.builder.buildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
@@ -239,6 +243,7 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
 
 /**
  * Has the Hyperloop Metabase generate the CocoaPods and then adds the symbols to the map of frameworks.
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
 	// attempt to handle CocoaPods for third-party frameworks
@@ -257,22 +262,23 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 
 /**
  * Gets frameworks for any third-party dependencies defined in the Hyperloop config and compiles them.
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThirdPartyFrameworks(callback) {
-	var frameworks = this.frameworks;
-	var thirdPartyFrameworks = this.thirdPartyFrameworks;
-	var swiftSources = this.swiftSources;
-	var hyperloopBuildDir = this.hyperloopBuildDir;
-	var thirdparty = this.hyperloopConfig.ios.thirdparty || [];
-	var projectDir = this.builder.projectDir;
-	var xcodeAppDir = this.builder.xcodeAppDir;
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
-	var builder = this.builder;
-	var logger = this.logger;
+	const frameworks = this.frameworks;
+	const thirdPartyFrameworks = this.thirdPartyFrameworks;
+	const swiftSources = this.swiftSources;
+	const hyperloopBuildDir = this.hyperloopBuildDir;
+	const thirdparty = this.hyperloopConfig.ios.thirdparty || [];
+	const projectDir = this.builder.projectDir;
+	const xcodeAppDir = this.builder.xcodeAppDir;
+	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	const builder = this.builder;
+	const logger = this.logger;
 
 	function arrayifyAndResolve(it) {
 		if (it) {
-			return (Array.isArray(it) ? it : [it]).map(function (name) {
+			return (Array.isArray(it) ? it : [ it ]).map(function (name) {
 				return path.resolve(projectDir, name);
 			});
 		}
@@ -283,15 +289,16 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	 * Processes any frameworks from modules or the app's platform/ios folder
 	 *
 	 * @param {Function} next Callback function
+	 * @return {void}
 	 */
 	function processFrameworks(next) {
 		if (!builder.frameworks || Object.keys(builder.frameworks).length === 0) {
 			return next();
 		}
 
-		async.each(Object.keys(builder.frameworks), function(frameworkName, cb) {
-			var frameworkInfo = builder.frameworks[frameworkName];
-			hm.metabase.generateUserFrameworkMetadata(frameworkInfo, hyperloopBuildDir, function(err, metadata) {
+		async.each(Object.keys(builder.frameworks), function (frameworkName, cb) {
+			const frameworkInfo = builder.frameworks[frameworkName];
+			hm.metabase.generateUserFrameworkMetadata(frameworkInfo, hyperloopBuildDir, function (err, metadata) {
 				if (err) {
 					return cb(err);
 				}
@@ -304,7 +311,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	}
 
 	/**
-	 * Processes third-party dependencies that are configured in 
+	 * Processes third-party dependencies that are configured in
 	 under the
 	 * hyperloop.ios.thirdparty key
 	 *
@@ -315,12 +322,12 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	 */
 	function processConfiguredThirdPartySource(next) {
 		async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
-			var lib = thirdparty[frameworkName];
+			const lib = thirdparty[frameworkName];
 
 			logger.debug('Generating includes for third-party source ' + frameworkName.green + ' (defined in appc.js)');
 			async.series([
 				function (cb) {
-					var headers = arrayifyAndResolve(lib.header);
+					const headers = arrayifyAndResolve(lib.header);
 					if (headers) {
 						hm.metabase.generateUserSourceMappings(
 							hyperloopBuildDir,
@@ -339,9 +346,9 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 				},
 
 				function (cb) {
-					var resources = arrayifyAndResolve(lib.resource);
+					const resources = arrayifyAndResolve(lib.resource);
 					if (resources) {
-						var extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
+						const extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
 						async.eachLimit(resources, 5, function (dir, cb2) {
 							// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
 							// .xcmappingmodel, .xcassets, .storyboard)
@@ -362,8 +369,8 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 				function (cb) {
 					// generate metabase for swift files (if found)
-					var sources = arrayifyAndResolve(lib.source);
-					var swiftRegExp = /\.swift$/;
+					const sources = arrayifyAndResolve(lib.source);
+					const swiftRegExp = /\.swift$/;
 
 					sources && sources.forEach(function (dir) {
 						fs.readdirSync(dir).forEach(function (filename) {
@@ -389,12 +396,15 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 /**
  * Detects the configured swift version
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(callback) {
-	var that = this;
+	const that = this;
 	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
-		if (err) { return callback(err); }
-		var versionMatch = stdout.match(/version\s(\d.\d)/);
+		if (err) {
+			return callback(err);
+		}
+		const versionMatch = stdout.match(/version\s(\d.\d)/);
 		if (versionMatch !== null) {
 			that.swiftVersion = versionMatch[1];
 		}
@@ -404,10 +414,14 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
 
 /**
  * Re-write generated JS source
+ * @param {String} sourceFilename path to source file
+ * @param {String} destinationFilename path to destination file
+ * @param {Function} cb callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename, destinationFilename, cb) {
 	// look for any require which matches our hyperloop system frameworks
-	var contents = fs.readFileSync(destinationFilename).toString();
+	const contents = fs.readFileSync(destinationFilename).toString();
 
 	// skip empty content
 	if (!contents.length) {
@@ -423,16 +437,16 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 		return cb();
 	}
 
-	var relPath = path.relative(this.resourcesDir, destinationFilename);
+	const relPath = path.relative(this.resourcesDir, destinationFilename);
 
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
-	var newContents = (this.parserState.getSourceCode() || contents).replace(
+	let newContents = (this.parserState.getSourceCode() || contents).replace(
 		/require\s*\(\s*[\\"']+([\w_/\-\\.]+)[\\"']+\s*\)/ig,
 		function (orig, match) {
 			// hyperloop includes will always have a slash
-			var tok = match.split('/');
-			var pkg = tok[0];
+			const tok = match.split('/');
+			const pkg = tok[0];
 
 			if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
 				return orig;
@@ -440,21 +454,21 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 
 			// if we use something like require("UIKit")
 			// that should require the helper such as require("UIKit/UIKit");
-			var className = tok[1] || pkg;
-			var framework = this.frameworks[pkg];
-			var include = framework && framework[className];
-			var isBuiltin = pkg === 'Titanium';
+			const className = tok[1] || pkg;
+			const framework = this.frameworks[pkg];
+			const include = framework && framework[className];
+			const isBuiltin = pkg === 'Titanium';
 
 			// if the framework is not found, then check if it was possibly mispelled
 			if (!framework && !isBuiltin) {
-				var pkgSoundEx = soundEx(pkg);
-				var maybes = Object.keys(this.frameworks).filter(function (frameworkName) {
+				const pkgSoundEx = soundEx(pkg);
+				const maybes = Object.keys(this.frameworks).filter(function (frameworkName) {
 					return soundEx(frameworkName) === pkgSoundEx;
 				});
 
 				if (maybes.length) {
-					this.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
-						maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+					this.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use '
+						+ maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
 				}
 
 				return orig;
@@ -467,7 +481,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 
 			// if we haven't found it by now, then we try to help before failing
 			if (!include && className !== pkg && !isBuiltin) {
-				var classNameSoundEx = soundEx(className);
+				const classNameSoundEx = soundEx(className);
 
 				Object.keys(this.frameworks).forEach(function (frameworkName) {
 					if (this.frameworks[frameworkName][className]) {
@@ -475,14 +489,14 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 					}
 
 					if (soundEx(frameworkName) === classNameSoundEx) {
-						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkName + '" instead? (' + relPath+ ')');
+						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkName + '" instead? (' + relPath + ')');
 					}
 				}, this);
 
 				throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
 			}
 
-			var ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
+			const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
 			this.references[ref] = 1;
 
 			if (include) {
@@ -491,14 +505,14 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 			}
 
 			// replace the require to point to our generated file path
-			return "require('/" + ref + "')";
+			return 'require(\'/' + ref + '\')';
 		}.bind(this));
 
-	var needMigration = this.parserState.state.needMigration;
+	const needMigration = this.parserState.state.needMigration;
 	if (needMigration.length > 0) {
 		this.needMigration[sourceFilename] = needMigration;
 
-		needMigration.forEach(function(token) {
+		needMigration.forEach(function (token) {
 			newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
 		});
 	}
@@ -515,6 +529,8 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 /**
  * Generates the metabase from the required Hyperloop files and then generate the source the source
  * files from that metabase.
+ * @param {Function} callback callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles(callback) {
 	// no hyperloop files detected, we can stop here
@@ -570,23 +586,23 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}.bind(this), callback);
 	}
 
-	var extraHeaderSearchPaths = [];
-	var extraFrameworkSearchPaths = [];
+	const extraHeaderSearchPaths = [];
+	const extraFrameworkSearchPaths = [];
 	if (this.hasCocoaPods) {
-		var addSearchPathsFromCocoaPods = function (target, source) {
+		const addSearchPathsFromCocoaPods = function (target, source) {
 			if (!source) {
 				return;
 			}
 
-			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
-			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
-			var paths = source.split(' ');
-			paths.forEach(function(path) {
+			const cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
+			const cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
+			const paths = source.split(' ');
+			paths.forEach(function (path) {
 				if (path === '$(inherited)') {
 					return;
 				}
 
-				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
+				let searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
 				searchPath = searchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', cocoaPodsConfigurationBuildDir);
 				searchPath = searchPath.replace(/"/g, '');
 
@@ -600,13 +616,13 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	if (this.hyperloopConfig.ios.thirdparty) {
 		// Throw a deprecation warning regarding thirdparty-references in the appc.js
 		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 3.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
-		
+
 		this.headers = [];
-		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
-			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
-			var headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [thirdPartyFrameworkConfig.header];
-			headerPaths.forEach(function(headerPath) {
-				var searchPath = path.resolve(this.builder.projectDir, headerPath);
+		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function (frameworkName) {
+			const thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
+			const headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [ thirdPartyFrameworkConfig.header ];
+			headerPaths.forEach(function (headerPath) {
+				const searchPath = path.resolve(this.builder.projectDir, headerPath);
 				extraHeaderSearchPaths.push(searchPath);
 				extraFrameworkSearchPaths.push(searchPath);
 				this.headers.push(searchPath);
@@ -614,16 +630,16 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}, this);
 	}
 	if (this.builder.frameworks) {
-		Object.keys(this.builder.frameworks).forEach(function(frameworkName) {
-			var frameworkInfo = this.builder.frameworks[frameworkName];
+		Object.keys(this.builder.frameworks).forEach(function (frameworkName) {
+			const frameworkInfo = this.builder.frameworks[frameworkName];
 			extraFrameworkSearchPaths.push(path.dirname(frameworkInfo.path));
 		}, this);
 	}
 
 	// Framwork umbrella headers are required to propery resolve forward declarations
-	Object.keys(this.packages).forEach(function(frameworkName) {
-		var framework = this.frameworks[frameworkName];
-		var frameworkUmbrellaHeader = framework && framework[frameworkName];
+	Object.keys(this.packages).forEach(function (frameworkName) {
+		const framework = this.frameworks[frameworkName];
+		const frameworkUmbrellaHeader = framework && framework[frameworkName];
 		if (frameworkUmbrellaHeader) {
 			this.includes[frameworkUmbrellaHeader] = 1;
 		}
@@ -653,7 +669,7 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
 		this.logger.info('Skipping ' + HL + ' generating of symbol references. Empty AST. ');
 		return;
 	}
-	var symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
+	const symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
 		json = JSON.stringify(this.parserState.getReferences(), null, 2);
 	if (!fs.existsSync(symbolRefFile) || fs.readFileSync(symbolRefFile).toString() !== json) {
 		this.forceStubGeneration = true;
@@ -666,14 +682,17 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
 
 /**
  * Compiles the resources from the metabase.
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
 	hm.metabase.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false, callback);
 };
 
 /**
  * Generates stubs from the metabase.
+ * @param {Function} callback callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 
@@ -688,7 +707,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 
 	// now generate the stubs
 	this.logger.debug('Generating stubs');
-	var started = Date.now();
+	const started = Date.now();
 	hm.generate.generateFromJSON(
 		this.builder.tiapp.name,
 		this.metabase,
@@ -698,10 +717,10 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 				return callback(err);
 			}
 
-			var codeGenerator = new hm.generate.CodeGenerator(sourceSet, this.metabase, this.parserState, modules, this.references);
+			const codeGenerator = new hm.generate.CodeGenerator(sourceSet, this.metabase, this.parserState, modules, this.references);
 			codeGenerator.generate(this.hyperloopJSDir);
 
-			var duration = Date.now() - started;
+			const duration = Date.now() - started;
 			this.logger.info('Generation took ' + duration + ' ms');
 
 			callback();
@@ -716,7 +735,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles() {
 	// copy any native generated file references so that we can compile them
 	// as part of xcodebuild
-	var keys = Object.keys(this.references);
+	const keys = Object.keys(this.references);
 
 	// only if we found references, otherwise, skip
 	if (!keys.length) {
@@ -725,7 +744,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 	// check to see if we have any specific file native modules and copy them in
 	keys.forEach(function (ref) {
-		var file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
+		const file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
@@ -733,19 +752,19 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 	// check to see if we have any package modules and copy them in
 	Object.keys(this.packages).forEach(function (pkg) {
-		var file = path.join(this.hyperloopJSDir, pkg.toLowerCase() + '/' + pkg.toLowerCase() + '.m');
+		const file = path.join(this.hyperloopJSDir, pkg.toLowerCase() + '/' + pkg.toLowerCase() + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
 	}, this);
 
-	var builder = this.builder,
+	const builder = this.builder,
 		logger = this.logger,
 		jsRegExp = /\.js$/;
 
 	(function scan(srcDir, destDir) {
 		fs.readdirSync(srcDir).forEach(function (name) {
-			var srcFile = path.join(srcDir, name),
+			const srcFile = path.join(srcDir, name),
 				srcStat = fs.statSync(srcFile);
 
 			if (srcStat.isDirectory()) {
@@ -756,14 +775,14 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 				return;
 			}
 
-			var rel = path.relative(builder.projectDir, srcFile),
+			const rel = path.relative(builder.projectDir, srcFile),
 				destFile = path.join(destDir, name),
 				destExists = fs.existsSync(destFile),
 				srcMtime = JSON.parse(JSON.stringify(srcStat.mtime)),
-				prev = builder.previousBuildManifest.files && builder.previousBuildManifest.files[rel],
-				contents = null,
-				hash = null,
-				changed = !destExists || !prev || prev.size !== srcStat.size || prev.mtime !== srcMtime || prev.hash !== (hash = builder.hash(contents = fs.readFileSync(srcFile).toString()));
+				prev = builder.previousBuildManifest.files && builder.previousBuildManifest.files[rel];
+			let contents = null,
+				hash = null;
+			const changed = !destExists || !prev || prev.size !== srcStat.size || prev.mtime !== srcMtime || prev.hash !== (hash = builder.hash(contents = fs.readFileSync(srcFile).toString()));
 
 			builder.unmarkBuildDirFiles(destFile);
 
@@ -826,15 +845,15 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
  * Injects frameworks and source files into the Xcode project and regenerates it
  */
 HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject() {
-	var data = this.xcodeprojectdata;
-	var nativeModules = Object.keys(this.nativeModules);
+	const data = this.xcodeprojectdata;
+	const nativeModules = Object.keys(this.nativeModules);
 
 	// third party libraries won't have an entry in native modules so we explicitly
 	// check for those here
-	var thirdPartyFrameworksUsed = false;
+	let thirdPartyFrameworksUsed = false;
 	if (this.hyperloopConfig.ios.thirdparty) {
-		var usedPackages = Object.keys(this.packages);
-		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
+		const usedPackages = Object.keys(this.packages);
+		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function (thirdPartyFramework) {
 			return usedPackages.some(function (packageName) {
 				return packageName === thirdPartyFramework;
 			});
@@ -847,20 +866,24 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		return;
 	}
 
-	var projectDir = this.builder.projectDir;
-	var appName = this.builder.tiapp.name;
-	var xcodeProject = data.args[0];
-	var xobjs = xcodeProject.hash.project.objects;
-	var projectUuid = xcodeProject.hash.project.rootObject;
-	var pbxProject = xobjs.PBXProject[projectUuid];
-	var mainTargetUuid = pbxProject.targets.filter(function (t) { return t.comment.replace(/^"/, '').replace(/"$/, '') === appName; })[0].value;
-	var mainTarget = xobjs.PBXNativeTarget[mainTargetUuid];
-	var mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
-	var generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
+	const projectDir = this.builder.projectDir;
+	const appName = this.builder.tiapp.name;
+	const xcodeProject = data.args[0];
+	const xobjs = xcodeProject.hash.project.objects;
+	const projectUuid = xcodeProject.hash.project.rootObject;
+	const pbxProject = xobjs.PBXProject[projectUuid];
+	const mainTargetUuid = pbxProject.targets.filter(function (t) {
+		return t.comment.replace(/^"/, '').replace(/"$/, '') === appName;
+	})[0].value;
+	const mainTarget = xobjs.PBXNativeTarget[mainTargetUuid];
+	const mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
+	const generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
 
 	// create a Hyperloop group so that the code is nice and tidy in the Xcode project
-	var hyperloopGroupUuid = (mainGroupChildren.filter(function (child) { return child.comment === 'Hyperloop'; })[0] || {}).value;
-	var hyperloopGroup = hyperloopGroupUuid && xobjs.PBXGroup[hyperloopGroupUuid];
+	let hyperloopGroupUuid = (mainGroupChildren.filter(function (child) {
+		return child.comment === 'Hyperloop';
+	})[0] || {}).value;
+	let hyperloopGroup = hyperloopGroupUuid && xobjs.PBXGroup[hyperloopGroupUuid];
 	if (!hyperloopGroup) {
 		hyperloopGroupUuid = generateUuid();
 		mainGroupChildren.push({
@@ -879,21 +902,21 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		xobjs.PBXGroup[hyperloopGroupUuid + '_comment'] = 'Hyperloop';
 	}
 
-	var swiftRegExp = /\.swift$/;
-	var containsSwift = false;
-	var groups = {};
+	const swiftRegExp = /\.swift$/;
+	let containsSwift = false;
+	const groups = {};
 
 	// add any source files we want to include in the compile
 	if (this.hyperloopConfig.ios.thirdparty) {
-		var objcRegExp = /\.mm?$/;
+		const objcRegExp = /\.mm?$/;
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function (framework) {
-			var source = this.hyperloopConfig.ios.thirdparty[framework].source;
+			let source = this.hyperloopConfig.ios.thirdparty[framework].source;
 			if (!source) {
 				return;
 			}
 
 			if (!Array.isArray(source)) {
-				source = [source];
+				source = [ source ];
 			}
 
 			groups[framework] || (groups[framework] = {});
@@ -933,16 +956,16 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	// if we have any swift usage, enable swift support
 	if (containsSwift) {
 		Object.keys(xobjs.PBXNativeTarget).forEach(function (targetUuid) {
-			var target = xobjs.PBXNativeTarget[targetUuid];
+			const target = xobjs.PBXNativeTarget[targetUuid];
 			if (target && typeof target === 'object') {
 				xobjs.XCConfigurationList[target.buildConfigurationList].buildConfigurations.forEach(function (buildConf) {
-					var buildSettings = xobjs.XCBuildConfiguration[buildConf.value].buildSettings;
+					const buildSettings = xobjs.XCBuildConfiguration[buildConf.value].buildSettings;
 
 					if (!buildSettings.SWIFT_VERSION) {
 						buildSettings.SWIFT_VERSION = this.swiftVersion;
 					}
 
-					var embeddedContentMaximumSwiftVersion = '2.3';
+					const embeddedContentMaximumSwiftVersion = '2.3';
 					if (this.appc.version.lte(this.swiftVersion, embeddedContentMaximumSwiftVersion)) {
 						buildSettings.EMBEDDED_CONTENT_CONTAINS_SWIFT = 'YES';
 					} else {
@@ -950,7 +973,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 					}
 
 					// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
-					var searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
+					let searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
 					if (searchPaths.indexOf('$(inherited)') === -1) {
 						searchPaths += ' $(inherited)';
 					}
@@ -972,24 +995,26 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	}
 
 	// check to see if we compiled a custom class and if so, we need to add it to the project
-	var customClass = path.join(this.hyperloopJSDir, 'hyperloop', 'custom.m');
+	const customClass = path.join(this.hyperloopJSDir, 'hyperloop', 'custom.m');
 	if (fs.existsSync(customClass)) {
 		groups['Custom'] || (groups['Custom'] = {});
 		groups['Custom'][customClass] = 1;
 	}
 
-	var sourcesBuildPhase = xobjs.PBXSourcesBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXSourcesBuildPhase[phase.value]; })[0].value];
+	const sourcesBuildPhase = xobjs.PBXSourcesBuildPhase[mainTarget.buildPhases.filter(function (phase) {
+		return xobjs.PBXSourcesBuildPhase[phase.value];
+	})[0].value];
 
 	// loop over the groups and the files in each group and add them to the Xcode project
 	Object.keys(groups).forEach(function (groupName) {
-		var groupUuid = generateUuid();
+		const groupUuid = generateUuid();
 
 		hyperloopGroup.children.push({
 			value: groupUuid,
 			comment: groupName
 		});
 
-		var group = {
+		const group = {
 			isa: 'PBXGroup',
 			children: [],
 			name: '"' + groupName + '"',
@@ -1000,9 +1025,9 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		xobjs.PBXGroup[groupUuid + '_comment'] = groupName;
 
 		Object.keys(groups[groupName]).forEach(function (file) {
-			var name = path.basename(file);
-			var fileRefUuid = generateUuid();
-			var buildFileUuid = generateUuid();
+			const name = path.basename(file);
+			const fileRefUuid = generateUuid();
+			const buildFileUuid = generateUuid();
 
 			// add the file reference
 			xobjs.PBXFileReference[fileRefUuid] = {
@@ -1026,7 +1051,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 				isa: 'PBXBuildFile',
 				fileRef: fileRefUuid,
 				fileRef_comment: name,
-				settings: {COMPILER_FLAGS : '"-fobjc-arc"' }
+				settings: { COMPILER_FLAGS : '"-fobjc-arc"' }
 			};
 			xobjs.PBXBuildFile[buildFileUuid + '_comment'] = name + ' in Sources';
 
@@ -1038,8 +1063,8 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	});
 
 	if (this.hasCocoaPods) {
-		var embedPodsFrameworksBuildPhaseId = generateUuid();
-		var embedPodsFrameworksBuildPhase = {
+		const embedPodsFrameworksBuildPhaseId = generateUuid();
+		const embedPodsFrameworksBuildPhase = {
 			isa: 'PBXShellScriptBuildPhase',
 			buildActionMask: 2147483647,
 			files: [],
@@ -1054,8 +1079,8 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		xobjs.PBXShellScriptBuildPhase[embedPodsFrameworksBuildPhaseId] = embedPodsFrameworksBuildPhase;
 		mainTarget.buildPhases.push(embedPodsFrameworksBuildPhaseId);
 
-		var copyPodsResourcesBuildPhaseId = generateUuid();
-		var copyPodsResourcesBuildPhase = {
+		const copyPodsResourcesBuildPhaseId = generateUuid();
+		const copyPodsResourcesBuildPhase = {
 			isa: 'PBXShellScriptBuildPhase',
 			buildActionMask: 2147483647,
 			files: [],
@@ -1072,12 +1097,12 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	}
 
 	if (this.hasCustomShellScriptBuildPhases()) {
-		this.hyperloopConfig.ios.xcodebuild.scripts.forEach(function(buildPhaseOptions) {
+		this.hyperloopConfig.ios.xcodebuild.scripts.forEach(function (buildPhaseOptions) {
 			if (!buildPhaseOptions.name || !buildPhaseOptions.shellScript) {
 				throw new Error('Your appc.js contains an invalid shell script build phase. Please specify at least a "name" and the "shellScript" to run.');
 			}
-			var scriptBuildPhaseId = generateUuid();
-			var scriptBuildPhase = {
+			const scriptBuildPhaseId = generateUuid();
+			const scriptBuildPhase = {
 				isa: 'PBXShellScriptBuildPhase',
 				buildActionMask: 2147483647,
 				files: [],
@@ -1094,7 +1119,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		});
 	}
 
-	var contents = xcodeProject.writeSync(),
+	const contents = xcodeProject.writeSync(),
 		dest = xcodeProject.filepath,
 		parent = path.dirname(dest),
 		i18n = this.appc.i18n(__dirname),
@@ -1121,7 +1146,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
  * @return {Boolean} True if shell script build phases are defined, false if not
  */
 HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCustomShellScriptBuildPhases() {
-	var config = this.hyperloopConfig;
+	const config = this.hyperloopConfig;
 	return config.ios && config.ios.xcodebuild && config.ios.xcodebuild.scripts;
 };
 
@@ -1132,7 +1157,7 @@ HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCust
  * Can be removed in a later version of Hyperloop
  */
 HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMigrationInstructions() {
-	var that = this;
+	const that = this;
 
 	if (Object.keys(this.needMigration).length === 0) {
 		return;
@@ -1153,13 +1178,13 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
 	that.logger.error('source code and may differ from your original source code.');
 
 	Object.keys(this.needMigration).forEach(function (pathAndFilename) {
-		var tokens = that.needMigration[pathAndFilename];
-		var relativePathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources').replace(/^Resources\/iphone\/alloy\//, 'app/');
+		const tokens = that.needMigration[pathAndFilename];
+		const relativePathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources').replace(/^Resources\/iphone\/alloy\//, 'app/');
 		that.logger.error('');
 		that.logger.error('  File: ' + relativePathAndFilename);
 		tokens.forEach(function (token) {
-			var memberExpression = token.objectName + '.' + token.methodName;
-			var callExpression = memberExpression + '()';
+			const memberExpression = token.objectName + '.' + token.methodName;
+			const callExpression = memberExpression + '()';
 			that.logger.error('    Line ' + token.line + ': ' + callExpression + ' -> ' + memberExpression);
 		});
 	});
@@ -1171,15 +1196,15 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
  * Clean up unwanted files.
  * @param {Object} data - The hook payload.
  */
-HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
+HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) { // eslint-disable-line no-unused-vars
 	// remove empty Framework directory that might have been created by cocoapods
-	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
+	const frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
 		fs.removeSync(frameworksDir);
 	}
 	if (this.hasCocoaPods) {
-		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
-		this.cocoaPodsProducts.forEach(function(product) {
+		const productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
+		this.cocoaPodsProducts.forEach(function (product) {
 			this.builder.unmarkBuildDirFiles(path.join(productsDirectory, product));
 		}.bind(this));
 	}
@@ -1190,12 +1215,13 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
  * @param {Object} data - The hook payload.
  */
 HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
-	var args = data.args[1];
-	var quotesRegExp = /^"(.*)"$/;
-	var substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
+	const args = data.args[1];
+	const quotesRegExp = /^"(.*)"$/;
+	const substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
 
 	function splitValue(value) {
-		var part, parts = [];
+		let part;
+		const parts = [];
 		while ((part = substrRegExp.exec(value)) !== null) {
 			parts.push(part[0].replace(quotesRegExp, '$1'));
 		}
@@ -1224,7 +1250,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 			key = 'HYPERLOOP_LDFLAGS';
 		}
 
-		for (var i = 0; i < args.length; i++) {
+		for (let i = 0; i < args.length; i++) {
 			if (args[i].indexOf(key + '=') === 0) {
 				// already exists
 				args[i] = key + '=' + mixValues(args[i].substring(args[i].indexOf('=') + 1), value);
@@ -1260,9 +1286,9 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 			addParam('HEADER_SEARCH_PATHS', header);
 			addParam('FRAMEWORK_SEARCH_PATHS', header);
 		});
-		//For some reason, when using ticore and having custom headers, the original header search path goes missing.
-		//FIX ME
-		if(!this.builder.tiapp.ios['use-jscore-framework']) {
+		// For some reason, when using ticore and having custom headers, the original header search path goes missing.
+		// FIX ME
+		if (!this.builder.tiapp.ios['use-jscore-framework']) {
 			addParam('HEADER_SEARCH_PATHS', 'headers');
 		}
 	}
@@ -1285,6 +1311,7 @@ class StopHyperloopCompileError extends Error {
  * @param {Boolean} [scale=false] - If true, a Higgs boson is created.
  * @returns {String}
  */
+/* eslint-disable */
 function soundEx(str, scale) {
 	var split = String(str).toUpperCase().replace(/[^A-Z]/g, '').split(''),
 		map = {
@@ -1315,3 +1342,4 @@ function soundEx(str, scale) {
 
 	return split[0] + (build.join('') + (new Array(max + 1).join('0'))).slice(0, max);
 }
+/* eslint-enable */
