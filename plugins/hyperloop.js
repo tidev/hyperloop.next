@@ -7,7 +7,7 @@
 
 'use strict';
 
-var fs = require('fs'),
+const fs = require('fs'),
 	path = require('path');
 
 exports.id = 'com.appcelerator.hyperloop';
@@ -32,26 +32,26 @@ function init(logger, config, cli, appc) {
 	cli.on('build.pre.compile', {
 		priority: 1300,
 		post: function (builder, callback) {
-			var hook = cli.createHook('hyperloop:init', builder, function (finished) {
-				var platform = builder.platformName;
-				var deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
+			const hook = cli.createHook('hyperloop:init', builder, function (finished) {
+				const platform = builder.platformName;
+				const deploymentTargets = builder.tiapp && builder.tiapp['deployment-targets'];
 
 				// see if we have a platform specific hyperloop and we're running for that target
 				if (deploymentTargets && (deploymentTargets[platform] || deploymentTargets['ipad'])) {
-					var usingHyperloop = builder.tiapp.modules.some(function (m) {
+					const usingHyperloop = builder.tiapp.modules.some(function (m) {
 						return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf(platform) !== -1);
 					});
 
 					// make sure we have the module configured for hyperloop
 					if (usingHyperloop) {
-						var name = /^iphone|ios$/i.test(platform) ? 'ios' : platform,
+						const name = /^iphone|ios$/i.test(platform) ? 'ios' : platform,
 							platformHookFile = path.join(__dirname, name, 'hyperloop.js');
 
 						// see if we have the plugin installed
 						if (fs.existsSync(platformHookFile)) {
-							var cfg = loadConfig(builder.projectDir).hyperloop || {};
-							var Builder = require(platformHookFile);
-							var instance = new Builder(logger, config, cli, appc, cfg, builder);
+							const cfg = loadConfig(builder.projectDir).hyperloop || {};
+							const Builder = require(platformHookFile); // eslint-disable-line security/detect-non-literal-require
+							const instance = new Builder(logger, config, cli, appc, cfg, builder);
 							return instance.init(finished);
 						}
 
@@ -75,28 +75,33 @@ function init(logger, config, cli, appc) {
 
 /**
  * merge b into a
+ * @param {Object} a Object to have properties merged into
+ * @param {Object} b Object whose properties will get merged into a
+ * @return {void}
  */
- function merge(a, b) {
-	 var obj = b || {};
-	 for (var k in obj) {
-		 if (obj.hasOwnProperty(k)) {
-			 a[k] = obj[k];
-		 }
-	 }
- }
+function merge(a, b) {
+	const obj = b || {};
+	for (let k in obj) {
+		if (obj.hasOwnProperty(k)) {
+			a[k] = obj[k];
+		}
+	}
+}
 
 /**
  * load the appc configuration
+ * @param {String} dir configuration directory path
+ * @return {Object}
  */
 function loadConfig(dir) {
-	var baseConfig = path.join(dir, 'appc.js'),
+	const baseConfig = path.join(dir, 'appc.js'),
 		localConfig = path.join(dir, '.appc.js'),
 		userConfig = path.join(process.env.HOME || process.env.USERPROFILE, '.appc.js'),
 		config = {};
 
-	fs.existsSync(baseConfig) && merge(config, require(baseConfig));
-	fs.existsSync(localConfig) && merge(config, require(localConfig));
-	fs.existsSync(userConfig) && merge(config, require(userConfig));
+	fs.existsSync(baseConfig) && merge(config, require(baseConfig)); // eslint-disable-line security/detect-non-literal-require
+	fs.existsSync(localConfig) && merge(config, require(localConfig)); // eslint-disable-line security/detect-non-literal-require
+	fs.existsSync(userConfig) && merge(config, require(userConfig)); // eslint-disable-line security/detect-non-literal-require
 
 	return config;
 }
