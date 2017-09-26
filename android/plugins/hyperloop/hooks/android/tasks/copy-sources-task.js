@@ -13,7 +13,7 @@ class CopySourcesTask extends IncrementalFileTask {
 	/**
 	 * Constructs a new task for copying the Hyperloop wrapper sources
 	 *
-	 * @param {Object} taskInfo
+	 * @param {Object} taskInfo task info
 	 */
 	constructor(taskInfo) {
 		super(taskInfo);
@@ -27,7 +27,7 @@ class CopySourcesTask extends IncrementalFileTask {
 	 * @inheritdoc
 	 */
 	get incrementalOutputs() {
-		return [this.outputDirectory];
+		return [ this.outputDirectory ];
 	}
 
 	/**

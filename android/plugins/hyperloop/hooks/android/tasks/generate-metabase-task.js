@@ -12,7 +12,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 	/**
 	 * Constructs a new task for metabase generation
 	 *
-	 * @param {Object} taskInfo
+	 * @param {Object} taskInfo task info
 	 */
 	constructor(taskInfo) {
 		super(taskInfo);
@@ -24,7 +24,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 	/**
 	 * Sets the AndroidBuilder instance
 	 *
-	 * @param {AndroidBuilder} builder
+	 * @param {AndroidBuilder} builder AndroidBuilder instance
 	 */
 	set builder(builder) {
 		this._builder = builder;
@@ -48,7 +48,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 		const inputFiles = Array.from(this.inputFiles);
 		this.logger.trace('Generating metabase for JARs: ' + inputFiles);
 		return new Promise((resolve, reject) => {
-			metabase.metabase.loadMetabase(inputFiles, {platform: 'android-' + this._builder.realTargetSDK}, (err, json) => {
+			metabase.metabase.loadMetabase(inputFiles, { platform: 'android-' + this._builder.realTargetSDK }, (err, json) => {
 				if (err) {
 					this.logger.error('Failed to generated metabase: ' + err);
 					return reject(err);

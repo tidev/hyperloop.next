@@ -49,7 +49,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	/**
 	 * Sets the metabase object
 	 *
-	 * @param {Object} metabase
+	 * @param {Object} metabase metabase object
 	 */
 	set metabase(metabase) {
 		this._metabase = metabase;
@@ -67,7 +67,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	/**
 	 * Sets the Java type reference map
 	 *
-	 * @param {Map} references
+	 * @param {Map} references java type reference map
 	 */
 	set references(references) {
 		this._references = references;
@@ -77,7 +77,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @inheritdoc
 	 */
 	get incrementalOutputs() {
-		return [this.outputDirectory, this._classListPathAndFilename];
+		return [ this.outputDirectory, this._classListPathAndFilename ];
 	}
 
 	/**
@@ -115,7 +115,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @param {Map.<String, String>} changedFiles Map of changed files and their state (created, changed, deleted)
 	 * @return {Promise}
 	 */
-	doIncrementalTaskRun(changedFiles) {
+	doIncrementalTaskRun(changedFiles) { // eslint-disable-line no-unused-vars
 		const fullBuild = !this.loadClassList();
 		if (fullBuild) {
 			return this.doFullTaskRun();
@@ -182,7 +182,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 				removedClasses: removedClasses,
 				existingClasses: Array.from(this._generatedClasses)
 			};
-			metabase.generate.generateFromJSON(this.outputDirectory, this.metabase, options, (err, generatedClasses) => {
+			metabase.generate.generateFromJSON(this.outputDirectory, this.metabase, options, (err, generatedClasses) => { // eslint-disable-line no-unused-vars
 				if (err) {
 					return reject(err);
 				}

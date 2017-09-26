@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -13,38 +13,34 @@ exports.id = 'hyperloop';
 exports.cliVersion = '>=3.2';
 
 (function () {
-	var path = require('path'),
+	const path = require('path'),
 		findit = require('findit'),
 		fs = require('fs-extra'),
 		chalk = require('chalk'),
 		appc = require('node-appc'),
 		async = require('async'),
-		metabase = require(path.join(__dirname, 'metabase')),
+		metabase = require('./metabase'),
 		CopySourcesTask = require('./tasks/copy-sources-task'),
 		GenerateMetabaseTask = require('./tasks/generate-metabase-task'),
 		GenerateSourcesTask = require('./tasks/generate-sources-task'),
 		ScanReferencesTask = require('./tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '6.1.0';
+	const TI_MIN = '6.1.0';
 
 	/*
 	 State.
 	 */
-	var config,
-		cli,
+	let cli,
 		logger,
-		HL = chalk.magenta.inverse('Hyperloop'),
 		resourcesDir,
-		filesDir,
 		hyperloopBuildDir, // where we generate the JS wrappers during build time
 		hyperloopResources, // Where we copy the JS wrappers we need for runtime
-		afs,
+		afs;
+	const HL = chalk.magenta.inverse('Hyperloop'),
 		references = new Map(),
 		files = {},
-		exclusiveJars = [],
-		aars = {},
-		cleanup = [];
+		exclusiveJars = [];
 
 	/*
 	 Config.
@@ -61,9 +57,9 @@ exports.cliVersion = '>=3.2';
 	module.exports = HyperloopAndroidBuilder;
 
 	HyperloopAndroidBuilder.prototype.init = function (next) {
-		var builder = this.builder;
+		const builder = this.builder;
 
-		config = this.config;
+		// config = this.config;
 		cli = this.cli;
 		logger = this.logger;
 
@@ -81,12 +77,11 @@ exports.cliVersion = '>=3.2';
 		resourcesDir = path.join(builder.projectDir, 'Resources');
 		hyperloopResources = path.join(resourcesDir, 'android', 'hyperloop');
 
-		var buildDir = path.join(builder.projectDir, 'build');
-		var buildPlatform = path.join(buildDir, 'platform');
+		const buildDir = path.join(builder.projectDir, 'build');
+		const buildPlatform = path.join(buildDir, 'platform');
 		if (!afs.exists(buildDir)) {
 			fs.mkdirSync(buildDir);
-		}
-		else if (afs.exists(buildPlatform)) {
+		} else if (afs.exists(buildPlatform)) {
 			fs.removeSync(buildPlatform);
 		}
 		if (!afs.exists(resourcesDir)) {
@@ -102,15 +97,15 @@ exports.cliVersion = '>=3.2';
 		fs.ensureDirSync(hyperloopBuildDir);
 
 		// check to make sure the hyperloop module is actually configured
-		var moduleFound = builder.modules.map(function (i) {
-			if (i.id === 'hyperloop') { return i; };
-		}).filter(function (a) { return !!a; });
+		const moduleFound = builder.modules.some(function (i) {
+			return i.id === 'hyperloop';
+		});
 
 		// check that it was found
-		if (!moduleFound.length) {
+		if (!moduleFound) {
 			logger.error('You cannot use the Hyperloop compiler without configuring the module.');
 			logger.error('Add the following to your tiapp.xml <modules> section:');
-			var pkg = JSON.parse(path.join(__dirname, '../../package.json'));
+			const pkg = JSON.parse(path.join(__dirname, '../../package.json'));
 			logger.error('');
 			logger.error('	<module version="' + pkg.version + '">hyperloop</module>');
 			logger.warn('');
@@ -130,7 +125,7 @@ exports.cliVersion = '>=3.2';
 		cli.on('build.android.copyResource', {
 			priority: 99999,
 			pre: function (data, finished) {
-				var sourcePathAndFilename = data.args[0];
+				const sourcePathAndFilename = data.args[0];
 				if (references.has(sourcePathAndFilename)) {
 					data.ctx._minifyJS = data.ctx.minifyJS;
 					data.ctx.minifyJS = true;
@@ -138,7 +133,7 @@ exports.cliVersion = '>=3.2';
 				finished();
 			},
 			post: function (data, finished) {
-				var sourcePathAndFilename = data.args[0];
+				const sourcePathAndFilename = data.args[0];
 				if (references.has(sourcePathAndFilename)) {
 					data.ctx.minifyJS = data.ctx._minifyJS;
 					delete data.ctx._minifyJS;
@@ -150,7 +145,7 @@ exports.cliVersion = '>=3.2';
 		cli.on('build.android.compileJsFile', {
 			priority: 99999,
 			pre: function (data, finished) {
-				var fn = data.args[1];
+				const fn = data.args[1];
 				if (files[fn]) {
 					data.args[0]['original'] = files[fn];
 					data.args[0]['contents'] = files[fn];
@@ -175,12 +170,13 @@ exports.cliVersion = '>=3.2';
 
 	/**
 	 * Sets up the build for using the hyperloop module.
+	 * @param {Builder} builder this builder
+	 * @param {Function} callback callback function
 	 */
 	function prepareBuild(builder, callback) {
-		var metabaseJSON,
-			jars,
-			jarHashes = {},
-			sourceFolders = [resourcesDir],
+		let metabaseJSON;
+		const jarHashes = {},
+			sourceFolders = [ resourcesDir ],
 			sourceFiles = [],
 			platformAndroid = path.join(cli.argv['project-dir'], 'platform', 'android');
 
@@ -190,7 +186,7 @@ exports.cliVersion = '>=3.2';
 		metabase.util.setLog(logger);
 
 		// Need metabase for android API
-		jars = [builder.androidTargetSDK.androidJar];
+		const jars = [ builder.androidTargetSDK.androidJar ];
 
 		async.series([
 			/**
@@ -200,11 +196,11 @@ exports.cliVersion = '>=3.2';
 			 * @param {Function} next Callback function
 			 */
 			function (next) {
-				var depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
-				var libraryFilenames = depMap.libraries.appcompat;
+				const depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
+				let libraryFilenames = depMap.libraries.appcompat;
 				libraryFilenames = libraryFilenames.concat(depMap.libraries.design || []);
-				libraryFilenames.forEach(function(libraryFilename) {
-					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
+				libraryFilenames.forEach(function (libraryFilename) {
+					const libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
 					if (!afs.exists(libraryPathAndFilename)) {
 						return;
 					}
@@ -218,7 +214,8 @@ exports.cliVersion = '>=3.2';
 
 				next();
 			},
-			/**
+
+			/*
 			 * Manually adds JARs from module's lib directory, any JARs contained
 			 * in AARs and from the android platform folder.
 			 *
@@ -227,24 +224,26 @@ exports.cliVersion = '>=3.2';
 			 * so we can't use it. Once the AndroidBuilder gets an overhaul we can
 			 * consider removing this and simply require a pre filtered list directly
 			 * from the builder.
-			 *
-			 * @param {Function} next Callback function
 			 */
 			function (next) {
-				var jarRegExp = /\.jar$/;
-				var jarPaths = [];
+				const jarRegExp = /\.jar$/;
+				const jarPaths = [];
 
 				async.series([
+					/**
+					 * scan for *.jar files underneath module lib folders
+					 * @param  {Function} done callback function
+					 */
 					function scanModuleLibraries(done) {
-						async.each(builder.modules, function(module, cb) {
-							var libDir = path.join(module.modulePath, 'lib');
-							fs.readdir(libDir, function(err, libraryEntries) {
+						async.each(builder.modules, function (module, cb) {
+							const libDir = path.join(module.modulePath, 'lib');
+							fs.readdir(libDir, function (err, libraryEntries) {
 								if (err) {
 									return cb();
 								}
 
-								libraryEntries.forEach(function(entryName) {
-									var jarFile = path.join(libDir, entryName);
+								libraryEntries.forEach(function (entryName) {
+									const jarFile = path.join(libDir, entryName);
 									if (jarRegExp.test(entryName)) {
 										jarPaths.push(jarFile);
 									}
@@ -254,6 +253,10 @@ exports.cliVersion = '>=3.2';
 							});
 						}, done);
 					},
+					/**
+					 * Scan for android library JARs
+					 * @param  {Function} done callback function
+					 */
 					function scanAndroidLibraries(done) {
 						builder.androidLibraries.forEach(function (libraryInfo) {
 							libraryInfo.jars.forEach(function (libraryJarPathAndFilename) {
@@ -263,6 +266,10 @@ exports.cliVersion = '>=3.2';
 
 						done();
 					},
+					/**
+					 * Scan for *.jar inside the platform/android directory
+					 * @param  {Function} done callback function
+					 */
 					function scanPlatformDirectory(done) {
 						if (!afs.exists(platformAndroid)) {
 							return done();
@@ -278,14 +285,18 @@ exports.cliVersion = '>=3.2';
 							})
 							.on('end', done);
 					},
+					/**
+					 * Generate hashes for the found JARs
+					 * @param  {Function} done callback function
+					 */
 					function generateHashes(done) {
-						async.each(jarPaths, function(jarPathAndFilename, cb) {
-							fs.readFile(jarPathAndFilename, function(err, buffer) {
+						async.each(jarPaths, function (jarPathAndFilename, cb) {
+							fs.readFile(jarPathAndFilename, function (err, buffer) {
 								if (err) {
 									return cb();
 								}
 
-								var jarHash = builder.hash(buffer.toString());
+								const jarHash = builder.hash(buffer.toString());
 								jarHashes[jarHash] = jarHashes[jarHash] || [];
 								jarHashes[jarHash].push(jarPathAndFilename);
 
@@ -293,6 +304,10 @@ exports.cliVersion = '>=3.2';
 							});
 						}, done);
 					},
+					/**
+					 * Remove duplicate JARs by hash
+					 * @param  {Function} done callback function
+					 */
 					function filterDuplicates(done) {
 						Object.keys(jarHashes).forEach(function (hash) {
 							jars.push(jarHashes[hash][0]);
@@ -317,7 +332,7 @@ exports.cliVersion = '>=3.2';
 				// we can map requires by containing JAR
 
 				// Simple way may be to generate a "metabase" per-JAR
-				var task = new GenerateMetabaseTask({
+				const task = new GenerateMetabaseTask({
 					name: 'hyperloop:generateMetabase',
 					inputFiles: jars,
 					logger: logger
@@ -331,7 +346,7 @@ exports.cliVersion = '>=3.2';
 			function (next) {
 				// Need to generate the metabase first to know the full set of possible native requires as a filter when we look at requires in user's JS!
 				// look for any reference to hyperloop native libraries in our JS files
-				async.each(sourceFolders, function(folder, cb) {
+				async.each(sourceFolders, function (folder, cb) {
 					findit(folder)
 						.on('file', function (file) {
 							// Only consider JS files.
@@ -343,12 +358,12 @@ exports.cliVersion = '>=3.2';
 						.on('end', function () {
 							cb();
 						});
-				}, function(err) {
+				}, function (err) {
 					if (err) {
 						return next(err);
 					}
 
-					var task = new ScanReferencesTask({
+					const task = new ScanReferencesTask({
 						name: 'hyperloop:scanReferences',
 						incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'scanReferences'),
 						inputFiles: sourceFiles,
@@ -366,7 +381,7 @@ exports.cliVersion = '>=3.2';
 				});
 			},
 			function (next) {
-				var task = new GenerateSourcesTask({
+				const task = new GenerateSourcesTask({
 					name: 'hyperloop:generateSources',
 					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'generateSources'),
 					inputFiles: sourceFiles,
@@ -378,8 +393,8 @@ exports.cliVersion = '>=3.2';
 				task.run().then(next).catch(next);
 			},
 			function (next) {
-				var hyperloopSourcesPath = path.join(hyperloopBuildDir, 'js');
-				var task = new CopySourcesTask({
+				const hyperloopSourcesPath = path.join(hyperloopBuildDir, 'js');
+				const task = new CopySourcesTask({
 					name: 'hyperloop:copySources',
 					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'copySources'),
 					logger: logger
@@ -390,7 +405,7 @@ exports.cliVersion = '>=3.2';
 				task.postTaskRun = function () {
 					// Make sure our copied files won't be deleted by the builder since we
 					// process them outside the build pipeline's copy resources phase
-					task.outputFiles.forEach(function(pathAndFilename) {
+					task.outputFiles.forEach(function (pathAndFilename) {
 						if (builder.lastBuildFiles[pathAndFilename]) {
 							delete builder.lastBuildFiles[pathAndFilename];
 						}
@@ -406,4 +421,4 @@ exports.cliVersion = '>=3.2';
 			callback();
 		});
 	}
-})();
+}());
