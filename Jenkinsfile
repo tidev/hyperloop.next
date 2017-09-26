@@ -88,7 +88,7 @@ stage('Build') {
 							// 			step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
 							// 		}
 							// 	}
-							} // dir
+							// } // dir
 
 							// TODO Run the Java unit tests too!
 
@@ -221,7 +221,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							dir('zip') {
 								sh "unzip hyperloop-windows-${packageVersion}.zip"
 								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
-								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
+								sh 'mkdir -p plugins'
+								sh 'cp -R ../plugins/hyperloop plugins/hyperloop' // Copy in plugins/hyperloop folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
 								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies

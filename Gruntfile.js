@@ -23,8 +23,8 @@ module.exports = function (grunt) {
 				'android/plugins/hyperloop/hooks/android/test/*.js',
 				'iphone/plugins/hyperloop/hooks/ios/*.js',
 				'plugins/**/*.js',
-				'windows/plugins/hyperloop/hooks/**/*.js',
-				'windows/sdk_plugins/**/*.js'
+				'windows/plugins/hooks/*.js',
+				'windows/plugins/hyperloop/hooks/windows/*.js'
 			]
 		},
 		clangFormat: {
