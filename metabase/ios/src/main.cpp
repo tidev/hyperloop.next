@@ -59,7 +59,6 @@ static void showHelp (const std::string& programName) {
     std::cout << "  -hsp                full path to header search paths, comma separated             " << std::endl;
     std::cout << "  -pretty             output should be prettified JSON (false by default)           " << std::endl;
     std::cout << "  -x                  exclude system APIs (false by default)                        " << std::endl;
-    std::cout << "  -bit                Architecture, `32` or `64`, defaults to 64                    " << std::endl;
     std::cout << "                                                                                    " << std::endl;
     std::cout << "Example                                                                             " << std::endl;
     std::cout << "  " << name << " -i objc.h -o metabase.json -sim-sdk-path /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -min-ios-ver 9.0" << std::endl;
@@ -121,7 +120,6 @@ int main(int argc, char* argv[]) {
 	args.push_back("-fmessage-length=0");
 	args.push_back("-fdiagnostics-show-note-include-stack");
 	args.push_back("-fmacro-backtrace-limit=0");
-	args.push_back(std::string("-m" + bitArch).c_str());
 
 	if (includes.size() > 0) {
 		for (auto i = 0; i < includes.size(); i++) {
@@ -161,7 +159,7 @@ int main(int argc, char* argv[]) {
 		return EXIT_FAILURE;
 	}
 	auto index = clang_createIndex(1, 1);
-	auto tu = clang_parseTranslationUnit(index, nullptr, &args[0], (int)args.size(), nullptr, 0,0);
+	auto tu = clang_parseTranslationUnit(index, nullptr, &args[0], (int)args.size(), nullptr, 0, 0);
 	auto ctx = hyperloop::parse(tu, iphone_sim_root, min_ios_version, excludeSys);
 	auto tree = ctx->getParserTree();
 	auto root = tree->toJSON();
