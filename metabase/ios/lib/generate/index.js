@@ -25,7 +25,8 @@ function makeModule (modules, e, state) {
 				static_variables: {},
 				blocks: [],
 				frameworks: {},
-				state: state
+				state: state,
+				customSource: e.customSource || false
 			};
 		}
 		return modules[e.framework];
