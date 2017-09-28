@@ -1,8 +1,8 @@
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const expect = chai.expect;
-const GenerateMetabaseTask = require('../hooks/android/tasks/generate-metabase-task');
-const metabase = require('../hooks/android/metabase');
+const GenerateMetabaseTask = require('../tasks/generate-metabase-task');
+const metabase = require('../metabase');
 const mockFs = require('mock-fs');
 const sinon = require('sinon');
 
