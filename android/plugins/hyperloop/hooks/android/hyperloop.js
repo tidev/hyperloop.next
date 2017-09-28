@@ -240,7 +240,7 @@ exports.cliVersion = '>=3.2';
 							var libDir = path.join(module.modulePath, 'lib');
 							fs.readdir(libDir, function(err, libraryEntries) {
 								if (err) {
-									cb();
+									return cb();
 								}
 
 								libraryEntries.forEach(function(entryName) {
@@ -279,7 +279,7 @@ exports.cliVersion = '>=3.2';
 						async.each(jarPaths, function(jarPathAndFilename, cb) {
 							fs.readFile(jarPathAndFilename, function(err, buffer) {
 								if (err) {
-									cb();
+									return cb();
 								}
 
 								var jarHash = builder.hash(buffer.toString());
