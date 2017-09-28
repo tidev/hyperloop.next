@@ -1,11 +1,10 @@
 const babel = require('babel-core');
-const babili = require('babel-preset-babili');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
-const CopySourcesTask = require('../hooks/android/tasks/copy-sources-task');
+const CopySourcesTask = require('../tasks/copy-sources-task');
 const expect = chai.expect;
 const fs = require('fs-extra');
-const metabase = require('../hooks/android/metabase');
+const minify = require('babel-preset-minify');
 const mockFs = require('mock-fs');
 const path = require('path');
 const sinon = require('sinon');
@@ -31,7 +30,7 @@ function patchBabelAndMockFsLazyRequireIssue() {
 		minified: true,
 		compact: true,
 		comments: false,
-		presets: [babili]
+		presets: [ minify ]
 	});
 	mockFs({
 		'incremental': {},

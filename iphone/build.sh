@@ -68,7 +68,7 @@ cd $CWD
 # package the metabase into the .zip
 echo "Packaging metabase..."
 cd ../metabase/ios
-./build.sh >/dev/null
+./build.sh
 rm *.tgz
 npm pack >/dev/null 2>&1
 mkdir -p $CWD/build/npm
