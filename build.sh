@@ -107,7 +107,7 @@ mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
 # FIXME Use appc cli to build!
-ant test dist
+ant clean test dist
 if [ $? -ne 0 ];
 then
 	exit $?

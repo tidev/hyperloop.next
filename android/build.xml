@@ -51,14 +51,17 @@
 	</target>
 
 	<target name="post.clean">
-		<delete dir="${basedir}/build"/>
-		<delete dir="${basedir}/documentation"/>
-		<delete dir="${basedir}/example"/>
-		<delete dir="${basedir}/libs"/>
-		<delete file="${basedir}/LICENSE"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules"/>
-		<delete file="${basedir}/plugins/hyperloop/hooks/hyperloop.js"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/metabase/hyperloop"/>
+		<delete dir="${basedir}/build" quiet="true"/>
+		<delete dir="${basedir}/documentation" quiet="true"/>
+		<delete dir="${basedir}/example" quiet="true"/>
+		<delete dir="${basedir}/libs" quiet="true"/>
+		<delete file="${basedir}/LICENSE" quiet="true"/>
+		<delete dir="${basedir}/plugins/hyperloop/node_modules" quiet="true"/>
+		<delete file="${basedir}/plugins/hyperloop/hooks/hyperloop.js" quiet="true"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/metabase/hyperloop" quiet="true"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/coverage" quiet="true"/>
+		<delete dir="${basedir}/plugins/hyperloop/hooks/android/.nyc_output" quiet="true"/>
+		<delete file="${basedir}/plugins/hyperloop/hooks/android/junit_report.xml" quiet="true"/>
 	</target>
 
 	<target name="post.dist" description="Include plugins folder in module zip">
@@ -77,7 +80,8 @@
 		<!-- Include hyperloop wrappers into module zip -->
 		<zip destfile="${dist}/${module.id}-android-${manifest.version}.zip" update="true">
 			<zipfileset dir="${ti.module.root}/plugins" prefix="plugins">
-				<include name="**/*"/>
+				<!-- Remove plugin hook test directory manually -->
+				<exclude name="hyperloop/hooks/android/test/"/>
 			</zipfileset>
 		</zip>
 	</target>
