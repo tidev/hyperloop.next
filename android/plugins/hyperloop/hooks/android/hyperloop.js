@@ -271,6 +271,9 @@ exports.cliVersion = '>=3.2';
 							.on('file', function (file) {
 								if (path.extname(file) === '.jar') {
 									jarPaths.push(file);
+									// Also add jars to the list of exclusive jars that are only
+									// available to Hyperloop so they get added to the dexer.
+									exclusiveJars.push(file);
 								}
 							})
 							.on('end', done);
