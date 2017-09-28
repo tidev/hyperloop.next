@@ -1,7 +1,7 @@
 const fs = require('fs-extra');
 const IncrementalFileTask = require('appc-tasks').IncrementalFileTask;
 const babel = require('babel-core');
-const babili = require('babel-preset-babili');
+const minify = require('babel-preset-minify');
 const path = require('path');
 
 /**
@@ -213,7 +213,7 @@ class CopySourcesTask extends IncrementalFileTask {
 					minified: true,
 					compact: true,
 					comments: false,
-					presets: [babili]
+					presets: [ minify ]
 				}, (err, result) => {
 					if (err) {
 						return reject(err);

@@ -29,7 +29,7 @@ function downloadURL(url, callback) {
 
 	var tempName = temp.path({ suffix: '.zip' }),
 		tempDir = path.dirname(tempName);
-	
+
 	fs.ensureDirSync(tempDir);
 
 	var tempStream = fs.createWriteStream(tempName),
@@ -382,7 +382,7 @@ function writeiOSManifest(next) {
  * write the updated android plugin package.json if neccesary
  */
 function writeAndroidPluginPackage (next) {
-	var fn = path.join(__dirname, '..', 'android', 'plugins', 'hyperloop', 'package.json'),
+	var fn = path.join(__dirname, '..', 'android', 'plugins', 'hyperloop', 'hooks', 'android', 'package.json'),
 		pkg = require(path.join(__dirname, '..', 'package.json')),
 		fnc = require(fn);
 
@@ -533,7 +533,7 @@ if (module.id === ".") {
 		program
 			.version(packageJson.version)
 			// TODO Allow choosing a URL or zipfile as SDK to install!
-			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', 'master')
+			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', '6_2_X')
 			.option('-P, --no-progress-bars', 'disable progress bars')
 			.parse(process.argv);
 
