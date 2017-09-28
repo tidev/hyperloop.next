@@ -4,7 +4,7 @@ const expect = chai.expect;
 const fs = require('fs');
 const mockFs = require('mock-fs');
 const path = require('path');
-const ScanReferencesTask = require('../hooks/android/tasks/scan-references-task');
+const ScanReferencesTask = require('../tasks/scan-references-task');
 const sinon = require('sinon');
 
 const noopBunyanLogger = {

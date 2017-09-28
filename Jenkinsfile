@@ -29,9 +29,17 @@ node {
 	stage('Setup') {
 		def packageJSON = jsonParse(readFile('package.json'))
 		packageVersion = packageJSON['version']
-		// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
-		// So we need to stash it all, not per-platform directories
-		stash includes: '**/*', name: 'source'
+
+		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+			sh 'npm i -g npm' // install latest npm
+			// Now do top-level linting
+			sh 'npm install'
+			sh 'npm test'
+
+			// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
+			// So we need to stash it all, not per-platform directories
+			stash includes: '**/*', name: 'source'
+		} // nodejs
 	} // stage
 } // node
 
@@ -93,9 +101,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
 								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
 									sh 'npm install --production'
+									sh 'rm -rf package-lock.json' // Now remove the package-lock.json!
+									sh 'rm -rf test' // remove the test directory
 								}
-								// Now remove the package-lock.json!
-								sh 'rm -rf plugins/hyperloop/hooks/android/package-lock.json'
 								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
 								// Remove docs and examples
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
