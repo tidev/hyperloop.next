@@ -176,6 +176,14 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		this.logger.error('	<min-ios-ver>' + IOS_MIN + '</min-ios-ver>\n');
 		process.exit(1);
 	}
+
+	var defaultXcodePath = path.join('/Applications', 'Xcode.app');
+	if (!fs.existsSync(defaultXcodePath)) {
+		this.logger.error('Hyperloop requires Xcode to be located at its default location under ' + defaultXcodePath);
+		this.logger.error('Please make sure to move Xcode to this location before continuing. For further information');
+		this.logger.error('on this issue check https://jira.appcelerator.org/browse/TIMOB-23956');
+		process.exit(1);
+	}
 };
 
 /**
