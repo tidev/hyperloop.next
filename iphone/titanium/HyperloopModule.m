@@ -976,58 +976,8 @@ GETNUMVALUE(unsignedShort, UnsignedShort, TiValueMakeNumber, NAN);
 GETNUMVALUE(unsignedChar, UnsignedChar, TiValueMakeNumber, NAN);
 
 // directly from titanium_prep
-static const char ALPHA [] = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
 extern NSString * const TI_APPLICATION_GUID;
 extern NSString * const TI_APPLICATION_DEPLOYTYPE;
-
-/**
- * returns true if platform GUID, false if not (open source, legacy, invalid, etc)
- *
- * the platform guid is a special guid where it is a valid UUID v4 string but specifically
- * encoded in a certain way so that we can determine predicitably if it's a platform generated
- * GUID or one that wasn't generated with the platform.
- *
- * The GUID format is a generated random UUID v4 but where the following is changed:
- *
- * 9cba353d-81aa-4593-9111-2e83c0136c14
- *					  ^
- *					  +---- always 9
- *
- * 9cba353d-81aa-4593-9111-2e83c0136c14
- *					   ^^^
- *					   +---- the following 3 characters will be the same and will be
- *							 one of 0-9a-f
- *
- * 9cba353d-81aa-4593-9111-2e83c0136c14
- *						   ^
- *						   +----- the last remaining string is a SHA1 encoding of
- *								  the org_id + app id (first 12 characters of the SHA1)
- *
- */
-static BOOL isPlatformGUID (NSString *guid) {
-	// UUID v4 is 36 characters long
-	if ([guid length] == 36) {
-		// example guid: 9cba353d-81aa-4593-9111-2e83c0136c14
-		// for org_id 14301, appid : com.tii
-		if ([guid characterAtIndex:19] == '9') {
-			char alpha = [guid characterAtIndex:20];
-			BOOL found = NO;
-			for (size_t c=0;c<sizeof(ALPHA);c++) {
-				if (alpha == ALPHA[c]) {
-					found = YES;
-					break;
-				}
-			}
-			if (found) {
-				NSString *str = [guid substringWithRange:NSMakeRange(20, 3)];
-				if ([str isEqualToString:[NSString stringWithFormat:@"%c%c%c",alpha,alpha,alpha]]) {
-					return YES;
-				}
-			}
-		}
-	}
-	return NO;
-}
 
 @implementation Hyperloop
 
@@ -1038,20 +988,6 @@ static BOOL isPlatformGUID (NSString *guid) {
 #if TARGET_OS_SIMULATOR
 	NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
 #endif
-
-	// if not a valid platform GUID, we aren't going to enable Hyperloop
-	if (isPlatformGUID(TI_APPLICATION_GUID) == NO) {
-		NSLog(@"[ERROR] Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import");
-#if TARGET_OS_SIMULATOR
-		UIAlertView *theAlert = [[UIAlertView alloc] initWithTitle:@"Hyperloop"
-                                                           message:@"Hyperloop is not currently supported because this application has not been registered. To register this application with the Appcelerator Platform, run the command: appc new --import"
-                                                          delegate:nil
-                                                 cancelButtonTitle:@"OK"
-                                                 otherButtonTitles:nil];
-		[theAlert show];
-#endif
-		return;
-	}
 
 	context = kroll;
 	bridge = krollbridge;
