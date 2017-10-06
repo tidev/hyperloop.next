@@ -13,6 +13,7 @@
 #include "union.h"
 #include "typedef.h"
 #include "enum.h"
+#include "BlockParser.h"
 
 namespace hyperloop {
 	/**
@@ -837,9 +838,12 @@ namespace hyperloop {
 	/**
 	 * add a block if found as a type
 	 */
-	void addBlockIfFound (ParserContext *context, const Definition *definition, const std::string &framework, Type *type, const std::string &encoding) {
+	void addBlockIfFound (Definition *definition, CXCursor cursor) {
+		auto cursorType = clang_getCursorType(cursor);
+		auto typeSpelling = CXStringToString(clang_getTypeSpelling(cursorType));
+		auto type = new Type(definition->getContext(), cursorType, typeSpelling);
 		if (type->getType() == "block") {
-			context->getParserTree()->addBlock(framework, type->getValue());
+			BlockParser::parseBlock(definition, cursor, type);
 		}
 	}
 

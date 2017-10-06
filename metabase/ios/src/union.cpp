@@ -20,7 +20,7 @@ namespace hyperloop {
 				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
 				auto type = new Type(unionDef->getContext(), argType);
 				unionDef->addField(displayName, type, encoding);
-				hyperloop::addBlockIfFound(unionDef->getContext(), unionDef, unionDef->getFramework(), type, encoding);
+				hyperloop::addBlockIfFound(unionDef, cursor);
 				break;
 			}
 			case CXCursor_UnexposedAttr: {
