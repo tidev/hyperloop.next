@@ -38,28 +38,6 @@ namespace hyperloop {
 		return CXChildVisit_Continue;
 	}
 
-	/**
-	 * Parses the argument of a block and adds it to our metabase if it's another block
-	 *
-	 * @param cursor Cursor to the argument
-	 * @param parent Cursor to the block the argument belongs to
-	 * @param clientData Can be cast to the MethodDefinition the block is an argument for
-	 * @return Always continue traversing argument siblings, so return CXChildVisit_Continue
-	 */
-	static CXChildVisitResult parseBlockArgument(CXCursor cursor, CXCursor parent, CXClientData clientData) {
-		auto methodDef = static_cast<MethodDefinition*>(clientData);
-		auto argType = clang_getCursorType(cursor);
-		auto typeValue = CXStringToString(clang_getTypeSpelling(argType));
-		auto type = new Type(methodDef->getContext(), argType, typeValue);
-
-		if (type->getType() == "block") {
-			auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-			addBlockIfFound(methodDef->getContext(), methodDef, methodDef->getFramework(), type, encoding);
-		}
-
-		return CXChildVisit_Continue;
-	}
-
 	MethodDefinition::MethodDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx, bool _instance, bool _optional) :
 		Definition(cursor, name, ctx), instance(_instance), optional(_optional), encoding(CXStringToString(clang_getDeclObjCTypeEncoding(cursor))), returnType(nullptr) {
 	}
@@ -82,10 +60,7 @@ namespace hyperloop {
 			type->setType(EncodingToType(encoding));
 		}
 
-		if (type->getType() == "block") {
-			addBlockIfFound(this->getContext(), this, this->getFramework(), type, encoding);
-			clang_visitChildren(argumentCursor, parseBlockArgument, this);
-		}
+		addBlockIfFound(this, argumentCursor);
 
 		arguments.add(displayName, type, encoding);
 	}
@@ -121,7 +96,7 @@ namespace hyperloop {
 		auto returnType = clang_getCursorResultType(cursor);
 		auto returnTypeValue = CXStringToString(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
 		this->returnType = new Type(context, returnType, returnTypeValue);
-		addBlockIfFound(context, this, this->getFramework(), this->returnType, "");
+		addBlockIfFound(this, cursor);
 		clang_visitChildren(cursor, parseMethodMember, this);
 		return CXChildVisit_Continue;
 	}

@@ -24,6 +24,7 @@ namespace hyperloop {
 				auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
 				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
 				functionDef->addArgument(displayName, argType, typeValue, encoding);
+				addBlockIfFound(functionDef, cursor);
 				break;
 			}
 			case CXCursor_ObjCClassRef:
@@ -59,7 +60,6 @@ namespace hyperloop {
 		if (type->getType() == "unexposed") {
 			type->setType(EncodingToType(encoding));
 		}
-		addBlockIfFound(this->getContext(), this, this->getFramework(), type, encoding);
 		arguments.add(argName, type, filterEncoding(encoding));
 	}
 
@@ -85,7 +85,7 @@ namespace hyperloop {
 		auto returnTypeValue = CXStringToString(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
 		this->returnType = new Type(context, returnType, returnTypeValue);
 		this->variadic = clang_isFunctionTypeVariadic(clang_getCursorType(cursor));
-		addBlockIfFound(context, this, this->getFramework(), this->returnType, "");
+		addBlockIfFound(this, cursor);
 		context->getParserTree()->addFunction(this);
 		clang_visitChildren(cursor, parseFunctionMember, this);
 		return CXChildVisit_Continue;
