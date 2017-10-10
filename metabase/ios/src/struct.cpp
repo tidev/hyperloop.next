@@ -24,7 +24,7 @@ namespace hyperloop {
 					type->setType(EncodingToType(encoding));
 				}
 				structDef->addField(displayName, type, encoding);
-				addBlockIfFound(structDef->getContext(), structDef, structDef->getFramework(), type, encoding);
+				addBlockIfFound(structDef, cursor);
 				break;
 			}
 			case CXCursor_UnexposedAttr: {

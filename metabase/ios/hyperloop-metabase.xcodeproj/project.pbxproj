@@ -36,6 +36,7 @@
 		24F555191BAD1F9200EC7113 /* function.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 24F555181BAD1F9200EC7113 /* function.cpp */; };
 		24F5551C1BAD27C800EC7113 /* struct.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 24F5551B1BAD27C800EC7113 /* struct.cpp */; };
 		24F5551F1BAE122500EC7113 /* union.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 24F5551E1BAE122500EC7113 /* union.cpp */; };
+		4A4A4E291F87C359009DE64F /* BlockParser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4A4A4E271F87C359009DE64F /* BlockParser.cpp */; };
 		B626CE681B3E79A4000D2988 /* libclang.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = B626CE671B3E79A4000D2988 /* libclang.dylib */; };
 /* End PBXBuildFile section */
 
@@ -89,6 +90,8 @@
 		24F5551B1BAD27C800EC7113 /* struct.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = struct.cpp; path = src/struct.cpp; sourceTree = SOURCE_ROOT; };
 		24F5551D1BAE122500EC7113 /* union.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = union.h; path = src/union.h; sourceTree = SOURCE_ROOT; };
 		24F5551E1BAE122500EC7113 /* union.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = union.cpp; path = src/union.cpp; sourceTree = SOURCE_ROOT; };
+		4A4A4E271F87C359009DE64F /* BlockParser.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = BlockParser.cpp; path = src/BlockParser.cpp; sourceTree = SOURCE_ROOT; };
+		4A4A4E281F87C359009DE64F /* BlockParser.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BlockParser.h; path = src/BlockParser.h; sourceTree = SOURCE_ROOT; };
 		B626CE381B3E77D0000D2988 /* hyperloop-metabase */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "hyperloop-metabase"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B626CE671B3E79A4000D2988 /* libclang.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libclang.dylib; path = Toolchains/XcodeDefault.xctoolchain/usr/lib/libclang.dylib; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
@@ -171,6 +174,8 @@
 				24F554FA1BAB906700EC7113 /* util.h */,
 				24F554FB1BAB906700EC7113 /* var.cpp */,
 				24F554FC1BAB906700EC7113 /* var.h */,
+				4A4A4E271F87C359009DE64F /* BlockParser.cpp */,
+				4A4A4E281F87C359009DE64F /* BlockParser.h */,
 			);
 			name = src;
 			path = "hyperloop-metabase";
@@ -308,6 +313,7 @@
 				24F5551C1BAD27C800EC7113 /* struct.cpp in Sources */,
 				24F5550C1BAB906700EC7113 /* var.cpp in Sources */,
 				24F5551F1BAE122500EC7113 /* union.cpp in Sources */,
+				4A4A4E291F87C359009DE64F /* BlockParser.cpp in Sources */,
 				24F5550A1BAB906700EC7113 /* typedef.cpp in Sources */,
 				24F555121BAB906700EC7113 /* method.cpp in Sources */,
 				24F5550B1BAB906700EC7113 /* util.cpp in Sources */,

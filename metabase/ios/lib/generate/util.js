@@ -924,7 +924,7 @@ function findBlock (json, signature, fn) {
 	if (blocks && blocks.length) {
 		for (c = 0; c < blocks.length; c++) {
 			block = blocks[c];
-			if (block && block.signature === signature) {
+			if (block && matchBlockSignature(block.signature, signature)) {
 				return block;
 			}
 		}
@@ -940,15 +940,40 @@ function findBlock (json, signature, fn) {
 		if (blocks && blocks.length) {
 			for (var f = 0; f < blocks.length; f++) {
 				block = blocks[f];
-				if (block && block.signature === signature) {
+				if (block && matchBlockSignature(block.signature, signature)) {
 					return block;
 				}
 			}
 		}
 	}
-	console.log(JSON.stringify(fn,null,2));
-	console.error("Couldn't find block with signature:", signature, "for framework:", fn.framework, ", function:", fn);
+	console.error("Couldn't find block with signature:", signature, "for framework:", fn.framework);
 	process.exit(1);
+}
+
+/**
+ * Matches two block signatures against each other to see if they are the same.
+ *
+ * Sometimes the metabase generator outputs slightly different signatures which
+ * describe the same block, e.g. void (^)(_Bool) and void (^)(BOOL). This
+ * function tries to normalize both signatures and then matches them again if
+ * a direct comparison yields no match.
+ *
+ * @param {String} signature Block signature
+ * @param {String} otherSignature Other block signature to match against
+ * @return {Boolean} True if both signatures match, false if not
+ */
+function matchBlockSignature(signature, otherSignature) {
+	if (signature === otherSignature) {
+		return true;
+	}
+
+	var normalizedSignature = signature.replace(/_Bool|bool/, 'BOOL');
+	var normalizedOtherSignature = otherSignature.replace(/_Bool|bool/, 'BOOL');
+	if (normalizedSignature === normalizedOtherSignature) {
+		return true;
+	}
+
+	return false;
 }
 
 function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
