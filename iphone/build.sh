@@ -61,6 +61,8 @@ cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 echo "Installing npm dependency..."
 cd build/zip/plugins/hyperloop/hooks/ios
 npm install findit --production >/dev/null 2>&1
+npm install fs-extra --production >/dev/null 2>&1
+
 rm -rf node_modules/findit/test
 rm -rf package-lock.json
 cd $CWD
