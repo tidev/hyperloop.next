@@ -133,7 +133,7 @@ namespace hyperloop {
 	/**
 	 * add a block if found as a type
 	 */
-	void addBlockIfFound (ParserContext *context, const Definition *definition, const std::string &framework, Type *type, const std::string &encoding);
+	void addBlockIfFound (Definition *definition, CXCursor cursor);
 
 	/**
 	 * parse a block signature and return the returns value and place any args in the
