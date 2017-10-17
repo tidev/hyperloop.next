@@ -27,22 +27,7 @@ exports.init = function(logger, config, cli, nodeappc) {
             },
         ];
 
-        var w81support = !isVS2017(data);
-
-        // Visual Studio 2017 doesn't support Windows/Phone 8.1 project anymore
-        if (w81support) {
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
-            });
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
-            });
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
-            });
-        }
-
-        var archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+        var archs = ['win10'];
 
         var csharp_dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation');
         archs.forEach(function(platform) {
@@ -65,8 +50,7 @@ exports.init = function(logger, config, cli, nodeappc) {
      * Copy dependencies
      */
     cli.on('build.module.pre.package', function (data, callback) {
-        var w81support = !isVS2017(data),
-            archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+        var archs = ['win10'];
 
         archs.forEach(function(platform){
             ['ARM', 'x86'].forEach(function(arch){
