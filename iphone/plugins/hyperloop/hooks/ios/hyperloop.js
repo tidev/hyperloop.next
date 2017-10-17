@@ -858,6 +858,60 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
 	var generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
 
+	var frameworksGroup = xobjs.PBXGroup[mainGroupChildren.filter(function (child) { return child.comment === 'Frameworks'; })[0].value];
+	var frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXFrameworksBuildPhase[phase.value]; })[0].value];
+	var frameworkRegExp = /\.framework$/;
+	var frameworksToAdd = [];
+	var alreadyAddedFrameworks = [];
+
+	if (this.hyperloopConfig.ios.xcodebuild && Array.isArray(this.hyperloopConfig.ios.xcodebuild.frameworks)) {
+		this.hyperloopConfig.ios.xcodebuild.frameworks.forEach(function (framework) {
+			framework && frameworksToAdd.push(framework);
+		});
+	}
+
+	frameworksToAdd.forEach(function (framework) {
+		if (!frameworkRegExp.test(framework)) {
+			framework += '.framework';
+		}
+		if (alreadyAddedFrameworks[framework]) {
+			return;
+		}
+		alreadyAddedFrameworks[framework] = 1;
+
+		var fileRefUuid = generateUuid();
+		var buildFileUuid = generateUuid();
+
+		// add the file reference
+		xobjs.PBXFileReference[fileRefUuid] = {
+			isa: 'PBXFileReference',
+			lastKnownFileType: 'wrapper.framework',
+			name: '"' + framework + '"',
+			path: '"' + path.join('System', 'Library', 'Frameworks', framework) + '"',
+			sourceTree: '"SDKROOT"'
+		};
+		xobjs.PBXFileReference[fileRefUuid + '_comment'] = framework;
+
+		// add the library to the Frameworks group
+		frameworksGroup.children.push({
+			value: fileRefUuid,
+			comment: framework
+		});
+
+		// add the build file
+		xobjs.PBXBuildFile[buildFileUuid] = {
+			isa: 'PBXBuildFile',
+			fileRef: fileRefUuid,
+			fileRef_comment: framework
+		};
+		xobjs.PBXBuildFile[buildFileUuid + '_comment'] = framework + ' in Frameworks';
+
+		frameworksBuildPhase.files.push({
+			value: buildFileUuid,
+			comment: framework + ' in Frameworks'
+		});
+	}, this);
+
 	// create a Hyperloop group so that the code is nice and tidy in the Xcode project
 	var hyperloopGroupUuid = (mainGroupChildren.filter(function (child) { return child.comment === 'Hyperloop'; })[0] || {}).value;
 	var hyperloopGroup = hyperloopGroupUuid && xobjs.PBXGroup[hyperloopGroupUuid];
@@ -1256,6 +1310,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	// add our header include paths if we have custom ones
 	if (this.headers) {
 		addParam('HEADER_SEARCH_PATHS', '$(inherited)');
+		addParam('FRAMEWORK_SEARCH_PATHS', '$(inherited)');
 		this.headers.forEach(function (header) {
 			addParam('HEADER_SEARCH_PATHS', header);
 			addParam('FRAMEWORK_SEARCH_PATHS', header);
