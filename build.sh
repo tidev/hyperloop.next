@@ -106,8 +106,8 @@ rm -rf libs/*
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
-# ant clean test dist
-appc run -p android --build-only
+# FIXME Use appc cli to build!
+ant clean test dist
 if [ $? -ne 0 ];
 then
 	exit $?
