@@ -949,15 +949,26 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 						buildSettings.ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = 'YES';
 					}
 
-					// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
-					var searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
-					if (searchPaths.indexOf('$(inherited)') === -1) {
-						searchPaths += ' $(inherited)';
+					var dynamicFrameworksSearchPath = '@executable_path/Frameworks';
+					if (Array.isArray(buildSettings.LD_RUNPATH_SEARCH_PATHS)) {
+						// Due to a bug in 6.2.X LD_RUNPATH_SEARCH_PATHS can also be an array of paths
+						var hasSearchPath = buildSettings.LD_RUNPATH_SEARCH_PATHS.some(function(searchPath) {
+							return searchPath.indexOf(dynamicFrameworksSearchPath) !== -1;
+						});
+						if (!hasSearchPath) {
+							buildSettings.LD_RUNPATH_SEARCH_PATHS.push(dynamicFrameworksSearchPath);
+						}
+					} else {
+						// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
+						var searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
+						if (searchPaths.indexOf('$(inherited)') === -1) {
+							searchPaths += ' $(inherited)';
+						}
+						if (searchPaths.indexOf(dynamicFrameworksSearchPath) === -1) {
+							searchPaths += ' ' + dynamicFrameworksSearchPath;
+						}
+						buildSettings.LD_RUNPATH_SEARCH_PATHS = '"' + searchPaths.trim() + '"';
 					}
-					if (searchPaths.indexOf('@executable_path/Frameworks') === -1) {
-						searchPaths += ' @executable_path/Frameworks';
-					}
-					buildSettings.LD_RUNPATH_SEARCH_PATHS = '"' + searchPaths.trim() + '"';
 				}, this);
 			}
 		}, this);
