@@ -840,6 +840,9 @@ namespace hyperloop {
 	 */
 	void addBlockIfFound (Definition *definition, CXCursor cursor) {
 		auto cursorType = clang_getCursorType(cursor);
+		if (cursorType.kind == CXType_Typedef) {
+			cursorType = clang_getCanonicalType(clang_getTypedefDeclUnderlyingType(cursor));
+		}
 		auto typeSpelling = CXStringToString(clang_getTypeSpelling(cursorType));
 		auto type = new Type(definition->getContext(), cursorType, typeSpelling);
 		if (type->getType() == "block") {
