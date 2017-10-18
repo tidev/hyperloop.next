@@ -2,7 +2,7 @@
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '6.9.5'
+def nodeVersion = '6.11.3'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
 def sdkVersion = '6.2.0.GA'
@@ -14,7 +14,7 @@ def packageVersion = ''
 def appc = new AppcCLI(steps)
 appc.environment = 'prod'
 
-node {
+node('osx || linux') {
 	stage('Checkout') {
 		// checkout scm
 		// Hack for JENKINS-37658 - see https://support.cloudbees.com/hc/en-us/articles/226122247-How-to-Customize-Checkout-for-Pipeline-Multibranch
@@ -72,6 +72,26 @@ stage('Build') {
 						}
 
 						dir('android') {
+							// Now do android hook tests
+							// FIXME On the build machines this abruptly exits right after print name of first suite.
+							// Something is broken here, but if I log into the box and run manually, it works.
+							// dir('plugins/hyperloop/hooks/android') {
+							// 	sh 'npm install'
+							// 	try {
+							// 		sh 'npm test'
+							// 	} finally {
+							// 		// record results even if tests/coverage 'fails'
+							// 		if (fileExists('junit_report.xml')) {
+							// 			junit 'junit_report.xml'
+							// 		}
+							// 		if (fileExists('coverage/cobertura-coverage.xml')) {
+							// 			step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+							// 		}
+							// 	}
+							// } // dir
+
+							// TODO Run the Java unit tests too!
+
 							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 							writeFile file: 'build.properties', text: """
 titanium.platform=${activeSDKPath}/android
@@ -105,6 +125,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 									sh 'rm -rf test' // remove the test directory
 								}
 								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
+
 								// Remove docs and examples
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
@@ -200,15 +221,16 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							dir('zip') {
 								sh "unzip hyperloop-windows-${packageVersion}.zip"
 								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
-								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
+								sh 'mkdir -p plugins'
+								sh 'cp -R ../plugins/hyperloop plugins/hyperloop' // Copy in plugins/hyperloop folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
 								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies
 									sh 'npm install --production'
+									sh 'rm -rf package-lock.json' // Now remove the package-lock.json!
 								}
-								// Now remove the package-lock.json!
-								sh 'rm -rf plugins/hyperloop/hooks/windows/package-lock.json'
 								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
+
 								// Remove docs and examples
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"

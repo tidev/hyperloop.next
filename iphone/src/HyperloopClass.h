@@ -1,9 +1,9 @@
 /**
  * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
 
-#import <Foundation/Foundation.h>
+@import Foundation;
 #import "define.h"
 
 @interface HyperloopClass : BASECLASS
@@ -16,11 +16,11 @@
 /**
  * create a new instance using classname
  */
--(instancetype)initWithClassName: (NSString *)clsname alloc:(BOOL)alloc init:(SEL)init args:(NSArray*)args;
+- (instancetype)initWithClassName:(NSString *)clsname alloc:(BOOL)alloc init:(SEL)init args:(NSArray *)args;
 
 /**
  * return the right target object
  */
--(id)target;
+- (id)target;
 
 @end

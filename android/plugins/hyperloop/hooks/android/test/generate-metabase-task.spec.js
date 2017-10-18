@@ -1,3 +1,5 @@
+/* eslint no-unused-expressions: "off" */
+'use strict';
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const expect = chai.expect;
@@ -51,13 +53,13 @@ describe('GenerateMetabaseTask', () => {
 
 		afterEach(() => {
 			mockFs.restore();
-		})
+		});
 
 		it('should call through to metabase generator', () => {
 			let emptyDummyMetabase = {};
 			let metabaseMock = sinon.mock(metabase.metabase);
 			let loadMetabaseExpectations = metabaseMock.expects('loadMetabase');
-			loadMetabaseExpectations.withArgs(['dummy.jar'], { platform: `android-${dummyBuilder.realTargetSDK}` })
+			loadMetabaseExpectations.withArgs([ 'dummy.jar' ], { platform: `android-${dummyBuilder.realTargetSDK}` });
 			loadMetabaseExpectations.callsArgWith(2, null, emptyDummyMetabase);
 			task.builder = dummyBuilder;
 			task.addInputFile('dummy.jar');

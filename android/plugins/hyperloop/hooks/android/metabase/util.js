@@ -1,8 +1,8 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-Present by Appcelerator, Inc.
  */
-var chalk = require('chalk'),
+const chalk = require('chalk'),
 	logger = {
 		info: function () {
 			console.log.apply(console, arguments);
@@ -29,7 +29,7 @@ function createLogger(log, level) {
 }
 
 function setLog (logFn) {
-	['info','debug','warn','error','trace'].forEach(function (level) {
+	[ 'info', 'debug', 'warn', 'error', 'trace' ].forEach(function (level) {
 		createLogger(logFn, level);
 	});
 }

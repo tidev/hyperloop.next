@@ -36,11 +36,19 @@
   ],
   "license": "UNLICENSED",
   "private": true,
+  "scripts": {
+    "test": "JUNIT_REPORT_PATH=junit_report.xml grunt"
+  },
   "devDependencies": {
     "async": "~0.9.0",
+    "clang-format": "*",
     "colors": "~0.6.2",
     "commander": "*",
     "fs-extra": "~2.0.0",
+    "grunt": "^1.0.1",
+    "grunt-appc-js": "^2.0.1",
+    "grunt-clang-format": "^1.0.0",
+    "grunt-cli": "^1.2.0",
     "node-appc": "0.2.21",
     "request": "~2.27.0",
     "semver": "^5.1.0",

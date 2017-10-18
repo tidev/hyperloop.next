@@ -77,7 +77,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @inheritdoc
 	 */
 	get incrementalOutputs() {
-		return [this.outputDirectory];
+		return [ this.outputDirectory ];
 	}
 
 	/**
@@ -220,8 +220,8 @@ class ScanReferencesTask extends IncrementalFileTask {
 			this._logger.trace('Checking require for: ' + className);
 
 			// Look for requires using wildcard package names and assume all types under that namespace!
-			if (className.indexOf('.*') == className.length - 2) {
-				const packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
+			if (className.indexOf('.*') === className.length - 2) {
+				const packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$'); // eslint-disable-line security/detect-non-literal-regexp
 				let validPackage = false;
 				// Check that it's a valid package name and search for all the classes directly under that package!
 				for (let mClass in this.metabase.classes) {

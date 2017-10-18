@@ -1,3 +1,5 @@
+/* eslint no-unused-expressions: "off" */
+'use strict';
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const expect = chai.expect;
@@ -24,7 +26,7 @@ describe('GenerateSourcesTask', () => {
 	beforeEach(() => {
 		mockFs({
 			'incremental': {
-				'classes.json': JSON.stringify(['android.app.Activity', 'android.content.Context']),
+				'classes.json': JSON.stringify([ 'android.app.Activity', 'android.content.Context' ]),
 				'bad_classes.json': '{{}InvalidJSON,{[}'
 			},
 			'output': {
@@ -68,8 +70,8 @@ describe('GenerateSourcesTask', () => {
 
 		it('should generate sources for all referenced classes including dependencies', () => {
 			let testReferences = new Map();
-			let usedClasses = ['android.app.Activity', 'android.content.Context'];
-			let classesToGenerate = usedClasses.concat(['android.view.View']);
+			let usedClasses = [ 'android.app.Activity', 'android.content.Context' ];
+			let classesToGenerate = usedClasses.concat([ 'android.view.View' ]);
 			testReferences.set('file1.js', {
 				usedClasses: usedClasses
 			});
@@ -110,21 +112,21 @@ describe('GenerateSourcesTask', () => {
 			loadClassListStub.returns(true);
 
 			let expandDependenciesStub = sinon.stub(metabase.generate, 'expandDependencies');
-			expandDependenciesStub.returns(['android.app.Activity', 'android.content.Context']);
+			expandDependenciesStub.returns([ 'android.app.Activity', 'android.content.Context' ]);
 
 			let taskMock = sinon.mock(task);
 			let generateSourcesExpectation = taskMock.expects('generateSources');
-			generateSourcesExpectation.once().withArgs(['android.content.Context'], []).resolves();
+			generateSourcesExpectation.once().withArgs([ 'android.content.Context' ], []).resolves();
 
 			task.references = new Map();
 			task.references.set('dummy1.js', {
-				usedClasses: ['android.app.Activity']
+				usedClasses: [ 'android.app.Activity' ]
 			});
 			task.references.set('dummy2.js', {
-				usedClasses: ['android.content.Context']
+				usedClasses: [ 'android.content.Context' ]
 			});
 			task.metabase = {};
-			task._generatedClasses = new Set(['android.app.Activity']);
+			task._generatedClasses = new Set([ 'android.app.Activity' ]);
 
 			return expect(task.doIncrementalTaskRun().then(() => {
 				taskMock.verify();
@@ -134,15 +136,15 @@ describe('GenerateSourcesTask', () => {
 
 		it('should remove existing wrappers for types that are not referenced anymore', () => {
 			let expandDependenciesStub = sinon.stub(metabase.generate, 'expandDependencies');
-			expandDependenciesStub.returns(['android.app.Activity']);
+			expandDependenciesStub.returns([ 'android.app.Activity' ]);
 
 			let taskMock = sinon.mock(task);
 			let generateSourcesExpectation = taskMock.expects('generateSources');
-			generateSourcesExpectation.once().withArgs([], ['android.content.Context']).resolves();
+			generateSourcesExpectation.once().withArgs([], [ 'android.content.Context' ]).resolves();
 
 			task.references = new Map();
 			task.references.set('dummy1.js', {
-				usedClasses: ['android.app.Activity']
+				usedClasses: [ 'android.app.Activity' ]
 			});
 			task.metabase = {};
 
@@ -163,9 +165,9 @@ describe('GenerateSourcesTask', () => {
 		});
 
 		it('should prepare options and pass through to metabase code generation', () => {
-			let classesToGenerate = ['android.app.Activity'];
-			let removedClasses = ['android.content.Context'];
-			let existingClasses = ['android.content.Context'];
+			let classesToGenerate = [ 'android.app.Activity' ];
+			let removedClasses = [ 'android.content.Context' ];
+			let existingClasses = [ 'android.content.Context' ];
 			let expectedOptions = {
 				classesToGenerate,
 				removedClasses,
@@ -201,13 +203,13 @@ describe('GenerateSourcesTask', () => {
 
 		it('should load and set existing class list', () => {
 			expect(task.loadClassList()).to.be.true;
-			expect(task._generatedClasses).to.be.a('set').that.has.all.keys(['android.app.Activity', 'android.content.Context']);
+			expect(task._generatedClasses).to.be.a('set').that.has.all.keys([ 'android.app.Activity', 'android.content.Context' ]);
 		});
 	});
 
 	describe('writeClassList', () => {
 		it('should write generated class list to file', () => {
-			let generatedClasses = ['android.app.Activity', 'android.content.Context'];
+			let generatedClasses = [ 'android.app.Activity', 'android.content.Context' ];
 			task._generatedClasses = new Set(generatedClasses);
 
 			fs.unlinkSync(task._classListPathAndFilename);
@@ -218,8 +220,8 @@ describe('GenerateSourcesTask', () => {
 			})).to.eventually.be.fulfilled;
 		});
 
-		it.skip('should reject with error if write failed', () => {
-			let generatedClasses = ['android.app.Activity', 'android.content.Context'];
+		it.skip('should reject with error if write failed', () => { // eslint-disable-line mocha/no-skipped-tests
+			let generatedClasses = [ 'android.app.Activity', 'android.content.Context' ];
 			task._generatedClasses = new Set(generatedClasses);
 
 			let writeError = new Error('Write failed');
