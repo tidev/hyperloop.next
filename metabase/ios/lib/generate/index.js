@@ -210,10 +210,6 @@ function generateFromJSON (name, json, state, callback, includes) {
 			}
 		}
 
-		Object.keys(json.protocols).forEach(function (protocolName) {
-			var protocol = json.protocols[protocolName];
-			normalizeFramework(protocol, custom_frameworks);
-		});
 		processProtocolInheritance(json.protocols);
 
 		var sourceSet = {
@@ -244,7 +240,6 @@ function generateFromJSON (name, json, state, callback, includes) {
 					}
 				});
 			}
-			normalizeFramework(cls, custom_frameworks);
 			sourceSet.classes[k] = genclass.generate(json, cls, state);
 		});
 
@@ -255,7 +250,6 @@ function generateFromJSON (name, json, state, callback, includes) {
 				// if we have leading underscores for struct names, trim them
 				struct.name = struct.name.replace(/^(_)+/g,'').trim();
 			}
-			normalizeFramework(struct, custom_frameworks);
 			sourceSet.structs[k] = genstruct.generate(json, struct);
 		});
 
@@ -264,21 +258,18 @@ function generateFromJSON (name, json, state, callback, includes) {
 		// define module based functions
 		json.functions && Object.keys(json.functions).forEach(function (k) {
 			var func = json.functions[k];
-			normalizeFramework(func, custom_frameworks);
 			var mod = makeModule(modules, func, state);
 			mod && mod.functions.push(func);
 		});
 		// define module based constant variables
 		json.vars && Object.keys(json.vars).forEach(function (k) {
 			var varobj = json.vars[k];
-			normalizeFramework(varobj, custom_frameworks);
 			var mod = makeModule(modules, varobj, state);
 			mod && mod.variables.push(varobj);
 		});
 		// define module based enums
 		json.enums && Object.keys(json.enums).forEach(function (k) {
 			var enumobj = json.enums[k];
-			normalizeFramework(enumobj, custom_frameworks);
 			var mod = makeModule(modules, enumobj, state);
 			if (mod && enumobj.values) {
 				Object.keys(enumobj.values).forEach(function (n) {
@@ -312,33 +303,6 @@ function generateFromJSON (name, json, state, callback, includes) {
 
 		callback(null, sourceSet, modules);
 	});
-}
-
-/**
- * Takes a single metadata object and normalizes the framework property on that object.
- *
- * The metabase parser will leave the framework property as the path to the header
- * file the symbol was found in if it is not contained in a .framework package.
- * This normalization will try to associate the path with a virtual third-party
- * framework that is configured in the appc.js file, and replace it with the virtual
- * framework name. Should the path be unknown we remove the framework property as
- * it is a symbol which cannot be associated to a specific framework and we can't
- * handle such symbols currently.
- *
- * @param {Object} metadata Metabdata object for a symbol (class, struct etc)
- * @param {Object} fileToFrameworkMap Map with all known mappings of header files to their framework
- */
-function normalizeFramework(metadata, fileToFrameworkMap) {
-	if (metadata.framework[0] !== '/') {
-		return;
-	}
-
-	if (fileToFrameworkMap[metadata.filename]) {
-		metadata.framework = fileToFrameworkMap[metadata.filename];
-		metadata.customSource = true;
-	} else {
-		delete metadata.framework;
-	}
 }
 
 /**
