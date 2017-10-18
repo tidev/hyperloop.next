@@ -304,8 +304,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	}
 
 	/**
-	 * Processes third-party dependencies that are configured in 
-	 under the
+	 * Processes third-party dependencies that are configured under the
 	 * hyperloop.ios.thirdparty key
 	 *
 	 * These can be both uncompiled Swift and Objective-C source files as well as
@@ -539,6 +538,8 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		this.metabase = metabase;
 		this.metabase.classes = this.metabase.classes || {};
 
+		this.normalizeFrameworks(outfile);
+
 		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
 			// if cached, skip generation
 			this.logger.info('Skipping ' + HL + ' compile, already generated...');
@@ -600,7 +601,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	if (this.hyperloopConfig.ios.thirdparty) {
 		// Throw a deprecation warning regarding thirdparty-references in the appc.js
 		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 3.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
-		
+
 		this.headers = [];
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
 			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
@@ -642,6 +643,85 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		extraHeaderSearchPaths,
 		extraFrameworkSearchPaths
 	);
+};
+
+/**
+ * Iterates over the metadata object and normalizes all framework properties.
+ *
+ * The metabase parser will leave the framework property as the path to the header
+ * file the symbol was found in if it is not contained in a .framework package.
+ *
+ * This normalization will try to associate the path with the actual framework
+ * name taken from our include map. Should the path be unknown we remove the
+ * framework property as it is a symbol which cannot be associated to a specific
+ * framework and we can't handle such symbols currently.
+ *
+ * @param {Object} metadata Metabdata object for a symbol (class, struct etc)
+ * @param {Object} fileToFrameworkMap Map with all known mappings of header files to their framework
+ */
+HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks(outfile) {
+	var frameworks = Object.keys(this.frameworks);
+	if (frameworks.length === 0) {
+		return;
+	}
+
+	var headerToFrameworkMap = {};
+	for (var i = 0; i < frameworks.length; i++) {
+		var frameworkName = frameworks[i];
+		var classes = Object.keys(this.frameworks[frameworkName]);
+		for (var c = 0; c < classes.length; c++) {
+			var headerPathAndFilename = this.frameworks[frameworkName][classes[c]];
+			headerToFrameworkMap[headerPathAndFilename] = frameworkName;
+		}
+	}
+
+	function normalizeFrameworksInGroup(metadataGroup) {
+		if (!metadataGroup) {
+			return;
+		}
+		Object.keys(metadataGroup).forEach(function (entryName) {
+			var metadata = metadataGroup[entryName];
+			if (metadata.framework[0] !== '/') {
+				return;
+			}
+
+			if (headerToFrameworkMap[metadata.filename]) {
+				metadata.framework = headerToFrameworkMap[metadata.filename];
+				if (metadata.filename.indexOf('Pods/Headers/Public') === -1) {
+					// All files that do not come from CocoaPods are custom third-party
+					// sources configured in appc.js and need this property set to true
+					// to not generate an ObjC module wrapper.
+					metadata.customSource = true;
+				}
+			} else {
+				delete metadata.framework;
+			}
+		});
+	}
+
+	normalizeFrameworksInGroup(this.metabase.protocols);
+	normalizeFrameworksInGroup(this.metabase.classes);
+	normalizeFrameworksInGroup(this.metabase.structs);
+	normalizeFrameworksInGroup(this.metabase.functions);
+	normalizeFrameworksInGroup(this.metabase.vars);
+	normalizeFrameworksInGroup(this.metabase.enums);
+	normalizeFrameworksInGroup(this.metabase.typedefs);
+	if (this.metabase.blocks) {
+		Object.keys(this.metabase.blocks).forEach(function (entryName) {
+			if (entryName[0] === '/' && headerToFrameworkMap[entryName]) {
+				var normalizedFrameworkName = headerToFrameworkMap[entryName];
+				var frameworkBlocks = this.metabase.blocks[normalizedFrameworkName] || [];
+				frameworkBlocks = frameworkBlocks.concat(this.metabase.blocks[entryName].filter(function(block) {
+					return frameworkBlocks.every(function(existingBlock) {
+						return existingBlock.signature !== block.signature;
+					});
+				}));
+				this.metabase.blocks[normalizedFrameworkName] = frameworkBlocks;
+				delete this.metabase.blocks[entryName];
+			}
+		}, this);
+	}
+	fs.writeFileSync(outfile, JSON.stringify(this.metabase, null, 2));
 };
 
 /**
