@@ -59,7 +59,7 @@ namespace hyperloop {
 		this->type = new Type(context, type);
 		tree->addVar(this);
 		clang_visitChildren(cursor, parseVarMember, this);
-		addBlockIfFound(context, this, this->getFramework(), this->type, encoding);
+		addBlockIfFound(this, cursor);
 		return CXChildVisit_Continue;
 	}
 

@@ -8,6 +8,7 @@
 #include "util.h"
 #include "struct.h"
 #include "union.h"
+#include "BlockParser.h"
 
 namespace hyperloop {
 
@@ -80,7 +81,7 @@ namespace hyperloop {
 		std::string encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
 		this->setType(type, encoding);
 		context->getParserTree()->addType(this);
-		addBlockIfFound(context, this, this->getFramework(), type, encoding);
+		addBlockIfFound(this, cursor);
 		return CXChildVisit_Continue;
 	}
 

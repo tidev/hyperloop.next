@@ -198,9 +198,13 @@ exports.cliVersion = '>=3.2';
 			function (next) {
 				const depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
 				let libraryFilenames = depMap.libraries.appcompat;
-				libraryFilenames = libraryFilenames.concat(depMap.libraries.design || []);
-				libraryFilenames.forEach(function (libraryFilename) {
-					const libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
+				libraryFilenames = libraryFilenames.concat(
+					depMap.libraries.design || [],
+					depMap.libraries.compat || [],
+					depMap.libraries.cardview || []
+				);
+				libraryFilenames.forEach(function(libraryFilename) {
+					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
 					if (!afs.exists(libraryPathAndFilename)) {
 						return;
 					}
