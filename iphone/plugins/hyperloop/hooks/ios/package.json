@@ -22,7 +22,6 @@
 	"license": "LicenseRef-LICENSE",
 	"dependencies": {
 		"findit": "^2.0.0",
-		"hyperloop-metabase": "*",
 		"fs-extra": "^4.0.2"
 	}
 }

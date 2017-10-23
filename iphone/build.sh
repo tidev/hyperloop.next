@@ -57,34 +57,21 @@ cp plugins/hyperloop/hooks/ios/filter.sh build/zip/plugins/hyperloop/hooks/ios
 cp ../LICENSE build/zip/plugins/hyperloop
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 
-# Install findit, need package.json there first on npm5
-echo "Installing npm dependency..."
-cd build/zip/plugins/hyperloop/hooks/ios
-npm install findit --production >/dev/null 2>&1
-npm install fs-extra --production >/dev/null 2>&1
-
-rm -rf node_modules/findit/test
-rm -rf package-lock.json
-cd $CWD
-
 # package the metabase into the .zip
 echo "Packaging metabase..."
 cd ../metabase/ios
-./build.sh
 rm *.tgz
 npm pack >/dev/null 2>&1
-mkdir -p $CWD/build/npm
-cp *.tgz $CWD/build/npm
-cd $CWD/build/npm
-tar xfz *.tgz
-rm -rf *.tgz
-cd package
-npm i --production >/dev/null 2>&1
+cd $CWD
+
+# Install dependencies
+echo "Installing npm dependencies..."
+cd build/zip/plugins/hyperloop/hooks/ios
+npm i --production
+npm i $CWD/../metabase/ios/hyperloop-metabase-1.0.0.tgz
+rm -rf node_modules/findit/test
 rm -rf package-lock.json
-rm -rf unittest
-mkdir -p $METABASE
-cp -R * $METABASE
-rm -rf $METABASE/hyperloop-metabase.xcodeproj $METABASE/hyperloop-metabase.xcodeproj $METABASE/src $METABASE/unittest $METABASE/include $METABASE/build
+cd $CWD
 
 # titanium requires at least this file so just create an empty one
 echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a

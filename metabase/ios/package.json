@@ -4,7 +4,8 @@
   "description": "Hyperloop Metabase Generator",
   "main": "index.js",
   "scripts": {
-    "test": "grunt"
+    "test": "grunt",
+    "prepack": "sh build.sh"
   },
   "repository": {
     "type": "git",
