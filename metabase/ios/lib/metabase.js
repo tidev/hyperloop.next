@@ -288,25 +288,40 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 	}
 	util.logger.trace('running', binary, 'with', args.join(' '));
 	var ts = Date.now();
-	var child = spawn(binary, args);
-	child.stdout.on('data', function (buf) {
-		// process.stdout.write(buf);
-		util.logger.debug(String(buf).replace(/\n$/,''));
-	});
-	child.stderr.on('data', function (buf) {
-		// process.stderr.write(buf);
-		// util.logger.error(String(buf).replace(/\n$/,''));
-	});
-	child.on('error', callback);
-	child.on('exit', function (ex) {
-		util.logger.trace('metabase took', (Date.now()-ts), 'ms to generate');
-		if (ex) {
-			return callback(new Error('Metabase generation failed'));
+	var triedToFixPermissions = false;
+	(function runMetabase(binary, args) {
+		try {
+			var child = spawn(binary, args);
+		} catch (e) {
+			if (e.code === 'EACCES') {
+				if (!triedToFixPermissions) {
+					fs.chmodSync(binary, '755');
+					triedToFixPermissions = true;
+					return runMetabase(binary, args);
+				} else {
+					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions yourself by running: chmod +x ' + binary))
+				}
+			}
+
+			throw e;
 		}
-		var json = JSON.parse(fs.readFileSync(outfile));
-		json.$includes = includes;
-		return callback(null, json, path.resolve(outfile), path.resolve(header), false);
-	});
+		child.stdout.on('data', function (buf) {
+			util.logger.debug(String(buf).replace(/\n$/,''));
+		});
+		child.stderr.on('data', function (buf) {
+			// Without this, for whatever reason, the metabase parser never returns
+		});
+		child.on('error', callback);
+		child.on('exit', function (ex) {
+			util.logger.trace('metabase took', (Date.now()-ts), 'ms to generate');
+			if (ex) {
+				return callback(new Error('Metabase generation failed'));
+			}
+			var json = JSON.parse(fs.readFileSync(outfile));
+			json.$includes = includes;
+			return callback(null, json, path.resolve(outfile), path.resolve(header), false);
+		});
+	})(binary, args);
 }
 
 /**
