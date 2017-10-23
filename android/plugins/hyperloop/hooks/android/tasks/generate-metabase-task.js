@@ -1,3 +1,5 @@
+'use strict';
+
 const BaseFileTask = require('appc-tasks').BaseFileTask;
 const metabase = require('../metabase');
 
