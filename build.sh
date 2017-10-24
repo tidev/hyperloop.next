@@ -38,10 +38,10 @@ then
 fi
 
 # Make sure we have at least the Android SDK 23 installed
-if [ ! -d "$ANDROID_SDK/platforms/android-23" ];
+if [ ! -d "$ANDROID_SDK/platforms/android-25" ];
 then
-	echo "Android 6.0 (Lollipop) / (android-23) not installed"
-	echo "Download Android 6.0 using Android Studio"
+	echo "Android 7.1 (Lollipop) / (android-25) not installed"
+	echo "Download Android 7.1 using Android Studio"
 	exit 1
 fi
 
