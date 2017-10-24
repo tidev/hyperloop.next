@@ -299,7 +299,7 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 					triedToFixPermissions = true;
 					return runMetabase(binary, args);
 				} else {
-					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions yourself by running: chmod +x ' + binary))
+					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions by running: chmod +x ' + binary))
 				}
 			}
 
