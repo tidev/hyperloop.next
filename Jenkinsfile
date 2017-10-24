@@ -200,15 +200,10 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							dir('zip') {
 								sh "unzip hyperloop-windows-${packageVersion}.zip"
 								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
-								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from windows
+								sh 'mkdir -p plugins/hyperloop/hooks'
+								sh 'cp -R ../sdk_plugins/windows plugins/hyperloop/hooks/' // Copy in plugins folder from windows
 								// copy top-level plugin hook
 								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								dir ('plugins/hyperloop/hooks/windows') { // install the windows-specific hook npm dependencies
-									sh 'npm install --production'
-								}
-								// Now remove the package-lock.json!
-								sh 'rm -rf plugins/hyperloop/hooks/windows/package-lock.json'
-								sh 'rm -rf plugins/hyperloop/hooks/windows@tmp' // remove this bogus dir if it exists
 								// Remove docs and examples
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
