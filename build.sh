@@ -37,7 +37,7 @@ then
 	echo "$CHECK Android SDK is $ANDROID_SDK"
 fi
 
-# Make sure we have at least the Android SDK 23 installed
+# Make sure we have at least the Android 7.1 (SDK 25) installed
 if [ ! -d "$ANDROID_SDK/platforms/android-25" ];
 then
 	echo "Android 7.1 (Lollipop) / (android-25) not installed"
