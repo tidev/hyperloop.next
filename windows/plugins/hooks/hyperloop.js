@@ -6,7 +6,10 @@ var spawn = require('child_process').spawn,
     appc = require('node-appc');
 
 function isVS2017(data) {
-    return /^Visual Studio \w+ 2017/.test(data.windowsInfo.selectedVisualStudio.version); 
+    if (data.windowsInfo && data.windowsInfo.selectedVisualStudio) {
+        return /^Visual Studio \w+ 2017/.test(data.windowsInfo.selectedVisualStudio.version); 
+    }
+    return false;
 }
 
 exports.cliVersion = ">=3.2";
@@ -14,7 +17,7 @@ exports.init = function(logger, config, cli, nodeappc) {
     /*
      * CLI Hook for Hyperloop build dependencies
      */
-    cli.on('build.module.pre.compile', function (data, callback) {
+    cli.on('build.module.pre.construct', function (data, callback) {
         var tasks = [
             function(next) {
                 generateCMakeList(data, next);
@@ -25,24 +28,28 @@ exports.init = function(logger, config, cli, nodeappc) {
             function(next) {
                 runCmake(data, 'WindowsStore', 'ARM', '10.0', next);
             },
+            function(next) {
+                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
+            },
+            function(next) {
+                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
+            },
+            function(next) {
+                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
+            }
         ];
 
-        var w81support = !isVS2017(data);
+        data.projectDir = cli.argv['project-dir'];
+        data.manifest = cli.manifest;
 
-        // Visual Studio 2017 doesn't support Windows/Phone 8.1 project anymore
-        if (w81support) {
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
-            });
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
-            });
-            tasks.push(function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
-            });
-        }
+        async.series(tasks, function(err) {
+            callback(err, data);
+        });
+    });
 
-        var archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+    cli.on('build.module.pre.compile', function (data, callback) {
+        var tasks = [];
+        var archs = isVS2017(data) ? ['win10'] : ['phone', 'store', 'win10'];
 
         var csharp_dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation');
         archs.forEach(function(platform) {
@@ -93,6 +100,11 @@ function generateCMakeList(data, next) {
         cmakelist = path.join(data.projectDir, 'CMakeLists.txt'),
         windowsSrcDir = path.join(data.titaniumSdkPath, 'windows'),
         version = data.manifest.version;
+
+    // Workaround for TIMOB-25433: Add '--run-cmake' when CMakeLists.txt is not found
+    if (!fs.existsSync(cmakelist)) {
+        data.cli.argv['run-cmake'] = '';
+    }
 
     data.logger.debug('Updating CMakeLists.txt...');
 
