@@ -6,6 +6,7 @@ CWD=`pwd`
 METABASE=$CWD/build/zip/plugins/hyperloop/hooks/ios/node_modules/hyperloop-metabase
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
+METABASE_VERSION=`grep "\"version\":" ../metabase/ios/package.json | cut -d \" -f 4`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
 
 XC=`which xcpretty`
@@ -68,7 +69,7 @@ cd $CWD
 echo "Installing npm dependencies..."
 cd build/zip/plugins/hyperloop/hooks/ios
 npm i --production
-npm i $CWD/../metabase/ios/hyperloop-metabase-1.0.0.tgz
+npm i $CWD/../metabase/ios/hyperloop-metabase-$METABASE_VERSION.tgz
 rm -rf node_modules/findit/test
 rm -rf package-lock.json
 cd $CWD
