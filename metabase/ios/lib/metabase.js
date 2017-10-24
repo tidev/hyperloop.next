@@ -199,6 +199,12 @@ function extractImplementationsFromFramework(frameworkName, frameworkPath, inclu
  */
 function collectFrameworkHeaders(frameworkPath) {
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+	
+	// Skip frameworks that do not have public headers set (like FirebaseNanoPB)
+	if (!fs.existsSync(frameworkHeadersPath)) {
+		return [];
+	}
+	
 	var headerFiles = getAllHeaderFiles([frameworkHeadersPath]);
 	var nestedFrameworksPath = path.join(frameworkPath, 'Frameworks');
 	if (fs.existsSync(nestedFrameworksPath)) {
@@ -498,6 +504,13 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 	var frameworkName = frameworkMetadata.name;
 	var frameworkPath = frameworkMetadata.path;
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+	
+	// There are some rare frameworks (like FirebaseNanoPB) that do not have a Headers/ directory
+	if (!fs.existsSync(frameworkHeadersPath)) {
+		includes[frameworkName] = {};
+		return callback();
+	}
+	
 	util.logger.trace('Generating includes for ' + frameworkMetadata.type + ' framework ' + frameworkName.green + ' (' + frameworkPath + ')');
 	if (frameworkMetadata.type === 'dynamic') {
 		var modulesPath = path.join(frameworkPath, 'Modules');
