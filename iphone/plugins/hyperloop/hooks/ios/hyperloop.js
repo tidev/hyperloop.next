@@ -942,8 +942,24 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXFrameworksBuildPhase[phase.value]; })[0].value];
 	var frameworkRegExp = /\.framework$/;
 	var frameworksToAdd = [];
-	var alreadyAddedFrameworks = [];
+	var alreadyAddedFrameworks = {};
+	Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(function (id) {
+		if (xobjs.PBXFrameworksBuildPhase[id] && typeof xobjs.PBXFrameworksBuildPhase[id] === 'object') {
+			xobjs.PBXFrameworksBuildPhase[id].files.forEach(function (file) {
+				var frameworkPackageName = xobjs.PBXBuildFile[file.value].fileRef_comment;
+				alreadyAddedFrameworks[frameworkPackageName] = 1;
+			});
+		}
+	});
 
+	// Add all detected system frameworks
+	Object.keys(this.packages).forEach(function (pkg) {
+		if (this.systemFrameworks[pkg]) {
+			frameworksToAdd.push(pkg);
+		}
+	}, this);
+
+	// Add any additionally configured system frameworks from appc.js
 	if (this.hyperloopConfig.ios.xcodebuild && Array.isArray(this.hyperloopConfig.ios.xcodebuild.frameworks)) {
 		this.hyperloopConfig.ios.xcodebuild.frameworks.forEach(function (framework) {
 			framework && frameworksToAdd.push(framework);
@@ -972,13 +988,11 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		};
 		xobjs.PBXFileReference[fileRefUuid + '_comment'] = framework;
 
-		// add the library to the Frameworks group
 		frameworksGroup.children.push({
 			value: fileRefUuid,
 			comment: framework
 		});
 
-		// add the build file
 		xobjs.PBXBuildFile[buildFileUuid] = {
 			isa: 'PBXBuildFile',
 			fileRef: fileRefUuid,
