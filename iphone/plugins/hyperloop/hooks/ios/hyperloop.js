@@ -198,7 +198,7 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 	this.builder.nativeLibModules.some(function (mod) {
 		if (mod.id === 'hyperloop') {
 			var JSCoreFlag = this.builder.tiapp.ios['use-jscore-framework'];
-			var usesJSCore = JSCoreFlag == undefined || (JSCoreFlag !== undefined && JSCoreFlag === true);
+			var usesJSCore = JSCoreFlag === undefined || JSCoreFlag === true;
 
 			// check for built-in JSCore but only warn if not set
 			if (!usesJSCore) {
