@@ -5,7 +5,7 @@ import com.axway.AppcCLI;
 def nodeVersion = '6.9.5'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-def sdkVersion = '6.2.0.GA'
+def sdkVersion = '7.0.0.v20171101175057'
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
