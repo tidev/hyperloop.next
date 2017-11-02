@@ -23,7 +23,7 @@ exports.cliVersion = '>=3.2';
 	var state = {};
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '6.1.0';
+	var TI_MIN = '7.0.0';
 
 	// Hyperloop Build for Windows
 	function HyperloopWindowsBuilder (logger, config, cli, appc, hyperloopConfig, builder) {
@@ -142,7 +142,7 @@ exports.cliVersion = '>=3.2';
 						platform = 'phone';
 					}
 				}
-					
+
 				state.platform      = platform;
 				state.sdkVersion    = sdkVersion;
 				state.sdkMinVersion = sdkMinVersion;
@@ -177,7 +177,7 @@ exports.cliVersion = '>=3.2';
 		next();
 
 	};
-	
+
 	HyperloopWindowsBuilder.prototype.hasWindowsAPI = function hasWindowsAPI(node_value) {
 		for (var i = 0; i < state.thirdpartyLibraries.length; i++) {
 			if (node_value.indexOf(state.thirdpartyLibraries[i] + '.') === 0) {
@@ -229,7 +229,7 @@ exports.cliVersion = '>=3.2';
 
 		fs.readFile(template, 'utf8', function (err, data) {
 			if (err) throw err;
-			data = ejs.render(data, { 
+			data = ejs.render(data, {
 				externalReferences:          externalReferences,
 				targetPlatformSdkVersion:    state.sdkVersion,
 				targetPlatformSdkMinVersion: state.sdkMinVersion
@@ -243,7 +243,7 @@ exports.cliVersion = '>=3.2';
 
 	/**
 	 * Generates the code in TypeHelper.cs to handle building up the list of native types registered.
-	 * @param {Function} next - 
+	 * @param {Function} next -
 	 */
 	HyperloopWindowsBuilder.prototype.generateNativeTypeHelper = function generateNativeTypeHelper(next) {
 		var dest = state.hyperloopBuildDir,
@@ -259,7 +259,7 @@ exports.cliVersion = '>=3.2';
 		fs.readFile(template, 'utf8', function (err, data) {
 			if (err) throw err;
 
-			data = ejs.render(data, { 
+			data = ejs.render(data, {
 				native_types:native_types,
 				native_events:native_events
 			}, {});

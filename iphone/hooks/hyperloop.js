@@ -12,7 +12,7 @@ module.exports = HyperloopiOSBuilder;
 // set this to enforce a ios-min-version
 var IOS_MIN = '8.0';
 // set this to enforce a minimum Titanium SDK
-var TI_MIN = '6.2.0';
+var TI_MIN = '7.0.0';
 // set the iOS SDK minium
 var IOS_SDK_MIN = '9.0';
 // enum for ios javascript core

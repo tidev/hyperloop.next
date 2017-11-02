@@ -73,6 +73,8 @@ stage('Build') {
 
 						dir('android') {
 							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+
 							writeFile file: 'build.properties', text: """
 titanium.platform=${activeSDKPath}/android
 android.platform=${androidSDK}/platforms/android-${androidAPILevel}
@@ -83,31 +85,36 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf build/'
 							sh 'rm -rf dist/'
 							sh 'rm -rf libs/'
+
+							// Run hook tests and then prune to production deps
+							dir('hooks') {
+								sh 'npm install'
+								sh 'npm test'
+								sh 'npm prune --production'
+							}
+
 							appc.loggedIn {
 								// Even setting config needs login, ugh
 								sh "appc ti config android.sdkPath ${androidSDK}"
 								sh "appc ti config android.ndkPath ${androidNDK}"
 								sh 'appc run -p android --build-only'
 							} // appc.loggedIn
-							// This doesn't package up the Android hyperloop plugin hook!
-							// We need to unzip, and hack it in!
+
+							// Clean dist zip
 							dir('dist') {
 								sh 'rm -f hyperloop-android.jar'
 								sh "unzip hyperloop-android-${packageVersion}.zip"
 								sh "rm -rf hyperloop-android-${packageVersion}.zip"
-								sh 'cp -R ../plugins plugins/' // Copy in plugins folder from android
-								sh 'rm -rf plugins/hyperloop/test' // wipe android hook tests
-								// copy top-level plugin hook
-								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
-								dir ('plugins/hyperloop/hooks/android') { // install the android-specific hook npm dependencies
-									sh 'npm install --production'
-									sh 'rm -rf package-lock.json' // Now remove the package-lock.json!
-									sh 'rm -rf test' // remove the test directory
+
+								dir ('modules/android/hyperloop/${packageVersion}/hooks') {
+									sh 'rm -rf package-lock.json'
+									sh 'rm -rf test'
 								}
-								sh 'rm -rf plugins/hyperloop/hooks/android@tmp' // remove this bogus dir if it exists
+
 								// Remove docs and examples
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
+
 								// Now zip it back up
 								sh "zip -r hyperloop-android-${packageVersion}.zip ."
 							}
@@ -128,6 +135,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					echo 'Building iOS module...'
 					dir('iphone') {
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 
 						// Check if xcpretty gem is installed
 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
