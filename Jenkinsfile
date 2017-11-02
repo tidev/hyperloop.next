@@ -200,18 +200,13 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only'
 							} // appc.loggedIn
-							// This doesn't package up the Windows hyperloop plugin hook!
-							// We need to unzip, and hack it in!
+
 							sh 'rm -rf zip/'
 							sh 'mkdir zip/'
 							sh "mv hyperloop-windows-${packageVersion}.zip zip/hyperloop-windows-${packageVersion}.zip"
 							dir('zip') {
 								sh "unzip hyperloop-windows-${packageVersion}.zip"
 								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
-								sh 'mkdir -p plugins/hyperloop/hooks'
-								sh 'cp -R ../sdk_plugins/windows plugins/hyperloop/hooks/' // Copy in plugins folder from windows
-								// copy top-level plugin hook
-								sh 'cp ../../plugins/hyperloop.js plugins/hyperloop/hooks/hyperloop.js'
 								// Remove docs and examples
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
@@ -251,18 +246,8 @@ stage('Package') {
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
 			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
 			sh "rm -f hyperloop-windows-${packageVersion}.zip"
-
-			// Here we extract and force the version of the plugin into the folder structure
-			sh 'mkdir -p temp'
-			sh 'cp -R plugins/hyperloop/* temp'
-			sh 'rm -rf plugins'
-			sh "mkdir -p plugins/hyperloop/${packageVersion}"
-			sh "cp -R temp/* plugins/hyperloop/${packageVersion}"
-			sh 'rm -rf temp'
-
 			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
-			sh 'rm -rf plugins'
 		}
 		archiveArtifacts "dist/hyperloop-${packageVersion}.zip"
 	}
