@@ -16,7 +16,7 @@ exports.init = (logger, config, cli, appc) => {
 	});
 	cli.on('build.pre.compile', {
 		priority: 1300,
-		post: function (builder, callback) {
+		post: (builder, callback) => {
 			const factory = new HyperloopBuilderFactory(logger, config, cli, appc, builder);
 			const instance = factory.createHyperloopBuilder();
 			instance.init(callback);
@@ -24,7 +24,19 @@ exports.init = (logger, config, cli, appc) => {
 	});
 };
 
+/**
+ * Simple factory that creates the platform specific Hyperloop builder instances.
+ */
 class HyperloopBuilderFactory {
+	/**
+	 * Constructs a new factory.
+	 *
+	 * @param {Object} logger - Appc logger instance
+	 * @param {Object} config - Config object
+	 * @param {Object} cli - Appc cli instance
+	 * @param {Object} appc - Appc common node library
+	 * @param {Object} builder - App builder for the current platform
+	 */
 	constructor(logger, config, cli, appc, builder) {
 		this.logger = logger;
 		this.config = config;
@@ -33,6 +45,11 @@ class HyperloopBuilderFactory {
 		this.builder = builder;
 	}
 
+	/**
+	 * Creates a new Hyperloop builder for the current platform.
+	 *
+	 * @return {Object} Hyperloop builder instance
+	 */
 	createHyperloopBuilder() {
 		const hyperloopConfig = this.loadConfiguration();
 		const platformHookFile = path.join(__dirname, 'hyperloop.js');
@@ -46,6 +63,11 @@ class HyperloopBuilderFactory {
 		return new Builder(this.logger, this.config, this.cli, this.appc, hyperloopConfig, this.builder);
 	}
 
+	/**
+	 * Loads Hyperloop specific configuration from available appc.js files.
+	 *
+	 * @return {Object} Object with loaded config values
+	 */
 	loadConfiguration() {
 		const possibleConfigurtionFiles = [
 			path.join(this.builder.projectDir, 'appc.js'),
@@ -63,14 +85,21 @@ class HyperloopBuilderFactory {
 		return config;
 	}
 
+	/**
+	 * Merges two objects in a non-recursive way, replacing only the top level
+	 * properties.
+	 *
+	 * @param {Object} target - Target object where the values will be copied to
+	 * @param {[type]} source - Source object where the property value will be taken from
+	 */
 	mergeObjectProperties(target, source) {
 		if (!source) {
 			return;
 		}
 
-		for (var k in source) {
-			if (source.hasOwnProperty(k)) {
-				target[k] = source[k];
+		for (const propertyName in source) {
+			if (source.hasOwnProperty(propertyName)) {
+				target[propertyName] = source[propertyName];
 			}
 		}
 	}
