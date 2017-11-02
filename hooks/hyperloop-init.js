@@ -3,9 +3,17 @@
 const fs = require('fs');
 const path = require('path');
 
-exports.id = 'com.appcelerator.hyperloop';
+exports.id = 'com.appcelerator.hyperloop.init';
 exports.cliVersion = '>=3.2';
 exports.init = (logger, config, cli, appc) => {
+	cli.on('cli:check-plugins', () => {
+		for (const plugin of cli.tiapp.plugins) {
+			if (plugin.id === 'hyperloop') {
+				logger.error('Legacy Hyperloop plugin detected! Please remove any references to the Hyperloop plugin tag from your tiapp.xml. Since Hyperloop 3.0 you only need to enable it as a module.');
+				process.exit(1);
+			}
+		}
+	});
 	cli.on('build.pre.compile', {
 		priority: 1300,
 		post: function (builder, callback) {
