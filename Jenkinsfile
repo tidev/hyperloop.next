@@ -2,14 +2,10 @@
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '8.8.1'
+def nodeVersion = '8.9.0'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-<<<<<<< HEAD
-def sdkVersion = '7.0.0.v20171108114616' // Use master build with Windows DLL, removed 8.1
-=======
-def sdkVersion = '7.0.0.v20171025141436' // Build against 7.0.0+ to compile against newer v8 api level
->>>>>>> Update Jenkinsfile
+def sdkVersion = '7.0.0.v20171108114616' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
