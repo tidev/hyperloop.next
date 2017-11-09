@@ -20,7 +20,7 @@ onexit () {
 
 trap onexit 0 1 2 3 6 9 15
 
-TISDK_SEMVER=">=6.0.0"
+TISDK_SEMVER=">=7.0.0"
 CHECK="✓ "
 
 # Make sure the Android SDK is installed
@@ -134,7 +134,6 @@ then
 fi
 
 cp -R build/zip/modules/ ../dist/modules
-cp -R build/zip/plugins/ ../dist/plugins/
 cd ..
 
 # Build Windows module
@@ -150,16 +149,7 @@ cd ../../
 # Combine all modules to one masterpiece
 echo "Creating combined zip with iOS, Android and Windows..."
 cd dist
-mkdir -p temp
-cp -R plugins/hyperloop/* temp
-rm -rf plugins
-mkdir -p plugins/hyperloop/$VERSION
-cp -R temp/* plugins/hyperloop/$VERSION
-rm -rf temp
-cp -R ../windows/sdk_plugins/windows plugins/hyperloop/$VERSION/hooks/
 zip -q -r hyperloop-$VERSION.zip *
-rm -rf modules
-rm -rf plugins
 
 echo "$CHECK Combined zip completed successfully"
 echo "$CHECK Distribution is available at dist/hyperloop-$VERSION.zip"

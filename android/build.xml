@@ -46,8 +46,8 @@
 		<!-- Copy license -->
 		<copy todir="${basedir}" file="${basedir}/../LICENSE"/>
 
-		<!-- Copy common CLI hook -->
-		<copy todir="${basedir}/plugins/hyperloop/hooks" file="${basedir}/../plugins/hyperloop.js"/>
+		<!-- Copy shared module hook -->
+		<copy todir="${basedir}/hooks" file="${basedir}/../hooks/hyperloop-init.js"/>
 	</target>
 
 	<target name="post.clean">
@@ -56,32 +56,30 @@
 		<delete dir="${basedir}/example" quiet="true"/>
 		<delete dir="${basedir}/libs" quiet="true"/>
 		<delete file="${basedir}/LICENSE" quiet="true"/>
-		<delete dir="${basedir}/plugins/hyperloop/node_modules" quiet="true"/>
-		<delete file="${basedir}/plugins/hyperloop/hooks/hyperloop.js" quiet="true"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/metabase/hyperloop" quiet="true"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/coverage" quiet="true"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/.nyc_output" quiet="true"/>
-		<delete file="${basedir}/plugins/hyperloop/hooks/android/junit_report.xml" quiet="true"/>
+		<delete dir="${basedir}/hooks/node_modules" quiet="true"/>
+		<delete dir="${basedir}/hooks/coverage" quiet="true"/>
+		<delete dir="${basedir}/hooks/.nyc_output" quiet="true"/>
+		<delete file="${basedir}/hooks/junit_report.xml" quiet="true"/>
 	</target>
 
-	<target name="post.dist" description="Include plugins folder in module zip">
-		<!-- NPM Install for plugin hook -->
-		<exec executable="npm" dir="${basedir}/plugins/hyperloop/hooks/android" failonerror="true">
+	<target name="post.dist" description="Include hooks folder in module zip">
+		<!-- NPM Install for module hook -->
+		<exec executable="npm" dir="${basedir}/hooks" failonerror="true">
 			<arg value="install"/>
 			<arg value="--production"/>
 		</exec>
 
 		<!-- Remove some test directories from NPM packages manually -->
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/ejs/test"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/findit/example"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/findit/test"/>
-		<delete dir="${basedir}/plugins/hyperloop/hooks/android/node_modules/node-appc/test"/>
+		<delete dir="${basedir}/hooks/node_modules/ejs/test"/>
+		<delete dir="${basedir}/hooks/node_modules/findit/example"/>
+		<delete dir="${basedir}/hooks/node_modules/findit/test"/>
+		<delete dir="${basedir}/hooks/node_modules/node-appc/test"/>
 
-		<!-- Include hyperloop wrappers into module zip -->
+		<!-- Include Hyperloop hooks into module zip -->
 		<zip destfile="${dist}/${module.id}-android-${manifest.version}.zip" update="true">
-			<zipfileset dir="${ti.module.root}/plugins" prefix="plugins">
-				<!-- Remove plugin hook test directory manually -->
-				<exclude name="hyperloop/hooks/android/test/"/>
+			<zipfileset dir="${ti.module.root}/hooks" prefix="modules/android/hyperloop/${manifest.version}/hooks">
+				<exclude name="test/"/>
+				<exclude name="package-lock.json"/>
 			</zipfileset>
 		</zip>
 	</target>

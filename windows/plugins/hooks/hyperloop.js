@@ -80,6 +80,12 @@ exports.init = function(logger, config, cli, nodeappc) {
                 }
             });
         });
+
+        var sharedInitHook = path.join(data.projectDir, '..', 'hooks', 'hyperloop-init.js');
+        if (fs.existsSync(sharedInitHook)) {
+          fs.createReadStream(sharedInitHook).pipe(fs.createWriteStream(path.join(data.projectDir, 'hooks', 'hyperloop-init.js')));
+        }
+
         callback(null, data);
     });
 };

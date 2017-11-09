@@ -3,10 +3,9 @@
 # Script buid building and packaging the Hyperloop iOS package
 #
 CWD=`pwd`
-METABASE=$CWD/build/zip/plugins/hyperloop/hooks/ios/node_modules/hyperloop-metabase
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
-METABASE_VERSION=`grep "\"version\":" ../metabase/ios/package.json | cut -d \" -f 4`
+METABASE_VERSION=`grep "\"version\":" ../packages/hyperloop-ios-metabase/package.json | cut -d \" -f 4`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
 
 XC=`which xcpretty`
@@ -31,7 +30,6 @@ then
 fi
 
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
-mkdir -p build/zip/plugins/hyperloop/hooks/ios
 cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 
 # Build for the Apple JavaScriptCore built-in
@@ -49,27 +47,22 @@ xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITION
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
 
 echo "\nPackaging iOS module..."
-# make sure to update the plugin with the latest version in it's package.json
-node -e "j=JSON.parse(require('fs').readFileSync('plugins/hyperloop/hooks/ios/package.json'));j.version='$VERSION';console.log(JSON.stringify(j,null,2))" > build/zip/plugins/hyperloop/hooks/ios/package.json
-
-cp ../plugins/hyperloop.js build/zip/plugins/hyperloop/hooks/hyperloop.js
-cp plugins/hyperloop/hooks/ios/hyperloop.js build/zip/plugins/hyperloop/hooks/ios
-cp plugins/hyperloop/hooks/ios/filter.sh build/zip/plugins/hyperloop/hooks/ios
-cp ../LICENSE build/zip/plugins/hyperloop
+cp -R hooks build/zip/modules/iphone/hyperloop/$VERSION
+cp -R ../hooks build/zip/modules/iphone/hyperloop/$VERSION
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 
 # package the metabase into the .zip
-echo "Packaging metabase..."
-cd ../metabase/ios
+echo "Packaging iOS metabase..."
+cd ../packages/hyperloop-ios-metabase
 rm *.tgz
 npm pack >/dev/null 2>&1
 cd $CWD
 
 # Install dependencies
 echo "Installing npm dependencies..."
-cd build/zip/plugins/hyperloop/hooks/ios
+cd build/zip/modules/iphone/hyperloop/$VERSION/hooks
 npm i --production
-npm i $CWD/../metabase/ios/hyperloop-metabase-$METABASE_VERSION.tgz
+npm i $CWD/../packages/hyperloop-ios-metabase/hyperloop-metabase-$METABASE_VERSION.tgz
 rm -rf node_modules/findit/test
 rm -rf package-lock.json
 cd $CWD

@@ -26,7 +26,7 @@ exports.cliVersion = '>=3.2';
 		ScanReferencesTask = require('./tasks/scan-references-task');
 
 	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '6.1.0';
+	var TI_MIN = '7.0.0';
 
 	/*
 	 State.

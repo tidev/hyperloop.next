@@ -1,6 +1,6 @@
 {
 	"name": "hyperloop",
-	"version": "2.0.0",
+	"version": "0.0.0-PLACEHOLDER",
 	"description": "Provides direct native API access from Titanium",
 	"keywords": [
 		"appcelerator",
@@ -8,6 +8,7 @@
 		"hyperloop"
 	],
 	"author": "Pedro Enrique",
+	"private": true,
 	"contributors": [
 		{
 			"name": "Pedro Enrique"
@@ -19,7 +20,6 @@
 			"name": "Jeff Haynie"
 		}
 	],
-	"license": "LicenseRef-LICENSE",
 	"dependencies": {
 		"findit": "^2.0.0",
 		"fs-extra": "^4.0.2"
