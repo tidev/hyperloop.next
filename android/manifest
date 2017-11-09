@@ -3,16 +3,16 @@
 # during compilation, packaging, distribution, etc.
 #
 version: VERSION
-apiversion: 3
-architectures: armeabi-v7a x86
+apiversion: 4
+architectures: arm64-v8a armeabi-v7a x86
 description: hyperloop-android
 author: Appcelerator
 license: Appcelerator Commercial License
-copyright: Copyright (c) 2016 Appcelerator, Inc.
+copyright: Copyright (c) 2017 Appcelerator, Inc.
 
 # these should not be edited
 name: hyperloop-android
 moduleid: hyperloop
 guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
 platform: android
-minsdk: 6.0.0
+minsdk: 7.0.0
