@@ -28,15 +28,6 @@ exports.init = function(logger, config, cli, nodeappc) {
             function(next) {
                 runCmake(data, 'WindowsStore', 'ARM', '10.0', next);
             },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
-            }
         ];
 
         data.projectDir = cli.argv['project-dir'];
@@ -49,7 +40,7 @@ exports.init = function(logger, config, cli, nodeappc) {
 
     cli.on('build.module.pre.compile', function (data, callback) {
         var tasks = [];
-        var archs = isVS2017(data) ? ['win10'] : ['phone', 'store', 'win10'];
+        var archs = ['win10'];
 
         var csharp_dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation');
         archs.forEach(function(platform) {
@@ -72,8 +63,7 @@ exports.init = function(logger, config, cli, nodeappc) {
      * Copy dependencies
      */
     cli.on('build.module.pre.package', function (data, callback) {
-        var w81support = !isVS2017(data),
-            archs = w81support ? ['phone', 'store', 'win10'] : ['win10'];
+        var archs = ['win10'];
 
         archs.forEach(function(platform){
             ['ARM', 'x86'].forEach(function(arch){
