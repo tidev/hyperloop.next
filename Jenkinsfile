@@ -106,8 +106,11 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh "unzip hyperloop-android-${packageVersion}.zip"
 								sh "rm -rf hyperloop-android-${packageVersion}.zip"
 
-								dir ('modules/android/hyperloop/${packageVersion}/hooks') {
-									sh 'rm -rf package-lock.json'
+								dir ("modules/android/hyperloop/${packageVersion}/hooks") {
+									sh 'rm -rf coverage'
+									sh 'rm -f junit_report.xml'
+									sh 'rm -f package.json.bak'
+									sh 'rm -f package-lock.json'
 									sh 'rm -rf test'
 								}
 
