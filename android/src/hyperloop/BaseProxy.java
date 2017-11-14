@@ -98,7 +98,7 @@ public abstract class BaseProxy extends TiViewProxy {
     }
 
     @Kroll.method
-    public Object callNativeFunction(Object[] args) {
+    public Object callNativeFunction(Object[] args) throws Exception {
         KrollDict dict = argsToDict(args);
 
         String methodname = dict.getString("func");
@@ -124,7 +124,19 @@ public abstract class BaseProxy extends TiViewProxy {
             return null;
         }
         Object receiver = (isInstanceMethod ? getReceiver() : null);
-        Object result = invokeMethod(m, receiver, convertedArgs);
+        Object result = null;
+        try {
+            result = invokeMethod(m, receiver, convertedArgs);
+        } catch(InvocationTargetException e) {
+            if (e.getCause() instanceof Exception) {
+                throw (Exception)e.getCause();
+            } else {
+                Log.e(TAG, "Error thrown during invocation of method: " + m.toString()
+                    + ", args: "
+                    + Arrays.toString(convertedArgs),
+                    e.getCause());
+            }
+        }
         if (result == null) {
             return result;
         }
@@ -138,7 +150,7 @@ public abstract class BaseProxy extends TiViewProxy {
         return HyperloopUtil.resolveMethod(clazz, methodName, convertedArgs, instanceMethod);
     }
 
-    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) {
+    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) throws InvocationTargetException {
         m.setAccessible(true); // should offer perf boost since doesn't have to
                                // check security
         try {
@@ -149,12 +161,8 @@ public abstract class BaseProxy extends TiViewProxy {
         } catch (IllegalArgumentException e) {
             Log.e(TAG, "Bad argument for method: " + m.toString() + ", args: "
                     + Arrays.toString(convertedArgs), e);
-        } catch (InvocationTargetException e) {
-            Log.e(TAG, "Exception thrown during invocation of method: " + m.toString()
-                    + ", args: "
-                    + Arrays.toString(convertedArgs),
-                    e.getCause());
         }
+
         return null;
     }
 
