@@ -114,6 +114,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 									sh 'rm -rf test'
 								}
 
+								// Remove bogus dir created by previous dir operation
+								sh "rm -rf modules/android/hyperloop/${packageVersion}/hooks@tmp"
+
 								// Remove docs and examples
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
 								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
