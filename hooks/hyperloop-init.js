@@ -7,6 +7,10 @@ exports.id = 'com.appcelerator.hyperloop.init';
 exports.cliVersion = '>=3.2';
 exports.init = (logger, config, cli, appc) => {
 	cli.on('cli:check-plugins', () => {
+		if (!Array.isArray(cli.tiapp.plugins)) {
+			return;
+		}
+
 		for (const plugin of cli.tiapp.plugins) {
 			if (plugin.id === 'hyperloop') {
 				logger.error('Legacy Hyperloop plugin detected! Please remove any references to the Hyperloop "<plugin>" tag from your tiapp.xml. Since Hyperloop 3.0 you only need to enable it as a module.');
