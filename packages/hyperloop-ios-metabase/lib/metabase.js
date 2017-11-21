@@ -684,6 +684,7 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 					Object.keys(includes).forEach(libraryName => {
 						const libraryPath = path.join(staticLibrariesHeaderPath, libraryName);
 						const moduleMetadata = new ModuleMetadata(libraryName, libraryPath, ModuleMetadata.MODULE_TYPE_STATIC);
+						moduleMetadata.umbrellaHeader = path.join(moduleMetadata.path, `${moduleMetadata.name}.h`);
 						moduleMetadata.typeMap = includes[libraryName];
 						modules.set(moduleMetadata.name, moduleMetadata);
 					});
