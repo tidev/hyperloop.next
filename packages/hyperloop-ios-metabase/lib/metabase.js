@@ -633,7 +633,7 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 			var umbrellaHeaderRegex = /umbrella header\s"(.+\.h)"/i;
 			var umbrellaHeaderMatch = moduleMap.match(umbrellaHeaderRegex);
 			if (umbrellaHeaderMatch !== null) {
-				frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, umbrellaHeaderMatch[1]);
+				frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, 'Headers', umbrellaHeaderMatch[1]);
 			}
 			util.logger.trace('Objective-C only framework, parsing all header files');
 			extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
@@ -682,9 +682,8 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 			tasks.push(function (next) {
 				generateStaticLibrariesIncludeMap(staticLibrariesHeaderPath, includes, () => {
 					Object.keys(includes).forEach(libraryName => {
-						// Using a dummy path here since it depends on Xcode env vars which we don't have here
-						const dummyPath = path.join(staticLibrariesHeaderPath, libraryName);
-						const moduleMetadata = new ModuleMetadata(libraryName, dummyPath, ModuleMetadata.MODULE_TYPE_STATIC);
+						const libraryPath = path.join(staticLibrariesHeaderPath, libraryName);
+						const moduleMetadata = new ModuleMetadata(libraryName, libraryPath, ModuleMetadata.MODULE_TYPE_STATIC);
 						moduleMetadata.typeMap = includes[libraryName];
 						modules.set(moduleMetadata.name, moduleMetadata);
 					});
