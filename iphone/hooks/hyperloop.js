@@ -24,11 +24,13 @@ var coreLib = {
 var path = require('path'),
 	exec = require('child_process').exec,
 	hm = require('hyperloop-metabase'),
+	ModuleMetadata = hm.metabase.ModuleMetadata,
 	fs = require('fs-extra'),
 	crypto = require('crypto'),
 	chalk = hm.chalk,
 	async = hm.async,
-	HL = chalk.magenta.inverse('Hyperloop');
+	HL = chalk.magenta.inverse('Hyperloop'),
+	semver = require('semver');
 
 /**
  * The Hyperloop builder object. Contains the build logic and state.
@@ -58,15 +60,15 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.forceMetabase = false;
 	this.forceStubGeneration = false;
 	this.parserState = null;
-	this.frameworks = {};
-	this.systemFrameworks = {};
-	this.thirdPartyFrameworks = {};
+	this.frameworks = new Map();
+	this.systemFrameworks = new Map();
+	this.thirdPartyFrameworks = new Map();
 	this.includes = [];
 	this.swiftSources = [];
 	this.swiftVersion = '3.0';
 	this.jsFiles = {};
 	this.references = {};
-	this.packages = {};
+	this.usedFrameworks = new Map();
 	this.metabase = {};
 	this.nativeModules = {};
 	this.hasCocoaPods = false;
@@ -224,15 +226,15 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
  * Gets the system frameworks from the Hyperloop Metabase.
  */
 HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks(callback) {
-	hm.metabase.getSystemFrameworks(this.builder.buildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
+	hm.metabase.getSystemFrameworks(this.hyperloopBuildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
 		if (!err) {
-			// setup our system framework mappings
-			this.systemFrameworks = systemFrameworks;
+			this.systemFrameworks = new Map(systemFrameworks);
 
-			// copy in our system frameworks into frameworks
-			// which will include both system and user generated
-			Object.keys(systemFrameworks).forEach(function (k) {
-				this.frameworks[k] = systemFrameworks[k];
+			this.sdkInfo = this.systemFrameworks.get('$metadata');
+			this.systemFrameworks.delete('$metadata');
+
+			this.systemFrameworks.forEach(frameworkMetadata => {
+				this.frameworks.set(frameworkMetadata.name, frameworkMetadata);
 			}, this);
 		}
 
@@ -245,14 +247,16 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
 	// attempt to handle CocoaPods for third-party frameworks
-	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, symbols) {
+	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, modules) {
 		if (!err) {
-			this.hasCocoaPods = symbols && Object.keys(symbols).length > 0;
-			this.cocoaPodsBuildSettings = settings || {};
-			symbols && Object.keys(symbols).forEach(function (k) {
-				this.frameworks[k] = symbols[k];
-				this.cocoaPodsProducts.push(k);
-			}, this);
+			this.hasCocoaPods = modules && modules.size > 0;
+			if (this.hasCocoaPods) {
+				this.cocoaPodsBuildSettings = settings || {};
+				modules.forEach(metadata => {
+					this.frameworks.set(metadata.name, metadata);
+					this.cocoaPodsProducts.push(metadata.name);
+				}, this);
+			}
 		}
 		callback(err);
 	}.bind(this));
@@ -292,18 +296,17 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			return next();
 		}
 
-		async.each(Object.keys(builder.frameworks), function(frameworkName, cb) {
-			var frameworkInfo = builder.frameworks[frameworkName];
-			hm.metabase.generateUserFrameworkMetadata(frameworkInfo, hyperloopBuildDir, function(err, metadata) {
-				if (err) {
-					return cb(err);
-				}
+		hm.metabase.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function(err, modules) {
+			if (err) {
+				return next(err);
+			}
 
-				thirdPartyFrameworks[metadata.name] = metadata;
-				frameworks[metadata.name] = metadata.includes;
-				return cb();
+			modules.forEach(moduleMetadata => {
+				thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
+				frameworks.set(moduleMetadata.name, moduleMetadata);
 			});
-		}, next);
+			return next();
+		});
 	}
 
 	/**
@@ -329,7 +332,9 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 							headers,
 							function (err, includes) {
 								if (!err && includes && includes[frameworkName]) {
-									frameworks[frameworkName] = includes[frameworkName];
+									const metadata = new ModuleMetadata(frameworkName, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
+									metadata.typeMap = includes[frameworkName];
+									frameworks.set(metadata.name, metadata);
 								}
 								cb(err);
 							},
@@ -443,14 +448,14 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 			// if we use something like require("UIKit")
 			// that should require the helper such as require("UIKit/UIKit");
 			var className = tok[1] || pkg;
-			var framework = this.frameworks[pkg];
-			var include = framework && framework[className];
+			var framework = this.frameworks.get(pkg);
+			var include = framework && framework.typeMap[className];
 			var isBuiltin = pkg === 'Titanium';
 
 			// if the framework is not found, then check if it was possibly mispelled
 			if (!framework && !isBuiltin) {
 				var pkgSoundEx = soundEx(pkg);
-				var maybes = Object.keys(this.frameworks).filter(function (frameworkName) {
+				var maybes = Array.from(this.frameworks.keys()).filter(function (frameworkName) {
 					return soundEx(frameworkName) === pkgSoundEx;
 				});
 
@@ -462,22 +467,22 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 				return orig;
 			}
 
-			// remember our packages
+			// remember any used frameworks
 			if (!isBuiltin) {
-				this.packages[pkg] = 1;
+				this.usedFrameworks.set(pkg, this.frameworks.get(pkg));
 			}
 
 			// if we haven't found it by now, then we try to help before failing
 			if (!include && className !== pkg && !isBuiltin) {
 				var classNameSoundEx = soundEx(className);
 
-				Object.keys(this.frameworks).forEach(function (frameworkName) {
-					if (this.frameworks[frameworkName][className]) {
-						throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkName + '", not in "' + pkg + '"? (' + relPath + ')');
+				this.frameworks.forEach(frameworkMetadata => {
+					if (frameworkMetadata.typeMap[className]) {
+						throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
 					}
 
-					if (soundEx(frameworkName) === classNameSoundEx) {
-						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkName + '" instead? (' + relPath+ ')');
+					if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
+						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
 					}
 				}, this);
 
@@ -541,7 +546,12 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		this.metabase = metabase;
 		this.metabase.classes = this.metabase.classes || {};
 
-		this.normalizeFrameworks(outfile);
+		if (!cached) {
+			this.normalizeFrameworks(outfile);
+			this.determineFrameworkAvailability();
+		} else {
+			this.populateFrameworkAvailabiltyFromCache();
+		}
 
 		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
 			// if cached, skip generation
@@ -555,9 +565,9 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			this.logger.info('Generating metabase for swift ' + chalk.cyan(entry.framework + ' ' + entry.source));
 			hm.metabase.generateSwiftMetabase(
 				this.hyperloopBuildDir,
-				this.frameworks.$metadata.sdkType,
-				this.frameworks.$metadata.sdkPath,
-				this.frameworks.$metadata.minVersion,
+				this.sdkInfo.sdkType,
+				this.sdkInfo.sdkPath,
+				this.sdkInfo.minVersion,
 				this.builder.xcodeTargetOS,
 				this.metabase,
 				entry.framework,
@@ -625,20 +635,20 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	}
 
 	// Framwork umbrella headers are required to propery resolve forward declarations
-	Object.keys(this.packages).forEach(function(frameworkName) {
-		var framework = this.frameworks[frameworkName];
-		var frameworkUmbrellaHeader = framework && framework[frameworkName];
-		if (frameworkUmbrellaHeader) {
-			this.includes[frameworkUmbrellaHeader] = 1;
+	this.frameworks.forEach(frameworkMeta => {
+		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
+			this.logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
 		}
-	}.bind(this));
+
+		this.includes[frameworkMeta.umbrellaHeader] = 1;
+	});
 
 	// generate the metabase from our includes
 	hm.metabase.generateMetabase(
 		this.hyperloopBuildDir,
-		this.frameworks.$metadata.sdkType,
-		this.frameworks.$metadata.sdkPath,
-		this.frameworks.$metadata.minVersion,
+		this.sdkInfo.sdkType,
+		this.sdkInfo.sdkPath,
+		this.sdkInfo.minVersion,
 		Object.keys(this.includes),
 		false, // don't exclude system libraries
 		generateMetabaseCallback.bind(this),
@@ -663,18 +673,16 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
  * @param {Object} fileToFrameworkMap Map with all known mappings of header files to their framework
  */
 HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks(outfile) {
-	var frameworks = Object.keys(this.frameworks);
-	if (frameworks.length === 0) {
+	if (this.frameworks.size === 0) {
 		return;
 	}
 
 	var headerToFrameworkMap = {};
-	for (var i = 0; i < frameworks.length; i++) {
-		var frameworkName = frameworks[i];
-		var classes = Object.keys(this.frameworks[frameworkName]);
+	for (const metadata of this.frameworks.values()) {
+		var classes = Object.keys(metadata.typeMap);
 		for (var c = 0; c < classes.length; c++) {
-			var headerPathAndFilename = this.frameworks[frameworkName][classes[c]];
-			headerToFrameworkMap[headerPathAndFilename] = frameworkName;
+			var headerPathAndFilename = metadata.typeMap[classes[c]];
+			headerToFrameworkMap[headerPathAndFilename] = metadata.name;
 		}
 	}
 
@@ -725,6 +733,57 @@ HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks
 		}, this);
 	}
 	fs.writeFileSync(outfile, JSON.stringify(this.metabase, null, 2));
+};
+
+/**
+ * Determines the general availability of a framework by iterating over the
+ * introducedIn property of all containing classes.
+ *
+ * The lowest version number found will be used as the introducedIn value for the
+ * framework. If no version information is available at all we set it to 0.0.0
+ * which means its available on all devices.
+ */
+HyperloopiOSBuilder.prototype.determineFrameworkAvailability = function determineFrameworkAvailability() {
+	const cacheData = {};
+	const unknownIntroducedIn = '100.0.0';
+	this.frameworks.forEach(metadata => {
+		let earliestIntroducedIn = unknownIntroducedIn;
+		Object.keys(metadata.typeMap).forEach(symbolName => {
+			const classMeta = this.metabase.classes[symbolName];
+			if (!classMeta || typeof classMeta.introducedIn !== 'string') {
+				return;
+			}
+
+			if (semver.lt(classMeta.introducedIn, earliestIntroducedIn)) {
+				earliestIntroducedIn = classMeta.introducedIn;
+			}
+		}, this);
+		metadata.introducedIn = earliestIntroducedIn !== unknownIntroducedIn ? earliestIntroducedIn : '0.0.0';
+		cacheData[metadata.name] = metadata.introducedIn;
+	}, this);
+
+	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
+	fs.writeFileSync(cachePathAndFilename, JSON.stringify(cacheData));
+};
+
+/**
+ * Updates the framework map and sets all cached introducedIn values from cache.
+ *
+ * This only needs to be done in the main frameworks property since all other
+ * Maps reference the same metadata objects.
+ */
+HyperloopiOSBuilder.prototype.populateFrameworkAvailabiltyFromCache = function populateFrameworkAvailabiltyFromCache() {
+	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
+	let availabilityMap = {};
+	try {
+		availabilityMap = JSON.parse(fs.readFileSync(cachePathAndFilename));
+	} catch (e) {
+		return this.determineFrameworkAvailability();
+	}
+
+	Object.keys(availabilityMap).forEach(frameworkName => {
+		this.frameworks.get(frameworkName).introducedIn = availabilityMap[frameworkName];
+	});
 };
 
 /**
@@ -815,8 +874,8 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 	}, this);
 
 	// check to see if we have any package modules and copy them in
-	Object.keys(this.packages).forEach(function (pkg) {
-		var file = path.join(this.hyperloopJSDir, pkg.toLowerCase() + '/' + pkg.toLowerCase() + '.m');
+	this.usedFrameworks.forEach(frameworkMetadata => {
+		var file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
@@ -916,16 +975,17 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	// check for those here
 	var thirdPartyFrameworksUsed = false;
 	if (this.hyperloopConfig.ios.thirdparty) {
-		var usedPackages = Object.keys(this.packages);
+		var usedFrameworkNames = Array.from(this.usedFrameworks.keys());
 		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
-			return usedPackages.some(function (packageName) {
-				return packageName === thirdPartyFramework;
-			});
-		});
+			return usedFrameworkNames.some(function (usedFrameworkName) {
+				return usedFrameworkName === thirdPartyFramework;
+			}, this);
+		}, this);
 	}
-	if (Object.keys(this.thirdPartyFrameworks).length > 0) {
+	if (this.thirdPartyFrameworks.size > 0) {
 		thirdPartyFrameworksUsed = true;
 	}
+
 	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
 		return;
 	}
@@ -943,41 +1003,47 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 
 	var frameworksGroup = xobjs.PBXGroup[mainGroupChildren.filter(function (child) { return child.comment === 'Frameworks'; })[0].value];
 	var frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXFrameworksBuildPhase[phase.value]; })[0].value];
-	var frameworkRegExp = /\.framework$/;
 	var frameworksToAdd = [];
-	var alreadyAddedFrameworks = {};
-	Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(function (id) {
-		if (xobjs.PBXFrameworksBuildPhase[id] && typeof xobjs.PBXFrameworksBuildPhase[id] === 'object') {
-			xobjs.PBXFrameworksBuildPhase[id].files.forEach(function (file) {
+	var alreadyAddedFrameworks = new Set();
+	Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(buildPhaseId => {
+		if (xobjs.PBXFrameworksBuildPhase[buildPhaseId] && typeof xobjs.PBXFrameworksBuildPhase[buildPhaseId] === 'object') {
+			xobjs.PBXFrameworksBuildPhase[buildPhaseId].files.forEach(file => {
 				var frameworkPackageName = xobjs.PBXBuildFile[file.value].fileRef_comment;
-				alreadyAddedFrameworks[frameworkPackageName] = 1;
+				var frameworkName = frameworkPackageName.replace('.framework', '');
+				alreadyAddedFrameworks.add(this.frameworks.get(frameworkName));
 			});
 		}
 	});
 
 	// Add all detected system frameworks
-	Object.keys(this.packages).forEach(function (pkg) {
-		if (this.systemFrameworks[pkg]) {
-			frameworksToAdd.push(pkg);
+	this.usedFrameworks.forEach(frameworkMetadata => {
+		if (this.systemFrameworks.has(frameworkMetadata.name)) {
+			frameworksToAdd.push(frameworkMetadata);
 		}
 	}, this);
 
 	// Add any additionally configured system frameworks from appc.js
 	if (this.hyperloopConfig.ios.xcodebuild && Array.isArray(this.hyperloopConfig.ios.xcodebuild.frameworks)) {
-		this.hyperloopConfig.ios.xcodebuild.frameworks.forEach(function (framework) {
-			framework && frameworksToAdd.push(framework);
-		});
+		this.hyperloopConfig.ios.xcodebuild.frameworks.forEach(function (frameworkName) {
+			if (typeof frameworkName !== 'string') {
+				return;
+			}
+			if (this.systemFrameworks.has(frameworkName)) {
+				frameworksToAdd.push(this.systemFrameworks.get(frameworkName));
+			} else {
+				this.logger.error(`Unable to link against non-existing system framework "${frameworkName}". Please check your appc.js configurtion.`);
+				process.exit(1);
+			}
+		}, this);
 	}
 
-	frameworksToAdd.forEach(function (framework) {
-		if (!frameworkRegExp.test(framework)) {
-			framework += '.framework';
-		}
-		if (alreadyAddedFrameworks[framework]) {
+	frameworksToAdd.forEach(frameworkMetadata => {
+		if (alreadyAddedFrameworks.has(frameworkMetadata)) {
 			return;
 		}
-		alreadyAddedFrameworks[framework] = 1;
+		alreadyAddedFrameworks.add(frameworkMetadata);
 
+		var frameworkPackageName = `${frameworkMetadata.name}.framework`;
 		var fileRefUuid = generateUuid();
 		var buildFileUuid = generateUuid();
 
@@ -985,27 +1051,30 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		xobjs.PBXFileReference[fileRefUuid] = {
 			isa: 'PBXFileReference',
 			lastKnownFileType: 'wrapper.framework',
-			name: '"' + framework + '"',
-			path: '"' + path.join('System', 'Library', 'Frameworks', framework) + '"',
+			name: '"' + frameworkPackageName + '"',
+			path: '"' + path.join('System', 'Library', 'Frameworks', frameworkPackageName) + '"',
 			sourceTree: '"SDKROOT"'
 		};
-		xobjs.PBXFileReference[fileRefUuid + '_comment'] = framework;
+		xobjs.PBXFileReference[fileRefUuid + '_comment'] = frameworkPackageName;
 
 		frameworksGroup.children.push({
 			value: fileRefUuid,
-			comment: framework
+			comment: frameworkPackageName
 		});
 
 		xobjs.PBXBuildFile[buildFileUuid] = {
 			isa: 'PBXBuildFile',
 			fileRef: fileRefUuid,
-			fileRef_comment: framework
+			fileRef_comment: frameworkPackageName
 		};
-		xobjs.PBXBuildFile[buildFileUuid + '_comment'] = framework + ' in Frameworks';
+		if (!frameworkMetadata.isAvailable(this.sdkInfo.minVersion)) {
+			xobjs.PBXBuildFile[buildFileUuid].settings = {ATTRIBUTES: ['Weak']};
+		}
+		xobjs.PBXBuildFile[buildFileUuid + '_comment'] = frameworkPackageName + ' in Frameworks';
 
 		frameworksBuildPhase.files.push({
 			value: buildFileUuid,
-			comment: framework + ' in Frameworks'
+			comment: frameworkPackageName + ' in Frameworks'
 		});
 	}, this);
 
@@ -1077,8 +1146,8 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		});
 	}
 	if (!containsSwift) {
-		containsSwift = Object.keys(this.thirdPartyFrameworks).some(function (frameworksName) {
-			return this.thirdPartyFrameworks[frameworksName].usesSwift === true;
+		containsSwift = Array.from(this.thirdPartyFrameworks.values()).some(function (frameworkMeta) {
+			return frameworkMeta.usesSwift === true;
 		}, this);
 	}
 	// if we have any swift usage, enable swift support
