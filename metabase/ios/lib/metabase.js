@@ -2,6 +2,8 @@
  * Hyperloop Metabase Generator
  * Copyright (c) 2015-2017 by Appcelerator, Inc.
  */
+'use strict';
+
 var spawn = require('child_process').spawn,
 	exec = require('child_process').exec,
 	path = require('path'),
@@ -131,42 +133,122 @@ function extractImplementations (fn, files) {
 }
 
 /**
+ * Represents a module, which can be either a static library or a framework.
+ */
+class ModuleMetadata {
+
+	/**
+	 * Constructs a new module metadata object
+	 *
+	 * @param {String} name Module name
+	 * @param {String} path Full path to the module
+	 * @param {String} type Module type, one of the MODULE_TYPE_* constants
+	 */
+	constructor(name, path, type) {
+		this.name = name;
+		this.path = path;
+		this.type = type;
+		this.isFramework = this.path.endsWith('.framework');
+		this.introducedIn = null;
+		this.umbrellaHeader = null;
+		this.usesSwift = false;
+		this.typeMap = {};
+	}
+
+	/**
+	 * Constant for a static module type
+	 * @type {String}
+	 */
+	static get MODULE_TYPE_STATIC() {
+		return 'static';
+	}
+
+	/**
+	 * Constant for a dynamic module type
+	 * @type {String}
+	 */
+	static get MODULE_TYPE_DYNAMIC() {
+		return 'dynamic';
+	}
+
+	/**
+	 * Determines wether this module is available in the given iOS version
+	 *
+	 * @param {String} iOSVersion iOS version identifier to check the availability for
+	 * @return {Boolean} True if this module is available in the given iOS version, false if not
+	 */
+	isAvailable(iOSVersion) {
+		if (semver.valid(this.introducedIn) === null) {
+			return true;
+		}
+
+		return semver.lte(this.introducedIn, appleVersionToSemver(iOSVersion));
+	}
+
+	/**
+	 * Returns a serializable object representation of this module.
+	 *
+	 * @return {Object} Plain object representation of this class
+	 */
+	toJson() {
+		return {
+			name: this.name,
+			path: this.path,
+			type: this.type,
+			introducedIn: this.introducedIn,
+			umbrellaHeader: this.umbrellaHeader,
+			usesSwift: this.usesSwift,
+			typeMap: this.typeMap
+		};
+	}
+
+	/**
+	 * Prases a plain object received from JSON data and converts it back to a
+	 * module metadata instance.
+	 *
+	 * @param {Object} json Object containing data from JSON
+	 * @return {ModuleMetadata} The created module metadata instance
+	 */
+	static fromJson(json) {
+		const metadata = new ModuleMetadata(json.name, json.path, json.type);
+		metadata.introducedIn = json.introducedIn;
+		metadata.umbrellaHeader = json.umbrellaHeader;
+		metadata.usesSwift = json.usesSwift;
+		metadata.typeMap = json.typeMap;
+		return metadata;
+	}
+
+}
+
+/**
  * generate system framework includes mapping
  */
 function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
-	var skip = [],
-		frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks')),
-		frameworks = fs.readdirSync(frameworksPath).filter(function(n){ return /\.framework$/.test(n) && !!~~skip.indexOf(n); }),
-		iosMinVersionSemver = appleVersionToSemver(iosMinVersion),
-		mapping = {};
+	const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
+	const frameworksEntries = fs.readdirSync(frameworksPath).filter(entryName => /\.framework$/.test(entryName));
+	const frameworks = new Map();
+	iosMinVersion = appleVersionToSemver(iosMinVersion),
 
-	async.each(frameworks, function (fw, next) {
-		var hd = path.join(frameworksPath, fw, 'Headers'),
-			fp = path.join(hd, fw.replace('.framework','.h'));
-		if (fs.existsSync(fp)) {
-			getPlistForFramework(path.join(frameworksPath, fw, 'Info.plist'), function (err, p) {
-				if (err) { return next(err); }
-				// check min version
-				if (p && p.MinimumOSVersion) {
-					if (semver.gt(iosMinVersionSemver, appleVersionToSemver(p.MinimumOSVersion))) {
-						return;
-					}
-				}
-				if (p && p.UIDeviceFamily) {
-					// TODO: check device family we are targeting
-				}
+	async.each(frameworksEntries, function (frameworkPackageName, next) {
+		const frameworkName = frameworkPackageName.replace('.framework', '');
+		const frameworkPath = path.join(frameworksPath, frameworkPackageName);
+		const frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+		const frameworkUmbrellaHeader = path.join(frameworkHeadersPath, `${frameworkName}.h`);
+		if (fs.existsSync(frameworkUmbrellaHeader)) {
+			const frameworkMetadata = new ModuleMetadata(frameworkName, frameworkPath, ModuleMetadata.MODULE_TYPE_DYNAMIC);
+			frameworkMetadata.umbrellaHeader = frameworkUmbrellaHeader;
 
-				var frameworkName = fw.replace('.framework', '');
-				var frameworkPath = path.join(frameworksPath, fw);
-				extractImplementationsFromFramework(frameworkName, frameworkPath, mapping);
-				next();
-			});
-		}
-		else {
+			var mapping = {};
+			extractImplementationsFromFramework(frameworkName, frameworkPath, mapping);
+			frameworkMetadata.typeMap = mapping[frameworkName];
+			frameworks.set(frameworkName, frameworkMetadata);
+
+			next();
+		} else {
 			return next();
 		}
 	}, function (err) {
-		return callback(err, mapping);
+		return callback(err, frameworks);
 	});
 }
 
@@ -199,12 +281,12 @@ function extractImplementationsFromFramework(frameworkName, frameworkPath, inclu
  */
 function collectFrameworkHeaders(frameworkPath) {
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
-	
+
 	// Skip frameworks that do not have public headers set (like FirebaseNanoPB)
 	if (!fs.existsSync(frameworkHeadersPath)) {
 		return [];
 	}
-	
+
 	var headerFiles = getAllHeaderFiles([frameworkHeadersPath]);
 	var nestedFrameworksPath = path.join(frameworkPath, 'Frameworks');
 	if (fs.existsSync(nestedFrameworksPath)) {
@@ -339,24 +421,22 @@ function getSystemFrameworks (cacheDir, sdkType, minVersion, callback) {
 		fs.mkdirSync(cacheDir);
 	}
 	var cacheFilename = path.join(cacheDir, fn);
-	if (fs.existsSync(cacheFilename)) {
-		try {
-			return callback(null, JSON.parse(fs.readdirSync(cacheFilename)));
-		} catch (E) {
-			// errors, re-generate it
-		}
+	var cachedMetadata = readModulesMetadataFromCache(cacheFilename);
+	if (cachedMetadata !== null) {
+		return callback(null, cachedMetadata);
 	}
+
 	getSDKPath(sdkType, function (err, sdkPath) {
 		if (err) { return callback(err); }
-		generateSystemFrameworks(sdkPath, minVersion, function (err, json) {
+		generateSystemFrameworks(sdkPath, minVersion, function (err, frameworks) {
 			if (err) { return callback(err); }
-			json.$metadata = {
+			frameworks.set('$metadata', {
 				sdkType: sdkType,
 				minVersion: minVersion,
 				sdkPath: sdkPath
-			};
-			fs.writeFileSync(cacheFilename, JSON.stringify(json));
-			callback(null, json);
+			});
+			writeModulesMetadataToCache(frameworks, cacheFilename);
+			callback(null, frameworks);
 		});
 	});
 }
@@ -423,37 +503,43 @@ function generateUserSourceMappings (cacheDir, directories, callback, frameworkN
 }
 
 /**
- * Processes the content of a framework, generating a mapping of all
- * implemented classes and the header file they are defined in.
+ * Generates metadata for all frameworks known to the iOS builder.
  *
- * @param {Object} frameworkInfo Object with general framework info from the iOS builder
+ * @param {Object} frameworks Object containing base info on all frameworks from the iOS builder
  * @param {String} cacheDir Path to cache directory
  * @param {Function} callback Callback function
  */
-function generateUserFrameworkMetadata (frameworkInfo, cacheDir, callback) {
-	var frameworkMetadata = {
-		name: frameworkInfo.name,
-		path: frameworkInfo.path,
-		type: frameworkInfo.type
-	};
-	var binaryPathAndFilename = path.join(frameworkInfo.path, frameworkInfo.name);
-	var binaryHash = createHashFromString(fs.readFileSync(binaryPathAndFilename).toString());
-	var cacheToken = createHashFromString(frameworkInfo.name + binaryHash);
-	var cachePathAndFilename = path.join(cacheDir, 'metabase-framework-' + cacheToken + '.json');
-	var cachedMetadata = readFromCache(cachePathAndFilename);
+function generateUserFrameworksMetadata (frameworks, cacheDir, callback) {
+	const frameworkNames = Object.keys(frameworks);
+	const cacheToken = createHashFromString(frameworkNames.join(''));
+	var cachePathAndFilename = path.join(cacheDir, 'metabase-user-frameworks-' + cacheToken + '.json');
+	var cachedMetadata = readModulesMetadataFromCache(cachePathAndFilename);
 	if (cachedMetadata !== null) {
-		util.logger.trace('Using cached framework metadata for ' + frameworkInfo.name.green + '.');
+		util.logger.trace('Using cached frameworks metadata.');
 		return callback(null, cachedMetadata);
 	}
-	var includes = {};
-	generateFrameworkIncludeMap(frameworkMetadata, includes, function (err) {
+
+	const modules = new Map();
+	async.eachSeries(frameworkNames, (frameworkName, next) => {
+		const frameworkInfo = frameworks[frameworkName];
+		var metadata = new ModuleMetadata(frameworkInfo.name, frameworkInfo.path, frameworkInfo.type);
+		var includes = {};
+		generateFrameworkIncludeMap(metadata, includes, function (err) {
+			if (err) {
+				return next(err);
+			}
+
+			metadata.typeMap = includes[frameworkInfo.name];
+			modules.set(metadata.name, metadata);
+			next();
+		});
+	}, (err) => {
 		if (err) {
-			return callback(err);
+			callback(err);
 		}
 
-		frameworkMetadata.includes = includes[frameworkInfo.name];
-		writeToCache(cachePathAndFilename, frameworkMetadata);
-		callback(null, frameworkMetadata);
+		writeModulesMetadataToCache(modules, cachePathAndFilename);
+		callback(null, modules);
 	});
 }
 
@@ -496,7 +582,7 @@ function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes,
  * Frameworks written in Swift are currently only supported if they provide an
  * ObjC interface header.
  *
- * @param {Object} frameworkMetadata Metadata object containing all Framework related info
+ * @param {ModuleMetadata} frameworkMetadata Metadata object containing all framework related info
  * @param {Object} includes Map of class names and their header file
  * @param {Function} callback Callback function
  */
@@ -504,25 +590,29 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 	var frameworkName = frameworkMetadata.name;
 	var frameworkPath = frameworkMetadata.path;
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
-	
+
 	// There are some rare frameworks (like FirebaseNanoPB) that do not have a Headers/ directory
 	if (!fs.existsSync(frameworkHeadersPath)) {
 		includes[frameworkName] = {};
 		return callback();
 	}
-	
+
 	util.logger.trace('Generating includes for ' + frameworkMetadata.type + ' framework ' + frameworkName.green + ' (' + frameworkPath + ')');
 	if (frameworkMetadata.type === 'dynamic') {
 		var modulesPath = path.join(frameworkPath, 'Modules');
-		if (fs.existsSync(modulesPath) && fs.readdirSync(modulesPath).length > 1) {
+		if (!fs.existsSync(modulesPath)) {
+			return callback(new Error(`Modules directory for ${frameworkName} not found at expected path ${modulesPath}.`));
+		}
+
+		var moduleMapPathAndFilename = path.join(modulesPath, 'module.modulemap');
+		if (!fs.existsSync(moduleMapPathAndFilename)) {
+			return callback(new Error('Modulemap for ' + frameworkName + ' not found at expected path ' + moduleMapPathAndFilename + '. All dynamic frameworks need a module map to be usable with Hyperloop.'));
+		}
+		var moduleMap = fs.readFileSync(moduleMapPathAndFilename).toString();
+		if (fs.readdirSync(modulesPath).length > 1) {
 			// Dynamic frameworks containing Swift modules need to have an Objective-C
 			// interface header defined to be usable
 			frameworkMetadata.usesSwift = true;
-			var moduleMapPathAndFilename = path.join(modulesPath, 'module.modulemap');
-			if (!fs.existsSync(moduleMapPathAndFilename)) {
-				return callback(new Error('Modulemap for ' + frameworkName + ' not found at expected path ' + moduleMapPathAndFilename + '. All dynamic frameworks need a module map to be usable with Hyperloop.'));
-			}
-			var moduleMap = fs.readFileSync(moduleMapPathAndFilename).toString();
 			var objcInterfaceHeaderRegex = /header\s"(.+-Swift\.h)"/i;
 			var objcInterfaceHeaderMatch = moduleMap.match(objcInterfaceHeaderRegex);
 			if (objcInterfaceHeaderMatch !== null) {
@@ -540,10 +630,16 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 				return callback(new Error('Incompatible framework ' + frameworkName + ' detected. Frameworks with Swift modules are only supported if they contain an Objective-C interface header.'));
 			}
 		} else {
+			var umbrellaHeaderRegex = /umbrella header\s"(.+\.h)"/i;
+			var umbrellaHeaderMatch = moduleMap.match(umbrellaHeaderRegex);
+			if (umbrellaHeaderMatch !== null) {
+				frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, 'Headers', umbrellaHeaderMatch[1]);
+			}
 			util.logger.trace('Objective-C only framework, parsing all header files');
 			extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 		}
 	} else if (frameworkMetadata.type === 'static') {
+		frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, 'Headers', `${frameworkMetadata.name}.h`);
 		util.logger.trace('Static framework, parsing all header files');
 		extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 	} else {
@@ -564,16 +660,17 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
  * @param {Object} builder iOSBuilder instance
  * @param {Function} callback Callback function
  */
-function generateCocoaPodsMappings (cacheDir, builder, settings, callback) {
+function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	var podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
 	var cacheToken = calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
-	var cachePathAndFilename = path.join(cacheDir, 'metabase-mappings-cocoapods-' + cacheToken + '.json');
-	var cachedMappings = readFromCache(cachePathAndFilename);
-	if (cachedMappings !== null) {
-		util.logger.trace('Using cached CocoaPods mappings.');
-		return callback(null, cachedMappings);
+	var cachePathAndFilename = path.join(cacheDir, 'metabase-cocoapods-' + cacheToken + '.json');
+	var cachedMetadata = readModulesMetadataFromCache(cachePathAndFilename);
+	if (cachedMetadata !== null) {
+		util.logger.trace('Using cached CocoaPods metadata.');
+		return callback(null, cachedMetadata);
 	}
 
+	var modules = new Map();
 	var tasks = [];
 	var includes = {};
 
@@ -583,7 +680,17 @@ function generateCocoaPodsMappings (cacheDir, builder, settings, callback) {
 		var staticLibrariesHeaderPath = path.join(podDir, 'Headers', 'Public');
 		if (fs.existsSync(staticLibrariesHeaderPath)) {
 			tasks.push(function (next) {
-				generateStaticLibrariesIncludeMap(staticLibrariesHeaderPath, includes, next);
+				generateStaticLibrariesIncludeMap(staticLibrariesHeaderPath, includes, () => {
+					Object.keys(includes).forEach(libraryName => {
+						const libraryPath = path.join(staticLibrariesHeaderPath, libraryName);
+						const moduleMetadata = new ModuleMetadata(libraryName, libraryPath, ModuleMetadata.MODULE_TYPE_STATIC);
+						moduleMetadata.umbrellaHeader = path.join(moduleMetadata.path, `${moduleMetadata.name}.h`);
+						moduleMetadata.typeMap = includes[libraryName];
+						modules.set(moduleMetadata.name, moduleMetadata);
+					});
+
+					next();
+				});
 			});
 		}
 	}
@@ -604,8 +711,12 @@ function generateCocoaPodsMappings (cacheDir, builder, settings, callback) {
 					return done(err);
 				}
 
-				async.each(frameworks, function(framework, nextSearchPath) {
-					generateFrameworkIncludeMap(framework, includes, nextSearchPath);
+				async.each(Array.from(frameworks.values()), function(frameworkMetadata, nextSearchPath) {
+					generateFrameworkIncludeMap(frameworkMetadata, includes, () => {
+						frameworkMetadata.typeMap = includes[frameworkMetadata.name];
+						modules.set(frameworkMetadata.name, frameworkMetadata);
+						nextSearchPath();
+					});
 				}, done);
 			});
 		}, next);
@@ -616,8 +727,8 @@ function generateCocoaPodsMappings (cacheDir, builder, settings, callback) {
 			return callback(err);
 		}
 
-		writeToCache(cachePathAndFilename, includes);
-		callback(err, includes);
+		writeModulesMetadataToCache(modules, cachePathAndFilename);
+		callback(err, modules);
 	});
 }
 
@@ -629,7 +740,7 @@ function generateCocoaPodsMappings (cacheDir, builder, settings, callback) {
  * @param {Function} done Callback function
  */
 function detectFrameworks(frameworkSearchPath, done) {
-	var frameworks = [];
+	var frameworks = new Map();
 	async.each(fs.readdirSync(frameworkSearchPath), function(searchPathEntry, next) {
 		var frameworkMatch = /([^/]+)\.framework$/.exec(searchPathEntry);
 		if (frameworkMatch === null) {
@@ -655,11 +766,7 @@ function detectFrameworks(frameworkSearchPath, done) {
 				return next(new Error('Could not detect framework type, command exited with code ' + code));
 			}
 
-			frameworks.push({
-				name: frameworkName,
-				path: frameworkPath,
-				type: frameworkType
-			});
+			frameworks.set(frameworkName, new ModuleMetadata(frameworkName, frameworkPath, frameworkType));
 
 			next();
 		});
@@ -755,6 +862,50 @@ function writeToCache (cachePathAndFilename, data) {
 
 	fs.writeFileSync(cachePathAndFilename, JSON.stringify(data));
 }
+
+function writeModulesMetadataToCache(modules, cachePathAndFilename) {
+	const modulesObject = {};
+	modules.forEach((entry, key) => {
+		if (entry instanceof ModuleMetadata) {
+			modulesObject[entry.name] = entry.toJson();
+		}
+		if (key === '$metadata') {
+			modulesObject.$metadata = entry;
+		}
+	});
+	const cacheDir = path.dirname(cachePathAndFilename);
+	if (!fs.existsSync(cacheDir)) {
+		fs.mkdirSync(cacheDir);
+	}
+	fs.writeFileSync(cachePathAndFilename, JSON.stringify(modulesObject));
+}
+
+function readModulesMetadataFromCache(cachePathAndFilename) {
+	if (!fs.existsSync(cachePathAndFilename)) {
+		return null;
+	}
+
+	let json = {};
+	try {
+		json = JSON.parse(fs.readFileSync(cachePathAndFilename));
+	} catch (e) {
+		return null;
+	}
+
+	const modules = new Map();
+	Object.keys(json).forEach(entryName => {
+		if (entryName === '$metadata') {
+			modules.set('$metadata', json[entryName]);
+			return;
+		}
+
+		modules.set(entryName, ModuleMetadata.fromJson(json[entryName]));
+	});
+
+	return modules;
+}
+
+
 
 /**
  * handle buffer output
@@ -1093,18 +1244,18 @@ function generateCocoaPods (cachedir, builder, callback) {
 
 	runPodInstallIfRequired(basedir, function (err) {
 		if (err) {
-      return callback(err);
-    }
+			return callback(err);
+		}
 
-    runCocoaPodsBuild(basedir, builder, function (err) {
+		runCocoaPodsBuild(basedir, builder, function (err) {
 			if (err) {
-        return callback(err);
-      }
+				return callback(err);
+			}
 
 			var settings = getCocoaPodsXCodeSettings(basedir);
 			util.logger.trace(chalk.green('CocoaPods') + ' Xcode settings will', JSON.stringify(settings, null, 2));
 
-			generateCocoaPodsMappings(cachedir, builder, settings, function (err, includes) {
+			generateCocoaPodsMetadata(cachedir, builder, settings, function (err, includes) {
 				return callback(err, settings, includes);
 			});
 		});
@@ -1114,10 +1265,12 @@ function generateCocoaPods (cachedir, builder, callback) {
 // public API
 exports.getSystemFrameworks = getSystemFrameworks;
 exports.generateUserSourceMappings = generateUserSourceMappings;
-exports.generateUserFrameworkMetadata = generateUserFrameworkMetadata;
+exports.generateUserFrameworksMetadata = generateUserFrameworksMetadata;
 exports.generateMetabase = generateMetabase;
 exports.generateCocoaPods = generateCocoaPods;
 exports.compileResources = compileResources;
 exports.recursiveReadDir = recursiveReadDir;
 exports.generateSwiftMetabase = swiftlilb.generateSwiftMetabase;
 exports.generateSwiftMangledClassName = swiftlilb.generateSwiftMangledClassName;
+exports.appleVersionToSemver = appleVersionToSemver;
+exports.ModuleMetadata = ModuleMetadata;

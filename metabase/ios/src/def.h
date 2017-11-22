@@ -81,6 +81,8 @@ namespace hyperloop {
 			inline const std::string getName() const { return name; }
 			inline const std::string getFileName() const { return filename; }
 			inline const std::string getLine() const { return line; }
+			inline const std::string getIntroducedIn() const { return introducedIn; }
+			void setIntroducedIn(const CXVersion version);
 			inline ParserContext* getContext() const { return context; }
 			inline CXCursor getCursor() { return cursor; }
 			std::string getFramework() const;
@@ -91,6 +93,7 @@ namespace hyperloop {
 			std::string name;
 			std::string filename;
 			std::string line;
+			std::string introducedIn;
 
 			virtual void toJSONBase (Json::Value &kv) const;
 

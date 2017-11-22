@@ -316,20 +316,25 @@ namespace hyperloop {
 		CXPlatformAvailability availability[10];
 		int always_deprecated, always_unavailable;
 		CXString deprecated_message, unavailable_message;
+		CXVersion introducedIn;
+		introducedIn.Major = 0;
+		introducedIn.Minor = 0;
+		introducedIn.Subminor = 0;
 
 		int size = clang_getCursorPlatformAvailability(cursor,
 											&always_deprecated,
 											&deprecated_message,
 											&always_unavailable,
 											&unavailable_message,
-											(CXPlatformAvailability*)&availability,10);
+											(CXPlatformAvailability *)&availability, 10);
 
 		// check and make sure this API is available
 		if (size > 0) {
 			bool unavailable = false;
 			for (int c = 0; c < size; c++) {
+				auto platformAvailability = availability[c];
 				// We only care for ios, so skip this platform if it's anything else
-				auto platformNameCString = clang_getCString(availability[c].Platform);
+				auto platformNameCString = clang_getCString(platformAvailability.Platform);
 				std::string platformName = platformNameCString;
 				if (platformName.compare("ios") != 0) {
 					continue;
@@ -338,6 +343,8 @@ namespace hyperloop {
 				if (availability[c].Unavailable) {
 					unavailable = true;
 				}
+
+				introducedIn = platformAvailability.Introduced;
 			}
 			clang_disposeCXPlatformAvailability(availability);
 			if (unavailable || always_deprecated || always_unavailable) {
@@ -389,6 +396,7 @@ namespace hyperloop {
 		}
 
 		if (definition) {
+			definition->setIntroducedIn(introducedIn);
 			ctx->setCurrent(definition);
 			definition->parse(cursor, parent, ctx);
 		}

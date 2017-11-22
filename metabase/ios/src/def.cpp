@@ -115,6 +115,18 @@ namespace hyperloop {
 		cursor(_cursor), name(_name), filename(ctx->getCurrentFilename()), line(ctx->getCurrentLine()), context(ctx) {
 	}
 
+	void Definition::setIntroducedIn(const CXVersion version) {
+		std::stringstream versionNumberStream;
+		versionNumberStream << version.Major;
+		versionNumberStream << "." << version.Minor;
+		if (version.Subminor == -1) {
+			versionNumberStream << ".0";
+		} else {
+			versionNumberStream << "." << version.Subminor;
+		}
+		this->introducedIn = versionNumberStream.str();
+	}
+
 	std::string Definition::getFramework () const {
 		size_t frameworkPosition = filename.find(".framework");
 		if (frameworkPosition != std::string::npos) {
@@ -131,6 +143,7 @@ namespace hyperloop {
 		kv["thirdparty"] = !getContext()->isSystemLocation(filename);
 		kv["filename"] = filename;
 		kv["line"] = line;
+		kv["introducedIn"] = introducedIn;
 	}
 
 	CXChildVisitResult Definition::parse(CXCursor cursor, CXCursor parent, CXClientData clientData) {
