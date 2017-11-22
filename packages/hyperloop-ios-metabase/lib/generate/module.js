@@ -78,7 +78,7 @@ function generate (json, mod, state) {
 		Object.keys(m.class.static_variables).length ||
 		m.class.blocks.length) {
 		if (mod.filename.match(/-Swift\.h$/)) {
-			m.import = mod.framework + '/' + mod.filename;
+			m.import = mod.framework + '/' + path.basename(mod.filename);
 			if (m.frameworks[mod.framework]) {
 				delete m.frameworks[mod.framework];
 			}
