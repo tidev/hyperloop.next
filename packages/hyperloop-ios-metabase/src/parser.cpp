@@ -396,7 +396,7 @@ namespace hyperloop {
 		}
 
 		if (definition) {
-			definition->setIntroducedin(introducedIn);
+			definition->setIntroducedIn(introducedIn);
 			ctx->setCurrent(definition);
 			definition->parse(cursor, parent, ctx);
 		}

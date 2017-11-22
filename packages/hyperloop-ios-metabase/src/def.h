@@ -82,7 +82,7 @@ namespace hyperloop {
 			inline const std::string getFileName() const { return filename; }
 			inline const std::string getLine() const { return line; }
 			inline const std::string getIntroducedIn() const { return introducedIn; }
-			void setIntroducedin(const CXVersion version);
+			void setIntroducedIn(const CXVersion version);
 			inline ParserContext* getContext() const { return context; }
 			inline CXCursor getCursor() { return cursor; }
 			std::string getFramework() const;
