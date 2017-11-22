@@ -115,7 +115,7 @@ namespace hyperloop {
 		cursor(_cursor), name(_name), filename(ctx->getCurrentFilename()), line(ctx->getCurrentLine()), context(ctx) {
 	}
 
-	void Definition::setIntroducedin(const CXVersion version) {
+	void Definition::setIntroducedIn(const CXVersion version) {
 		std::stringstream versionNumberStream;
 		versionNumberStream << version.Major;
 		versionNumberStream << "." << version.Minor;
