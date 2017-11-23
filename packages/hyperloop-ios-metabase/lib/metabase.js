@@ -622,6 +622,7 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 					return callback(new Error('Objective-C interface header for Swift-based framework ' + frameworkName.green + ' not found at expected path ' + headerPathAndFilename.cyan + '.'));
 				}
 				util.logger.trace('Swift based framework detected, parsing Objective-C interface header ' + objcInterfaceHeaderFilename.cyan);
+				frameworkMetadata.umbrellaHeader = headerPathAndFilename;
 				var implementationToHeaderFileMap = includes[frameworkName] || {};
 				extractImplementations(headerPathAndFilename, implementationToHeaderFileMap);
 				includes[frameworkName] = implementationToHeaderFileMap;

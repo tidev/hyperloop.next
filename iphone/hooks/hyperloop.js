@@ -840,7 +840,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 				return callback(err);
 			}
 
-			var codeGenerator = new hm.generate.CodeGenerator(sourceSet, this.metabase, this.parserState, modules, this.references);
+			var codeGenerator = new hm.generate.CodeGenerator(sourceSet, modules, this);
 			codeGenerator.generate(this.hyperloopJSDir);
 
 			var duration = Date.now() - started;
