@@ -355,7 +355,7 @@ Parser.generate = function (state, metabase) {
 			if (!(found = metabase.classes[classDef.extends])) {
 				throw new JSParseError('invalid class specified "' + classDef.extends + '"', classDef);
 			}
-			imports[found.framework + '/' + found.name] = 1;
+			imports[found.framework + '/' + found.framework] = 1;
 			if (classDef.implements) {
 				if (!Array.isArray(classDef.implements)) {
 					protocols = [classDef.implements];

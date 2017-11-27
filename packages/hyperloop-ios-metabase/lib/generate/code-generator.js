@@ -16,17 +16,16 @@ class CodeGenerator {
 	 * Constructs a new code generator
 	 *
 	 * @param {Object} sourceSet Set of source info objects passed to template files
-	 * @param {Object} json Metabase object
-	 * @param {Object} state State from the metabase parser
 	 * @param {Object} modules Map of module info objects
-	 * @param {Object} userRequires Map of explicit requires of Hyperloop files made by the user
+	 * @param {Object} iosBuilder iOS bulder instance
 	 */
-	constructor(sourceSet, json, state, modules, userRequires) {
+	constructor(sourceSet, modules, iosBuilder) {
 		this.sourceSet = sourceSet;
-		this.json = json;
-		this.state = state;
+		this.json = iosBuilder.metabase;
+		this.state = iosBuilder.parserState;
 		this.modules = modules;
-		this.userRequires = userRequires;
+		this.userRequires = iosBuilder.references;
+		this.iosBuilder = iosBuilder;
 	}
 
 	/**
@@ -217,6 +216,8 @@ class CodeGenerator {
 			return;
 		}
 
+		this.fixCustomImports(this.state.imports);
+
 		util.logger.trace('Generating Hyperloop native helpers for custom classes');
 		var code = util.generateTemplate('custom.m', {
 			data: {
@@ -240,6 +241,40 @@ class CodeGenerator {
 			moduleInfo.class.obj_class_method.length ||
 			Object.keys(moduleInfo.class.static_variables).length ||
 			moduleInfo.class.blocks.length;
+	}
+
+	/**
+	 * Fixes custom module imports to use the correct framework header.
+	 *
+	 * Prior to dynamic framework support framework includes were simply genrated
+	 * by assuming their umbrella header name. Dynamic frameworks that are written
+	 * in Swift provide an ObjC interface header which requires a different header
+	 * resolution. It is easier to fix this here afterwards than to do it in the
+	 * actual custom module generation.
+	 *
+	 * @param {Object} imports Imports map
+	 */
+	fixCustomImports(imports) {
+		Object.keys(imports).forEach(header => {
+			const headerParts = header.split('/');
+			const frameworkName = headerParts[0];
+			const headerFilename = headerParts[1];
+			if (!this.iosBuilder.frameworks.has(frameworkName)) {
+				return;
+			}
+
+			const umbrellaHeader = this.iosBuilder.frameworks.get(frameworkName).umbrellaHeader;
+			if (umbrellaHeader === null) {
+				return;
+			}
+
+			const umbrellaHeaderBasename = path.basename(umbrellaHeader, '.h');
+			if (umbrellaHeaderBasename !== headerFilename) {
+				const newHeader = `${frameworkName}/${umbrellaHeaderBasename}`;
+				imports[newHeader] = 1;
+				delete imports[header];
+			}
+		});
 	}
 }
 
