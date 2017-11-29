@@ -86,7 +86,7 @@ class HyperloopBuilderFactory {
 			}
 		}
 
-		return config;
+		return config.hyperloop || {};
 	}
 
 	/**
