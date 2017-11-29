@@ -185,6 +185,7 @@ class CodeGenerator {
 			var moduleSourceInfo = this.sourceSet.modules[moduleName];
 
 			if (this.doesModuleNeedsNativeWrapper(moduleSourceInfo)) {
+				this.convertToUmbrellaHeaderImports(moduleSourceInfo.frameworks);
 				var nativeCode = util.generateTemplate('module.m', {
 					data: moduleSourceInfo
 				});
@@ -273,6 +274,32 @@ class CodeGenerator {
 				const newHeader = `${frameworkName}/${umbrellaHeaderBasename}`;
 				imports[newHeader] = 1;
 				delete imports[header];
+			}
+		});
+	}
+
+	/**
+	 * Takes a map of used framework names and converts it to their correct umbrella
+	 * header imports.
+	 *
+	 * Prior to this we would simply assume umbrella headers as Framework/Framework.h,
+	 * which is a best practive though, but not every framework sticks to this.
+	 *
+	 * Utilizes the frameworks metadata to read the umbrella header from a framework's
+	 * module map or falls back to the old naming scheme.
+	 *
+	 * @param {Object} frameworks Object map of used frameworks as keys
+	 */
+	convertToUmbrellaHeaderImports(frameworks) {
+		Object.keys(frameworks).forEach(frameworkName => {
+			if (this.iosBuilder.frameworks.has(frameworkName)) {
+				const meta = this.iosBuilder.frameworks.get(frameworkName);
+				let frameworkUmbrellaHeaderImport = `${meta.name}/${meta.name}.h`;
+				if (meta.umbrellaHeader) {
+					frameworkUmbrellaHeaderImport = `${meta.name}/${path.basename(meta.umbrellaHeader)}`;
+				}
+				delete frameworks[frameworkName];
+				frameworks[frameworkUmbrellaHeaderImport] = 1;
 			}
 		});
 	}

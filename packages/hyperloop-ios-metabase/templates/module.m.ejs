@@ -5,11 +5,8 @@
  * All Rights Reserved.  This code contains patents and/or patents pending.
  */
 <% Object.keys(data.frameworks).forEach(function (f) { -%>
-#import <<%=f%>/<%=f%>.h>
+#import <<%=f%>>
 <% }) -%>
-<% if (data.import) { -%>
-#import <<%-data.import%>>
-<% } -%>
 #import "TiBase.h"
 #import "KrollCallback.h"
 
