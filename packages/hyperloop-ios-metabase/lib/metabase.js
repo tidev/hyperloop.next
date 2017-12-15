@@ -712,11 +712,19 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 					return done(err);
 				}
 
-				async.each(Array.from(frameworks.values()), function(frameworkMetadata, nextSearchPath) {
+				async.each(Array.from(frameworks.values()), function(frameworkMetadata, nextFramework) {
+					if (modules.has(frameworkMetadata.name)) {
+						// If no use_frameworks! flag is set in the Podfile it is possible
+						// that we have a dummy static library whose headers are symlinked to
+						// it's backing dynamic framework (e.g. Localytics). Skip parsing the
+						// framework for now in those cases.
+						return nextFramework();
+					}
+
 					generateFrameworkIncludeMap(frameworkMetadata, includes, () => {
 						frameworkMetadata.typeMap = includes[frameworkMetadata.name];
 						modules.set(frameworkMetadata.name, frameworkMetadata);
-						nextSearchPath();
+						nextFramework();
 					});
 				}, done);
 			});
@@ -1234,13 +1242,18 @@ function generateCocoaPods (cachedir, builder, callback) {
 	if (!fs.existsSync(Podfile)) {
 		util.logger.debug('No CocoaPods Podfile found. Skipping ...');
 		return callback();
-	} else {
-		var content = fs.readFileSync(Podfile).toString();
+	}
 
-		if (content.length && content.indexOf('pod ') === -1) {
-			util.logger.warn('Podfile found, but no Pod\'s specified. Skipping ...');
-			return callback();
-		}
+	var content = fs.readFileSync(Podfile).toString();
+
+	if (content.indexOf('pod ') === -1) {
+		util.logger.warn('Podfile found, but no Pod\'s specified. Skipping ...');
+		return callback();
+	}
+
+	if (/^use_frameworks!$/m.test(content) === false) {
+		util.logger.warn('Using CocoaPods without the "use_frameworks!" flag is deprecated since Hyperloop 3.0.2 and will be removed in Hyperloop 4.0.0.');
+		util.logger.warn('Please add "use_frameworks!" to your Podfile to remain compatible with future versions of Hyperloop.');
 	}
 
 	runPodInstallIfRequired(basedir, function (err) {

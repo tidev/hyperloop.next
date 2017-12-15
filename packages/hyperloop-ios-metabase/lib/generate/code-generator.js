@@ -197,8 +197,11 @@ class CodeGenerator {
 			});
 			var classWithSameNameExists = this.json.classes[moduleInfo.name] ? true : false;
 			if (classWithSameNameExists) {
-				var classPathAndFilename = path.join(outputPath, moduleInfo.framework, moduleInfo.name + '.js');
-				var classContent = fs.readFileSync(classPathAndFilename);
+				var classPathAndFilename = path.join(outputPath, moduleInfo.framework.toLowerCase(), moduleInfo.name.toLowerCase() + '.js');
+				var classContent = '';
+				if (fs.existsSync(classPathAndFilename)) {
+					classContent = fs.readFileSync(classPathAndFilename);
+				}
 				classContent += jsCode;
 				fs.writeFileSync(classPathAndFilename, classContent);
 			} else {
