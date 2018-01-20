@@ -220,6 +220,24 @@ module.exports = function (json, callback) {
 					value: 'NSString *'
 				}
 			},
+			remoteNotification: {
+				name: 'remoteNotification',
+				attributes: ['readonly'],
+				type: {
+					type: 'obj_interface',
+					encoding: '@',
+					value: 'NSDictionary *'
+				}
+			},
+			localNotification: {
+				name: 'localNotification',
+				attributes: ['readonly'],
+				type: {
+					type: 'obj_interface',
+					encoding: '@',
+					value: 'NSDictionary *'
+				}
+			},
 			launchOptions: {
 				name: 'launchOptions',
 				attributes: ['readonly'],
@@ -236,6 +254,14 @@ module.exports = function (json, callback) {
 					type: 'bool',
 					encoding: 'B',
 					value: 'BOOL'
+				}
+			},
+			applicationDelegate: {
+				name: 'applicationDelegate',
+				type: {
+					type: 'id',
+					encoding: '@',
+					value: 'id'
 				}
 			}
 		}
