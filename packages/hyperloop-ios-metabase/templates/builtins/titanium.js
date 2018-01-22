@@ -18,28 +18,6 @@ module.exports = function (json, callback) {
 					value: 'TiApp *'
 				}
 			},
-			getTiAppProperties: {
-				instance: false,
-				name: 'getTiAppProperties',
-				arguments: [],
-				selector: 'tiAppProperties',
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSDictionary *'
-				}
-			},
-			getController: {
-				instance: false,
-				name: 'getController',
-				arguments: [],
-				selector: 'controller',
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'UIViewController *'
-				}
-			},
 			showModalController: {
 				instance: true,
 				name: 'showModalController',
@@ -88,50 +66,6 @@ module.exports = function (json, callback) {
 					value: 'void'
 				}
 			},
-			getUserAgent: {
-				instance: true,
-				name: 'getUserAgent',
-				selector: 'userAgent',
-				arguments: [],
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
-				}
-			},
-			getSessionId: {
-				instance: true,
-				name: 'getSessionId',
-				selector: 'sessionId',
-				arguments: [],
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
-				}
-			},
-			getRemoteDeviceUUID: {
-				instance: true,
-				name: 'getRemoteDeviceUUID',
-				selector: 'remoteDeviceUUID',
-				arguments: [],
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
-				}
-			},
-			getLaunchOptions: {
-				instance: true,
-				name: 'getLaunchOptions',
-				selector: 'launchOptions',
-				arguments: [],
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSDictionary *'
-				}
-			},
 			showModalError: {
 				instance: true,
 				name: 'showModalError',
@@ -171,15 +105,40 @@ module.exports = function (json, callback) {
 					value: 'void'
 				}
 			},
-			getWindowIsKeyWindow: {
+			registerApplicationDelegate: {
 				instance: true,
-				name: 'getWindowIsKeyWindow',
-				selector: 'windowIsKeyWindow',
-				arguments: [],
+				name: 'registerApplicationDelegate',
+				selector: 'registerApplicationDelegate',
+				arguments: [
+					{
+						type: 'id',
+						encoding: '@',
+						value: 'id',
+						name: 'delegate'
+					}
+				],
 				returns: {
-					type: 'bool',
-					encoding: 'b',
-					value: 'BOOL'
+					type: 'void',
+					encoding: 'v',
+					value: 'void'
+				}
+			},
+			unregisterApplicationDelegate: {
+				instance: true,
+				name: 'unregisterApplicationDelegate',
+				selector: 'unregisterApplicationDelegate',
+				arguments: [
+					{
+						type: 'id',
+						encoding: '@',
+						value: 'id',
+						name: 'delegate'
+					}
+				],
+				returns: {
+					type: 'void',
+					encoding: 'v',
+					value: 'void'
 				}
 			}
 		},
@@ -200,15 +159,6 @@ module.exports = function (json, callback) {
 					type: 'obj_interface',
 					encoding: '@',
 					value: 'UIWindow *'
-				}
-			},
-			userAgent: {
-				name: 'sessionId',
-				attributes: ['readonly'],
-				type: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
 				}
 			},
 			remoteDeviceUUID: {
@@ -256,12 +206,28 @@ module.exports = function (json, callback) {
 					value: 'BOOL'
 				}
 			},
-			applicationDelegate: {
-				name: 'applicationDelegate',
-				type: {
-					type: 'id',
+			controller: {
+				name: 'controller',
+				returns: {
+					type: 'obj_interface',
 					encoding: '@',
-					value: 'id'
+					value: 'UIViewController *'
+				}
+			},
+			userAgent: {
+				name: 'userAgent',
+				returns: {
+					type: 'obj_interface',
+					encoding: '@',
+					value: 'NSString *'
+				}
+			},
+			sessionId: {
+				name: 'sessionId',
+				returns: {
+					type: 'obj_interface',
+					encoding: '@',
+					value: 'NSString *'
 				}
 			}
 		}
