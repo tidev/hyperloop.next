@@ -3,10 +3,12 @@
  */
 import java.io.File;
 import java.io.OutputStreamWriter;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.JarFile;
+import java.util.List;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -135,6 +137,8 @@ public class JavaMetabaseGenerator
         ClassPath cp = new ClassPath();
         String classpath = cp.getClassPath();
         String[] tokens = classpath.split(File.pathSeparator);
+        // Remove the first two tokens as these are our internal BCEL and json dependencies
+        List<String> tokenList = Arrays.asList(tokens).subList(1, tokens.length);
 
         OutputStreamWriter pw = new OutputStreamWriter(System.out, "UTF-8");
         JSONWriter writer = new JSONWriter(pw);
@@ -142,12 +146,8 @@ public class JavaMetabaseGenerator
         writer.key("classes");
         writer.object();
         Set<String> uniques = new HashSet<String>();
-        for (String token : tokens)
+        for (String token : tokenList)
         {
-            // Skip the libraries we use to generate the metabase
-            if (token.endsWith("bcel-5.2.jar") || token.endsWith("json.jar")) {
-                continue;
-            }
             if (token.endsWith(".jar"))
             {
                 JarFile jarFile = new JarFile(token);
