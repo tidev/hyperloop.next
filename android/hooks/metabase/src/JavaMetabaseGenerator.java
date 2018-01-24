@@ -38,7 +38,7 @@ public class JavaMetabaseGenerator
      * This probably isn't even needed anymore after out whitelist, but could be used to further narrow down specific classes out of the whitelisted packages we allowed.
      */
     private static final Pattern blacklist = Pattern
-            .compile("^(com\\/sun|com\\/oracle|jdk\\/internal|org\\/apache\\/bcel|org\\/jcp|org\\/json|org\\/ietf|sun\\/|com\\/apple|quicktime\\/|apple\\/|com\\/oracle\\/jrockit|oracle\\/jrockit|sunw\\/|org\\/omg|java\\/awt|java\\/applet|junit\\/|edu\\/umd\\/cs\\/findbugs|orgpath\\/icedtea)");
+            .compile("^(com\\/sun|com\\/oracle|jdk\\/internal|org\\/apache\\/bcel|org\\/jcp|org\\/ietf|sun\\/|com\\/apple|quicktime\\/|apple\\/|com\\/oracle\\/jrockit|oracle\\/jrockit|sunw\\/|org\\/omg|java\\/awt|java\\/applet|junit\\/|edu\\/umd\\/cs\\/findbugs|orgpath\\/icedtea)");
 
     /**
      * Basically we just want:
