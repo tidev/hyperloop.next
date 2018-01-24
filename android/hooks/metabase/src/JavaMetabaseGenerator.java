@@ -138,7 +138,7 @@ public class JavaMetabaseGenerator
         String classpath = cp.getClassPath();
         String[] tokens = classpath.split(File.pathSeparator);
         // Remove the first two tokens as these are our internal BCEL and json dependencies
-        List<String> tokenList = Arrays.asList(tokens).subList(1, tokens.length);
+        List<String> tokenList = Arrays.asList(tokens).subList(2, tokens.length);
 
         OutputStreamWriter pw = new OutputStreamWriter(System.out, "UTF-8");
         JSONWriter writer = new JSONWriter(pw);
