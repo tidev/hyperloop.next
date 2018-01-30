@@ -201,6 +201,47 @@ public class JavaMetabaseGenerator
         writer.key("methods");
         JSONObject methodsJSON = new JSONObject();
         Method methods[] = javaClass.getMethods();
+        generateMethodsMetadata(methods, methodsJSON);
+
+        if (javaClass.isInterface()) {
+            generateMethodsFromImplementedInterfaces(javaClass, methodsJSON);
+        }
+
+        writer.value(methodsJSON);
+
+        // properties
+        writer.key("properties");
+        JSONObject propertiesJSON = new JSONObject();
+        Field fields[] = javaClass.getFields();
+        for (Field field : fields)
+        {
+            // Skip private and package-level fields entirely to save space
+            // since we don't want them for now
+            if (!field.isPublic() && !field.isProtected()) {
+                continue;
+            }
+
+            JSONObject fieldJSON = new JSONObject();
+            fieldJSON.put("name", field.getName());
+            fieldJSON.put("attributes", addAttributes(field));
+            fieldJSON.put("type", field.getType());
+            fieldJSON.put("value", field.getConstantValue());
+            fieldJSON.put("metatype", field.getConstantValue() != null ? "constant" : "field");
+            fieldJSON.put("attributes", addAttributes(field));
+            fieldJSON.put("instance",!field.isStatic());
+            propertiesJSON.put(field.getName(), fieldJSON);
+        }
+        writer.value(propertiesJSON);
+    }
+
+    /**
+     * Generates the metadata for all passed methods.
+     *
+     * @param Method methods[] Array of methods to generate metadata for.
+     * @param JSONObject methodsJSON JSON object where the metadata will be stored.
+     */
+    private static void generateMethodsMetadata(Method methods[], JSONObject methodsJSON)
+    {
         for (Method method : methods)
         {
             // Skip private and package-level methods entirely to save space
@@ -211,9 +252,9 @@ public class JavaMetabaseGenerator
 
             JSONObject methodJSON = new JSONObject();
             methodJSON.put("attributes", addAttributes(method));
-            methodJSON.put("signature",method.getSignature());
-            methodJSON.put("instance",!method.isStatic());
-            methodJSON.put("name",method.getName());
+            methodJSON.put("signature", method.getSignature());
+            methodJSON.put("instance", !method.isStatic());
+            methodJSON.put("name", method.getName());
 
             JSONArray overloads;
             if (methodsJSON.has(method.getName()))
@@ -246,30 +287,27 @@ public class JavaMetabaseGenerator
             }
             methodJSON.put("exceptions", exceptionsJSON);
         }
-        writer.value(methodsJSON);
+    }
 
-        // properties
-        writer.key("properties");
-        JSONObject propertiesJSON = new JSONObject();
-        Field fields[] = javaClass.getFields();
-        for (Field field : fields)
-        {
-            // Skip private and package-level fields entirely to save space
-            // since we don't want them for now
-            if (!field.isPublic() && !field.isProtected()) {
+    /**
+     * Generates method metadata for all methods from interfaces a class or
+     * interface implements.
+     *
+     * @param JavaClass javaClass Java class or interface to check for implemented interfaces
+     * @param JSONObject methodssJSON JSON object to store method metadata
+     */
+    private static void generateMethodsFromImplementedInterfaces(JavaClass javaClass, JSONObject methodssJSON)
+    {
+        String[] implementedInterfacesNames = javaClass.getInterfaceNames();
+        for (String interfaceName : implementedInterfacesNames) {
+            JavaClass interfaceClass = repo.findClass(interfaceName);
+            if (interfaceClass == null) {
                 continue;
             }
 
-            JSONObject fieldJSON = new JSONObject();
-            fieldJSON.put("name", field.getName());
-            fieldJSON.put("attributes", addAttributes(field));
-            fieldJSON.put("type", field.getType());
-            fieldJSON.put("value", field.getConstantValue());
-            fieldJSON.put("metatype", field.getConstantValue() != null ? "constant" : "field");
-            fieldJSON.put("attributes", addAttributes(field));
-            fieldJSON.put("instance",!field.isStatic());
-            propertiesJSON.put(field.getName(), fieldJSON);
+            Method methods[] = interfaceClass.getMethods();
+            generateMethodsFromImplementedInterfaces(interfaceClass, methodssJSON);
+            generateMethodsMetadata(methods, methodssJSON);
         }
-        writer.value(propertiesJSON);
     }
 }

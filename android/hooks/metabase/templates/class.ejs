@@ -76,22 +76,7 @@ Object.defineProperty(<%= sanitizedName %>.prototype, 'super', {
 	},
 	enumerable: true
 });
-<%
-} else {
--%>
-<%= sanitizedName %>.toString = function() {
-	return '[object ' + this.className + ']';
-};
-
-<%= sanitizedName %>.prototype.toString = function() {
-	if (this._hasPointer) {
-		return '[object ' + this.className + ']';
-	}
-	return null;
-};
-<%
-}
--%>
+<% } -%>
 
 <%= sanitizedName %>.className = '<%= classDefinition.name %>';
 <%= sanitizedName %>.prototype.className = '<%= classDefinition.name %>';

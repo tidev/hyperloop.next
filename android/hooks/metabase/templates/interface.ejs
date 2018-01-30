@@ -93,19 +93,19 @@ var <%= sanitizedName %> = function() {
 global.<%= baseName %> = <%= sanitizedName %>;
 <% } -%>
 
-<%= sanitizedName %>.toString = function() {
-	return "[object " + this.className + "]";
-};
+<% if (classDefinition.superClass) { -%>
+var SuperClass = require('./<%- classDefinition.superClass %>');
+<%= sanitizedName %>.prototype = Object.create(SuperClass.prototype);
+<%= sanitizedName %>.prototype.constructor = <%= sanitizedName %>;
 
-<%= sanitizedName %>.prototype.toString = function() {
-	if (!this._hasPointer) return null;
-
-	var result = this.$native.callNativeFunction({
-		func: 'toString',
-		instanceMethod: true
-	});
-	return result;
-};
+Object.defineProperty(<%= sanitizedName %>.prototype, 'super', {
+	get: function() {
+		if (!this._hasPointer) return null;
+		return new <%= sanitizedName %>(this.$native.super);
+	},
+	enumerable: true
+});
+<% } -%>
 
 <%= sanitizedName %>.isInstanceOf = function (self, cls) {
 	if (typeof cls !== "function" || typeof self !== "function") { return false; }
