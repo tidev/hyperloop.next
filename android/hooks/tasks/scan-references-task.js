@@ -214,8 +214,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 
 		const originalSource = fs.readFileSync(file, 'UTF-8');
 		let usedClasses = [];
-		// FIXME Use babylon to parse the files and traverse teh AST looking for require calls and imports!
-		//
+
 		// For typical require calls:
 		// Look for CallExpression with callee Identifier whose name property is "require"
 		//
@@ -238,24 +237,26 @@ class ScanReferencesTask extends IncrementalFileTask {
 
 		const classOrPackageRegexp = /[\w_/-\\.\\*]+/ig;
 		this._logger.trace('Searching for hyperloop requires in: ' + file);
+		const logger = this.logger;
+		const self = this;
 		const HyperloopVisitor = {
 			// ES5-style require calls
 			CallExpression: function(p) {
 				const theString = p.node.arguments[0];
 				let requireMatch;
 				if (p.get('callee').isIdentifier({name: 'require'}) && // Is this a require call?
-					theString && types.isStringLiteral(theString) &&     // Is the 1st param a literal string?
-					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null) // Is it a hyperloop require?
+					theString && t.isStringLiteral(theString) &&     // Is the 1st param a literal string?
+					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null // Is it a hyperloop require?
 				) {
 					// Found a valid require...
 					const className = requireMatch[0];
 
 					// Is this a Java type we found in the JARs/APIs?
-					this._logger.trace('Checking require for: ' + className);
+					logger.trace('Checking require for: ' + className);
 
 					// Look for requires using wildcard package names and assume all types under that namespace!
 					if (className.indexOf('.*') == className.length - 2) {
-						const used = this.detectUsedClasses(className);
+						const used = self.detectUsedClasses(className);
 						if (used.length > 0) {
 							usedClasses = usedClasses.concat(used); // add to our full listing
 							const packageName = className.slice(0, className.length - 2); // drop the .* ending
@@ -266,12 +267,10 @@ class ScanReferencesTask extends IncrementalFileTask {
 						}
 					} else {
 						// single type
-						const validatedClassName = this.validateTypeName(className);
+						const validatedClassName = self.validateTypeName(className);
 						if (validatedClassName) {
-							usedClasses.push(validatedClassName);
 							// Looks like it's a Java type, so let's hack it and add it to our list!
-							// replace the require to point to our generated file path
-							// Replace required with hacked version!
+							usedClasses.push(validatedClassName);
 							p.replaceWith(
 								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + validatedClassName)])
 							);
@@ -283,35 +282,37 @@ class ScanReferencesTask extends IncrementalFileTask {
 			ImportDeclaration: function(p) {
 				const theString = p.node.source;
 				let requireMatch;
-				if (theString && types.isStringLiteral(theString) &&   // module name is a string literal
-					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null) // Is it a hyperloop require?
+				if (theString && t.isStringLiteral(theString) &&   // module name is a string literal
+					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null // Is it a hyperloop require?
 				) {
 					// Found an import that acts the same as a require...
 					const className = requireMatch[0];
 					// Is this a Java type we found in the JARs/APIs?
-					this._logger.trace('Checking require for: ' + className);
+					logger.trace('Checking require for: ' + className);
 
 					// Look for requires using wildcard package names and assume all types under that namespace!
 					if (className.indexOf('.*') == className.length - 2) {
-						const used = this.detectUsedClasses(className);
+						const used = self.detectUsedClasses(className); // TODO pass along the specifiers to narrow the used class listing!
 						if (used.length > 0) {
 							usedClasses = usedClasses.concat(used); // add to our full listing
+							// FIXME: Validate that the types listed in the specifiers exist underneath the package!
+							// If we pass in the specifiers, we can probably just check that the returned array length === the specifiers length
 							const packageName = className.slice(0, className.length - 2); // drop the .* ending
 							// Replace required with hacked version!
 							p.replaceWith(
-								t.importDeclaration(p.node.specifiers, [t.stringLiteral('hyperloop/' + packageName)])
+								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + packageName))
 							);
 						}
 					} else {
 						// single type
-						const validatedClassName = this.validateTypeName(className);
-						if (validatedClassName) {
+						const validatedClassName = self.validateTypeName(className);
+						if (validatedClassName) { // FIXME: If name is invalid/can't be found, should we raise an error?
 							usedClasses.push(validatedClassName);
 							// Looks like it's a Java type, so let's hack it and add it to our list!
 							// replace the require to point to our generated file path
 							// Replace required with hacked version!
 							p.replaceWith(
-								t.importDeclaration(p.node.specifiers, [t.stringLiteral('hyperloop/' + validatedClassName)])
+								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + validatedClassName))
 							);
 						}
 					}
