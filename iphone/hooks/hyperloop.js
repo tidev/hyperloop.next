@@ -434,6 +434,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
+	// FIXME: Use babylon to parse and look for both require and imports!
 	var newContents = (this.parserState.getSourceCode() || contents).replace(
 		/require\s*\(\s*[\\"']+([\w_/\-\\.]+)[\\"']+\s*\)/ig,
 		function (orig, match) {
