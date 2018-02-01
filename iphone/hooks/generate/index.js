@@ -1,17 +1,18 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var fs = require('fs-extra'),
-	path = require('path'),
-	async = require('async'),
-	genclass = require('./class'),
-	genmodule = require('./module'),
-	genstruct = require('./struct'),
-	genblock = require('./block'),
-	gencustom = require('./custom'),
-	CodeGenerator = require('./code-generator'),
-	util = require('./util');
+'use strict';
+const fs = require('fs-extra');
+const path = require('path');
+const async = require('async');
+const genclass = require('./class');
+const genmodule = require('./module');
+const genstruct = require('./struct');
+const genblock = require('./block');
+const gencustom = require('./custom');
+const CodeGenerator = require('./code-generator');
+const util = require('./util');
 
 function makeModule (modules, e, state) {
 	if (e.framework) {
@@ -306,20 +307,6 @@ function generateFromJSON (name, json, state, callback, includes) {
 }
 
 /**
- * generate
- */
-function generate (name, dir, fn, custom, callback) {
-	if (arguments.length !== 5) {
-		throw new Error('update usage');
-	}
-	fs.readFile(fn, function (err, buf) {
-		if (err) { return callback(err); }
-		// turn it into JSON
-		return generateFromJSON(name, dir, JSON.parse(buf), custom, callback);
-	});
-}
-
-/**
  * parse from a buffer
  */
 function parseBuffer(buf, fn, state) {
@@ -327,23 +314,6 @@ function parseBuffer(buf, fn, state) {
 	return parser.parse(buf, fn, state);
 }
 
-/**
- * parse a file
- */
-function parse (fn, state) {
-	return parseBuffer(fs.readFileSync(fn), fn, state);
-}
-
-/**
- * generate an empty state object
- */
-function generateState() {
-	return new gencustom.ParserState();
-}
-
-exports.generate = generate;
 exports.generateFromJSON = generateFromJSON;
-exports.parse = parse;
 exports.parseFromBuffer = parseBuffer;
-exports.generateState = generateState;
 exports.CodeGenerator = CodeGenerator;

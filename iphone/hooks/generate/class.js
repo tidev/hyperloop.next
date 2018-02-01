@@ -3,7 +3,7 @@
  * Copyright (c) 2015 by Appcelerator, Inc.
  */
 var util = require('./util'),
-	swift = require('../swift');
+	swift = require('hyperloop-metabase').swift;
 
 function makeClass (json, cls, state) {
 	var entry = {

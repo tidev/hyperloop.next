@@ -10,32 +10,34 @@
 module.exports = HyperloopiOSBuilder;
 
 // set this to enforce a ios-min-version
-var IOS_MIN = '8.0';
+const IOS_MIN = '8.0';
 // set this to enforce a minimum Titanium SDK
-var TI_MIN = '7.0.0';
+const TI_MIN = '7.0.0';
 // set the iOS SDK minium
-var IOS_SDK_MIN = '9.0';
+const IOS_SDK_MIN = '9.0';
 // enum for ios javascript core
-var coreLib = {
+const coreLib = {
 	JSCore: 'libhyperloop-jscore.a',
 	TiCore: 'libhyperloop-ticore.a'
 };
 
-var path = require('path'),
-	exec = require('child_process').exec,
-	hm = require('hyperloop-metabase'),
-	ModuleMetadata = hm.metabase.ModuleMetadata,
-	fs = require('fs-extra'),
-	crypto = require('crypto'),
-	chalk = hm.chalk,
-	async = hm.async,
-	HL = chalk.magenta.inverse('Hyperloop'),
-	semver = require('semver');
+const path = require('path');
+const exec = require('child_process').exec;
+const hm = require('hyperloop-metabase');
+const metabase = hm.metabase;
+const ModuleMetadata = metabase.ModuleMetadata;
+const fs = require('fs-extra');
+const crypto = require('crypto');
+const chalk = require('chalk');
+const async = require('async');
+const HL = chalk.magenta.inverse('Hyperloop');
+const semver = require('semver');
 
 const babylon = require('babylon');
 const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
+const generator = require('./generate');
 
 /**
  * The Hyperloop builder object. Contains the build logic and state.
@@ -451,7 +453,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 
 	// parse the contents
 	// TODO: move all the regex require stuff into the parser
-	this.parserState = hm.generate.parseFromBuffer(contents, sourceFilename, this.parserState || undefined);
+	this.parserState = generator.parseFromBuffer(contents, sourceFilename, this.parserState || undefined);
 
 	// empty AST
 	if (!this.parserState) {
@@ -974,7 +976,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 	// now generate the stubs
 	this.logger.debug('Generating stubs');
 	var started = Date.now();
-	hm.generate.generateFromJSON(
+	generator.generateFromJSON(
 		this.builder.tiapp.name,
 		this.metabase,
 		this.parserState,
@@ -983,7 +985,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 				return callback(err);
 			}
 
-			var codeGenerator = new hm.generate.CodeGenerator(sourceSet, modules, this);
+			var codeGenerator = new generator.CodeGenerator(sourceSet, modules, this);
 			codeGenerator.generate(this.hyperloopJSDir);
 
 			var duration = Date.now() - started;

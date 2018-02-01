@@ -1,15 +1,18 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var acorn = require('acorn'),
-	fs = require('fs'),
+'use strict';
+var fs = require('fs'),
 	path = require('path'),
 	util = require('util'),
 	utillib = require('./util'),
-	walk = require('walk-ast'),
-	escodegen = require('escodegen'),
 	classgen = require('./class');
+
+const babylon = require('babylon');
+const t = require('babel-types');
+const generate = require('babel-generator').default;
+const traverse = require('babel-traverse').default;
 
 function Parser () {
 }
@@ -591,9 +594,15 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	var ast = acorn.parse(buf, { ecmaVersion: 6, locations: true }),
-		mutated,
+	const ast = babylon.parse(buf, { sourceFilename: fn, sourceType: 'module' });
+	var mutated,
 		prop;
+	const ASTWalker = {
+
+	};
+	traverse(ast, ASTWalker);
+
+
 
 	walk(ast, function (node) {
 		// console.log(node.type);
@@ -670,7 +679,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	var code;
 	// re-generate if it changed, otherwise we can skip and use original content
 	if (mutated) {
-		code = escodegen.generate(ast);
+		code = generate(ast, {}).code;
 	}
 
 	return new ParserState(state, code);

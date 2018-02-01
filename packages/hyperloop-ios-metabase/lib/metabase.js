@@ -13,7 +13,7 @@ var spawn = require('child_process').spawn,
 	semver = require('semver'),
 	crypto = require('crypto'),
 	chalk = require('chalk'),
-	util = require('./generate/util'),
+	util = require('./util'),
 	swiftlilb = require('./swift'),
 	binary = path.join(__dirname, '..', 'bin', 'metabase');
 

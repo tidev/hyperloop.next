@@ -29,7 +29,7 @@ var path = require('path'),
 function generateTemplate (type, detail) {
 	var render = templates[type];
 	if (!render) {
-		var template = path.join(__dirname, '..', '..', 'templates', type + '.ejs');
+		var template = path.join(__dirname, 'templates', type + '.ejs');
 		var content = fs.readFileSync(template).toString();
 		render = ejs.compile(content);
 		templates[type] = render;
