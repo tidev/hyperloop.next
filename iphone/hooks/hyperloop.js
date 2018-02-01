@@ -32,6 +32,11 @@ var path = require('path'),
 	HL = chalk.magenta.inverse('Hyperloop'),
 	semver = require('semver');
 
+const babylon = require('babylon');
+const t = require('babel-types');
+const generate = require('babel-generator').default;
+const traverse = require('babel-traverse').default;
+
 /**
  * The Hyperloop builder object. Contains the build logic and state.
  * @class
@@ -87,6 +92,23 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
 	try {
 		this.patchJSFile(builder.args[0], builder.args[1], callback);
+	} catch (e) {
+		callback(e);
+	}
+};
+
+/**
+ * called for each JS resource to process them
+ */
+HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
+	try {
+		const obj = builder.args[0];
+		const contents = obj.contents;
+		const originalSource = obj.original;
+		const from = builder.args[1];
+		const to = builder.args[2];
+
+		this.patchJSFile(obj, from, callback);
 	} catch (e) {
 		callback(e);
 	}
@@ -411,19 +433,25 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
 
 /**
  * Re-write generated JS source
+ * @param {Object} obj - JS object holding data about the file
+ * @param {String} obj.contents - current source code for the file
+ * @param {String} obj.original - original source of the file
+ * @param {String} sourceFilename - path to original JS file
+ * @param {String} destinationFilename - path to destination JS file
+ * @param {Function} cb - callback function
  */
-HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename, destinationFilename, cb) {
-	// look for any require which matches our hyperloop system frameworks
-	var contents = fs.readFileSync(destinationFilename).toString();
-
+HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFilename, destinationFilename, cb) {
+	var contents = obj.contents;
 	// skip empty content
 	if (!contents.length) {
 		return cb();
 	}
 
+	// look for any require which matches our hyperloop system frameworks
+
 	// parse the contents
 	// TODO: move all the regex require stuff into the parser
-	this.parserState = hm.generate.parseFromBuffer(contents, destinationFilename, this.parserState || undefined);
+	this.parserState = hm.generate.parseFromBuffer(contents, sourceFilename, this.parserState || undefined);
 
 	// empty AST
 	if (!this.parserState) {
@@ -434,74 +462,186 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
-	// FIXME: Use babylon to parse and look for both require and imports!
-	var newContents = (this.parserState.getSourceCode() || contents).replace(
-		/require\s*\(\s*[\\"']+([\w_/\-\\.]+)[\\"']+\s*\)/ig,
-		function (orig, match) {
-			// hyperloop includes will always have a slash
-			var tok = match.split('/');
-			var pkg = tok[0];
+	const requireRegexp = /[\w_/\-\\.]+/ig;
+	const self = this;
+	const HyperloopVisitor = {
+		// ES5-style require calls
+		CallExpression: function(p) {
+			const theString = p.node.arguments[0];
+			let requireMatch;
+			if (p.get('callee').isIdentifier({name: 'require'}) && // Is this a require call?
+				theString && t.isStringLiteral(theString) &&     // Is the 1st param a literal string?
+				(requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
+			) {
+				// hyperloop includes will always have a slash
+				const tok = requireMatch[0].split('/');
+				const pkg = tok[0];
 
-			if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
-				return orig;
-			}
-
-			// if we use something like require("UIKit")
-			// that should require the helper such as require("UIKit/UIKit");
-			var className = tok[1] || pkg;
-			var framework = this.frameworks.get(pkg);
-			var include = framework && framework.typeMap[className];
-			var isBuiltin = pkg === 'Titanium';
-
-			// if the framework is not found, then check if it was possibly mispelled
-			if (!framework && !isBuiltin) {
-				var pkgSoundEx = soundEx(pkg);
-				var maybes = Array.from(this.frameworks.keys()).filter(function (frameworkName) {
-					return soundEx(frameworkName) === pkgSoundEx;
-				});
-
-				if (maybes.length) {
-					this.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
-						maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+				// is it a normal js require or from alloy? do nothing...
+				if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
+					return;
 				}
 
-				return orig;
+				// if we use something like require("UIKit")
+				// that should require the helper such as require("UIKit/UIKit");
+				const className = tok[1] || pkg;
+				const framework = self.frameworks.get(pkg);
+				const include = framework && framework.typeMap[className];
+				const isBuiltin = pkg === 'Titanium';
+
+				logger.trace('Checking require for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+
+				// if the framework is not found, then check if it was possibly mispelled
+				if (!framework && !isBuiltin) {
+					const pkgSoundEx = soundEx(pkg);
+					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
+						return soundEx(frameworkName) === pkgSoundEx;
+					});
+
+					if (maybes.length) {
+						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
+							maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+					}
+					// don't inject anything
+					return;
+				}
+
+				// remember any used frameworks
+				if (!isBuiltin) {
+					self.usedFrameworks.set(pkg, self.frameworks.get(pkg));
+				}
+
+				// if we haven't found it by now, then we try to help before failing
+				if (!include && className !== pkg && !isBuiltin) {
+					const classNameSoundEx = soundEx(className);
+
+					self.frameworks.forEach(frameworkMetadata => {
+						if (frameworkMetadata.typeMap[className]) {
+							throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
+						}
+
+						if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
+							throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
+						}
+					}, self);
+
+					throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
+				}
+
+				const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
+				self.references[ref] = 1;
+
+				if (include) {
+					// record our includes in which case we found a match
+					self.includes[include] = 1;
+				}
+
+				// replace the require to point to our generated file path
+				p.replaceWith(
+					t.callExpression(p.node.callee, [t.stringLiteral('/' + ref)])
+				);
 			}
+		},
+		// ES6+-style imports
+		ImportDeclaration: function(p) {
+			const theString = p.node.source;
+			const replacements = [];
+			let requireMatch;
+			if (theString && t.isStringLiteral(theString) &&   // module name is a string literal
+				(requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
+			) {
+				// hyperloop includes will always have a slash
+				const tok = requireMatch[0].split('/');
+				const pkg = tok[0];
 
-			// remember any used frameworks
-			if (!isBuiltin) {
-				this.usedFrameworks.set(pkg, this.frameworks.get(pkg));
-			}
+				// is it a normal js require or from alloy? do nothing...
+				if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
+					return;
+				}
+				const isBuiltin = pkg === 'Titanium';
+				const framework = self.frameworks.get(pkg);
 
-			// if we haven't found it by now, then we try to help before failing
-			if (!include && className !== pkg && !isBuiltin) {
-				var classNameSoundEx = soundEx(className);
+				// if the framework is not found, then check if it was possibly mispelled
+				if (!framework && !isBuiltin) {
+					const pkgSoundEx = soundEx(pkg);
+					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
+						return soundEx(frameworkName) === pkgSoundEx;
+					});
 
-				this.frameworks.forEach(frameworkMetadata => {
-					if (frameworkMetadata.typeMap[className]) {
-						throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
+					if (maybes.length) {
+						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
+							maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+					}
+					// don't inject anything
+					return;
+				}
+
+				// remember any used frameworks
+				if (!isBuiltin) {
+					self.usedFrameworks.set(pkg, self.frameworks.get(pkg));
+				}
+
+				p.node.specifiers.each(function (spec) {
+					// import UIView from 'UIKit/UIView'; spec.imported is undefined and tok[1] holds className
+					// import { UIView } from 'UIKit'; spec.imported.name == 'UIView'
+					const className = (spec.imported ? spec.imported.name : tok[1]);
+					// What if they did:
+					// import UIView from 'UIKit'; ? className would be null here. Technically this is bad import anyways
+					// as it should be: import UIKit from 'UIKit/UIKit'; or import { UIView } from 'UIKit';
+					// FIXME: Should we bomb out with an error saying it's ambiguous import?
+					const include = framework && framework.typeMap[className];
+					logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+
+					// if we haven't found it by now, then we try to help before failing
+					if (!include && className !== pkg && !isBuiltin) {
+						const classNameSoundEx = soundEx(className);
+
+						self.frameworks.forEach(frameworkMetadata => {
+							if (frameworkMetadata.typeMap[className]) {
+								throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
+							}
+
+							if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
+								throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
+							}
+						}, self);
+
+						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
 					}
 
-					if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
-						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
+					const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
+					self.references[ref] = 1;
+
+					if (include) {
+						// record our includes in which case we found a match
+						self.includes[include] = 1;
 					}
-				}, this);
 
-				throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
+					// replace the require to point to our generated file path
+					// FIXME: what are the specifiers in this case?
+					// Single specifier that is:
+					// t.importDefaultSpecifier(local) == import local from 'mod-name';
+					// t.importNamespaceSpecifier(local) == import * as local from 'mod-name';
+					replacements.push(t.importDeclaration([t.importDefaultSpecifier(spec.local)], t.stringLiteral('/' + ref)));
+				});
+
+				// Apply replacements
+				if (replacements.length == 1) {
+					p.replaceWith(replacements[0]);
+				} else {
+					//
+					p.replaceWithMultiple(replacements);
+				}
 			}
+		}
+	};
 
-			var ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
-			this.references[ref] = 1;
+	const ast = babylon.parse(contents, { sourceFilename: sourceFilename, sourceType: 'module' });
+	traverse(ast, HyperloopVisitor);
+	let newContents = generate(ast, {}).code;
 
-			if (include) {
-				// record our includes in which case we found a match
-				this.includes[include] = 1;
-			}
-
-			// replace the require to point to our generated file path
-			return "require('/" + ref + "')";
-		}.bind(this));
-
+	// TODO: Remove once we combine the custom acorn-based parser and the babylon parser above!
+	// Or maybe it can go now? The migration stuff is noted that it could be removed in 3.0.0...
 	var needMigration = this.parserState.state.needMigration;
 	if (needMigration.length > 0) {
 		this.needMigration[sourceFilename] = needMigration;
@@ -516,7 +656,9 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(sourceFilename,
 		cb();
 	} else {
 		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
-		fs.writeFile(destinationFilename, newContents, cb);
+		// modify the contents stored int he state object passed thorugh the hook,
+		// so that SDK CLI can use new contents for minification/transpilation
+		obj.contents = newContents;
 	}
 };
 
@@ -936,8 +1078,8 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 		pre: this.hookUpdateXcodeProject.bind(this)
 	});
 
-	this.cli.on('build.ios.copyResource', {
-		post: this.copyResource.bind(this)
+	this.cli.on('build.ios.compileJsFile', {
+		pre: this.compileJsFile.bind(this)
 	});
 
 	this.cli.on('build.pre.build', {

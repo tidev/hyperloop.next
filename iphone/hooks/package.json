@@ -21,6 +21,10 @@
 		}
 	],
 	"dependencies": {
+		"babel-generator": "^6.26.0",
+		"babel-traverse": "^6.26.0",
+		"babel-types": "^6.26.0",
+		"babylon": "^6.18.0",
 		"findit": "^2.0.0",
 		"fs-extra": "^4.0.2"
 	}
