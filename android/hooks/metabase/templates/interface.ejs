@@ -93,19 +93,19 @@ var <%= sanitizedName %> = function() {
 global.<%= baseName %> = <%= sanitizedName %>;
 <% } -%>
 
-<%= sanitizedName %>.toString = function() {
-	return "[object " + this.className + "]";
-};
+<% if (classDefinition.superClass) { -%>
+var SuperClass = require('./<%- classDefinition.superClass %>');
+<%= sanitizedName %>.prototype = Object.create(SuperClass.prototype);
+<%= sanitizedName %>.prototype.constructor = <%= sanitizedName %>;
 
-<%= sanitizedName %>.prototype.toString = function() {
-	if (!this._hasPointer) return null;
-
-	var result = this.$native.callNativeFunction({
-		func: 'toString',
-		instanceMethod: true
-	});
-	return result;
-};
+Object.defineProperty(<%= sanitizedName %>.prototype, 'super', {
+	get: function() {
+		if (!this._hasPointer) return null;
+		return new <%= sanitizedName %>(this.$native.super);
+	},
+	enumerable: true
+});
+<% } -%>
 
 <%= sanitizedName %>.isInstanceOf = function (self, cls) {
 	if (typeof cls !== "function" || typeof self !== "function") { return false; }
@@ -146,6 +146,126 @@ for (var propertyName in classDefinition.properties) {
 <%= sanitizedName %>.<%= propertyName %> = <%- propertyDefinition.value %>;
 <%
 	}
+}
+-%>
+
+// Static methods
+<%
+for (var methodName in classDefinition.methods) {
+	// skip constructors
+	if (methodName == '<init>' || methodName == '<clinit>') {
+		continue;
+	}
+	var overloads = classDefinition.methods[methodName];
+	// filter to static variants
+	overloads = overloads.filter(function (each) {
+		return !each.instance;
+	});
+	if (overloads.length == 0) {
+		continue;
+	}
+-%>
+/**
+ * TODO Fill out docs more...
+ * @function <%= methodName %>
+ * @static
+<% 	for (var x = 0 ; x < overloads.length; x++) {
+		var args = overloads[x].args;
+		var types = [];
+		for (var y = 0; y < args.length; y++) {
+			types.push(args[y].type);
+		}
+-%>
+ * @see {@link <%- BASE_URL %>#<%= methodName %>(<%= types.join(', ') %>)}
+<%
+	}
+-%>
+ **/
+<%= sanitizedName %>.<%= methodName %> = function() {
+	if (!this.class) return null;
+
+	var result = this.class.callNativeFunction({
+		func: '<%= methodName %>',
+		instanceMethod: false,
+		args: Array.prototype.slice.call(arguments)
+	});
+	if (result == null) {
+		return null;
+	}
+	// Wrap result if it's not a primitive type?
+	if (result.apiName) {
+		if (result.apiName === '<%= classDefinition.name %>') {
+			return new <%= sanitizedName %>(result);
+		} else {
+			var ctor = require('./' + result.apiName);
+			return new ctor(result);
+		}
+	}
+	return result;
+};
+<%
+}
+-%>
+
+// Instance methods
+<%
+for (var methodName in classDefinition.methods) {
+	// skip constructors
+	if (methodName == '<init>' || methodName == '<clinit>') {
+		continue;
+	}
+	var overloads = classDefinition.methods[methodName];
+	// filter to instance variants
+	overloads = overloads.filter(function (each) {
+		return each.instance;
+	});
+	// TODO Skip overriding methods (i.e. equals(), toString(), etc)? Right now metadata doesn't contain info on that...
+	if (overloads.length == 0) {
+		continue;
+	}
+	// FIXME There are some cases where overloaded methods return different types
+	// We can't assume all the overloads return the same type. I've seen cases where some overloads return void while others return boolean; some return String while another returns Object; etc.
+	var returnType = overloads[0].returnType;
+-%>
+/**
+ * @function <%= methodName %>
+ * @memberof
+ * @instance
+<% 	for (var x = 0 ; x < overloads.length; x++) {
+		var args = overloads[x].args;
+		var types = [];
+		for (var y = 0; y < args.length; y++) {
+			types.push(args[y].type);
+		}
+-%>
+ * @see {@link <%- BASE_URL %>#<%= methodName %>(<%= types.join(', ') %>)}
+<%
+	}
+-%>
+ **/
+<%= sanitizedName %>.prototype.<%= methodName %> = function() {
+	if (!this._hasPointer) return null;
+
+	var result = this.$native.callNativeFunction({
+		func: '<%= methodName %>',
+		instanceMethod: true,
+		args: Array.prototype.slice.call(arguments)
+	});
+	if (result == null) {
+		return null;
+	}
+	// Wrap result if it's not a primitive type?
+	if (result.apiName) {
+		if (result.apiName === '<%= classDefinition.name %>') {
+			return new <%= sanitizedName %>(result);
+		} else {
+			var ctor = require('./' + result.apiName);
+			return new ctor(result);
+		}
+	}
+	return result;
+};
+<%
 }
 -%>
 
