@@ -595,86 +595,72 @@ Parser.prototype.parse = function (buf, fn, state) {
 	buf = buf.toString();
 
 	const ast = babylon.parse(buf, { sourceFilename: fn, sourceType: 'module' });
-	var mutated,
-		prop;
+	let mutated = false;
 	const ASTWalker = {
+		ExpressionStatement: function(p) {
+			p.node.expression && addSymbolReference(state, p.node.expression, 'getter');
+		},
+		CallExpression: function(p) {
+			// do symbol detection first
+			addSymbolReference(state, p.node.callee, 'getter');
+			if (p.node.callee.property) {
+				const prop = p.node.callee.property.name;
+				isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+			}
+			if (p.node.arguments && p.node.arguments.length) {
+				p.node.arguments.forEach(function (arg) {
+					addSymbolReference(state, arg, 'getter');
+				});
+			}
+			if (p.node.callee.name) {
+				const prop = p.node.callee.name;
+				isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+			}
+			addMigrationHelpIfNeeded(state, p.node);
 
+			if (isHyperloopMethodCall(node, 'defineClass')) {
+				if (p.parent.type !== 'VariableDeclaration') {
+					throw new JSParseError('Hyperloop.defineClass must return a class definition into a variable', p.node);
+				}
+				var classSpec = makeHyperloopClassFromCall(state, p.node);
+				if (classSpec.name in state.classesByName) {
+					throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same name "' + classSpec.name + '"', p.node);
+				}
+				if (classSpec.variable in state.classesByVariable) {
+					throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same variable name "' + classSpec.variable + '"', p.node);
+				}
+				state.classesByName[classSpec.name] = classSpec;
+				state.classesByVariable[classSpec.variable] = classSpec;
+			} else if (isHyperloopAddMethodCall(p.node, state)) {
+				mutated = true;
+				p.replaceWith(addHyperloopMethodToClass(p.node, state));
+			}
+		},
+		VariableDeclaration: function(p) {
+			// console.log(util.inspect(node, {colors:true, depth:10}));
+			if (p.node.declarations && p.node.declarations.length) {
+				p.node.declarations.forEach(function (decl) {
+					decl.init && addSymbolReference(state, decl.init, 'getter');
+				});
+			}
+		},
+		MemberExpression: function(p) {
+			if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(p.parent.type)) {
+				addSymbolReference(state, p.node, 'getter');
+				addMigrationHelpIfNeeded(state, p.node);
+			}
+		},
+		AssignmentExpression: function(p) {
+			addSymbolReference(state, p.node.left, 'setter');
+			addSymbolReference(state, p.node.right, 'getter');
+		},
+		Identifier: function(p) {
+			if (isHyperloopReferenced(p.node, state)) {
+				// just record
+			}
+		}
 	};
 	traverse(ast, ASTWalker);
-
-
-
-	walk(ast, function (node) {
-		// console.log(node.type);
-		node.loc.filename = fn;
-
-		// do symbol detection first
-		switch (node.type) {
-			case 'ExpressionStatement': {
-				node.expression && addSymbolReference(state, node.expression, 'getter');
-				break;
-			}
-			case 'CallExpression': {
-				addSymbolReference(state, node.callee, 'getter');
-				if (node.callee.property) {
-					prop = node.callee.property.name;
-					isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
-				}
-				if (node.arguments && node.arguments.length) {
-					node.arguments.forEach(function (arg) {
-						addSymbolReference(state, arg, 'getter');
-					});
-				}
-				if (node.callee.name) {
-					prop = node.callee.name;
-					isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
-				}
-				addMigrationHelpIfNeeded(state, node);
-				break;
-			}
-			case 'VariableDeclaration': {
-				// console.log(util.inspect(node, {colors:true, depth:10}));
-				if (node.declarations && node.declarations.length) {
-					node.declarations.forEach(function (decl) {
-						decl.init && addSymbolReference(state, decl.init, 'getter');
-					});
-				}
-				break;
-			}
-			case 'MemberExpression': {
-				if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(node.parentNode.type)) {
-					addSymbolReference(state, node, 'getter');
-					addMigrationHelpIfNeeded(state, node);
-				}
-				break;
-			}
-			case 'AssignmentExpression': {
-				addSymbolReference(state, node.left, 'setter');
-				addSymbolReference(state, node.right, 'getter');
-				break;
-			}
-			default: break;
-		}
-		if (isHyperloopMethodCall(node, 'defineClass')) {
-			if (node.parentNode.type !== 'VariableDeclaration') {
-				throw new JSParseError('Hyperloop.defineClass must return a class definition into a variable', node);
-			}
-			var classSpec = makeHyperloopClassFromCall(state, node);
-			if (classSpec.name in state.classesByName) {
-				throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same name "' + classSpec.name + '"', node);
-			}
-			if (classSpec.variable in state.classesByVariable) {
-				throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same variable name "' + classSpec.variable + '"', node);
-			}
-			state.classesByName[classSpec.name] = classSpec;
-			state.classesByVariable[classSpec.variable] = classSpec;
-		} else if (isHyperloopAddMethodCall(node, state)) {
-			mutated = true;
-			return addHyperloopMethodToClass(node, state);
-		} else if (isHyperloopReferenced(node, state)) {
-			// just record
-		}
-	});
 
 	var code;
 	// re-generate if it changed, otherwise we can skip and use original content
@@ -713,7 +699,7 @@ function isHyperloopAddMethodCall (node, state) {
 
 function isHyperloopReferenced (node, state) {
 	if (node.type === 'Identifier' && node.name in state.classesByVariable) {
-		if (!isHyperloopAddMethodCall(node.parentNode && node.parentNode.parentNode, state)) {
+		if (!isHyperloopAddMethodCall(node.parent && node.parent.parent, state)) {
 			var classDef = state.classesByVariable[node.name];
 			state.referencedClasses[classDef.name] = (state.referencedClasses[classDef.name] || 0) + 1;
 		}
@@ -801,7 +787,7 @@ function makeHyperloopClassFromCall (state, node) {
 	classSpec.extends = toJSObject(program, node.arguments[1], 'NSObject');
 	classSpec.implements = toJSObject(program, node.arguments[2]);
 	var declarationNode = null;
-	node.parentNode.declarations.forEach(function(declNode) {
+	node.parent.declarations.forEach(function(declNode) {
 		if (declNode.init === node) {
 			declarationNode = declNode;
 		}
@@ -830,7 +816,7 @@ function makeHyperloopClassFromCall (state, node) {
 function findProgramNode (node) {
 	var parent = node;
 	while (parent && parent.type !== 'Program') {
-		parent = parent.parentNode;
+		parent = parent.parent;
 	}
 	return parent;
 }
@@ -942,56 +928,14 @@ function addHyperloopMethodToClass (node, state) {
 	})[0];
 
 	// update the properties
-	node.arguments[0].properties = [
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'selector'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.selector,
-				raw: "'" + methodSpec.selector + "'"
-			}
-		},
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'encoding'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.encoding,
-				raw: "'" + methodSpec.encoding + "'"
-			}
-		},
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'instance'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.instance,
-				raw:  methodSpec.instance
-			}
-		},
+	// node.arguments[0] == ObjectExpression, with properties == [ObjectProperty, ObjectProperty]
+	node.arguments[0] = t.objectExpression([
+		t.objectProperty(t.identifier('selector'), t.stringLiteral(methodSpec.selector)),
+		t.objectProperty(t.identifier('encoding'), t.stringLiteral(methodSpec.encoding)),
+		t.objectProperty(t.identifier('instance'), t.booleanLiteral(methodSpec.instance)),
 		callback
-	];
-
-	return node;
+	]);
+	return t.callExpression(node.callee, node.arguments);
 }
 
 module.exports = Parser;
