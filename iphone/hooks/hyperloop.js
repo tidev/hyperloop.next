@@ -91,26 +91,13 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 /**
  * called for each JS resource to process them
  */
-HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
-	try {
-		this.patchJSFile(builder.args[0], builder.args[1], callback);
-	} catch (e) {
-		callback(e);
-	}
-};
-
-/**
- * called for each JS resource to process them
- */
 HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 	try {
 		const obj = builder.args[0];
-		const contents = obj.contents;
-		const originalSource = obj.original;
 		const from = builder.args[1];
 		const to = builder.args[2];
 
-		this.patchJSFile(obj, from, callback);
+		this.patchJSFile(obj, from, to, callback);
 	} catch (e) {
 		callback(e);
 	}
@@ -491,7 +478,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 				const include = framework && framework.typeMap[className];
 				const isBuiltin = pkg === 'Titanium';
 
-				logger.trace('Checking require for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+				self.logger.trace('Checking require for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
 
 				// if the framework is not found, then check if it was possibly mispelled
 				if (!framework && !isBuiltin) {
@@ -583,7 +570,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					self.usedFrameworks.set(pkg, self.frameworks.get(pkg));
 				}
 
-				p.node.specifiers.each(function (spec) {
+				p.node.specifiers.forEach(function (spec) {
 					// import UIView from 'UIKit/UIView'; spec.imported is undefined and tok[1] holds className
 					// import { UIView } from 'UIKit'; spec.imported.name == 'UIView'
 					const className = (spec.imported ? spec.imported.name : tok[1]);
@@ -592,7 +579,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					// as it should be: import UIKit from 'UIKit/UIKit'; or import { UIView } from 'UIKit';
 					// FIXME: Should we bomb out with an error saying it's ambiguous import?
 					const include = framework && framework.typeMap[className];
-					logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+					self.logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
 
 					// if we haven't found it by now, then we try to help before failing
 					if (!include && className !== pkg && !isBuiltin) {
@@ -655,13 +642,13 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 
 	if (contents === newContents) {
 		this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
-		cb();
 	} else {
 		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
 		// modify the contents stored int he state object passed thorugh the hook,
 		// so that SDK CLI can use new contents for minification/transpilation
 		obj.contents = newContents;
 	}
+	cb();
 };
 
 /**

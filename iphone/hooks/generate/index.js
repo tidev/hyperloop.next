@@ -127,7 +127,7 @@ function processProtocolInheritance (protocols) {
 }
 
 function generateBuiltins (json, callback) {
-	var dir = path.join(__dirname, '..', '..', 'templates', 'builtins');
+	var dir = path.join(__dirname, 'templates', 'builtins');
 	fs.readdir(dir, function (err, files) {
 		if (err) { return callback(err); }
 		async.eachSeries(files, function (fn, cb) {
