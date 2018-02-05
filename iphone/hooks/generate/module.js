@@ -1,12 +1,13 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var util = require('./util'),
-	path = require('path'),
-	fs = require('fs');
+'use strict';
+const util = require('./util');
+const path = require('path');
+const fs = require('fs');
 
-function makeModule (json, module, state) {
+function makeModule(json, module, state) {
 	var entry = {
 		class: {
 			name: module.name,
@@ -65,7 +66,7 @@ function makeModule (json, module, state) {
  * Generates the source template data for a module file and it's module
  * objective-c class
  */
-function generate (json, mod, state) {
+function generate(json, mod, state) {
 	// for now, skip non frameworks
 	if (mod.framework.indexOf('/') >= 0 || mod.customSource) { return; }
 	// generate the objective-c module

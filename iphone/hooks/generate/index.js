@@ -14,7 +14,7 @@ const gencustom = require('./custom');
 const CodeGenerator = require('./code-generator');
 const util = require('./util');
 
-function makeModule (modules, e, state) {
+function makeModule(modules, e, state) {
 	if (e.framework) {
 		if (!(e.framework in modules)) {
 			modules[e.framework] = {
@@ -34,7 +34,7 @@ function makeModule (modules, e, state) {
 	}
 }
 
-function merge (src, dest) {
+function merge(src, dest) {
 	if (src) {
 		dest =  dest || {};
 		for (var k in src) {
@@ -54,7 +54,7 @@ function merge (src, dest) {
  * @param {String} proto The protocol to look for in parent classes
  * @return {bool} True if protocol already implemented in a parent class, false otherwise.
  */
-function isProtocolImplementedBySuperClass (json, cls, proto) {
+function isProtocolImplementedBySuperClass(json, cls, proto) {
 	var parentClass = cls && cls.superclass;
 	while (parentClass) {
 		if (parentClass.protocols && parentClass.protocols.indexOf(proto) !== -1) {
@@ -73,7 +73,7 @@ function isProtocolImplementedBySuperClass (json, cls, proto) {
  *
  * @param {Object} protocols Object with protocols from the metabase
  */
-function processProtocolInheritance (protocols) {
+function processProtocolInheritance(protocols) {
 	var mergedProtocols = [];
 	/**
 	 * Recursively merges a protocol with all it's inherited protocols
@@ -126,7 +126,7 @@ function processProtocolInheritance (protocols) {
 	});
 }
 
-function generateBuiltins (json, callback) {
+function generateBuiltins(json, callback) {
 	var dir = path.join(__dirname, 'templates', 'builtins');
 	fs.readdir(dir, function (err, files) {
 		if (err) { return callback(err); }
@@ -137,7 +137,7 @@ function generateBuiltins (json, callback) {
 	});
 }
 
-function generateFromJSON (name, json, state, callback, includes) {
+function generateFromJSON(name, json, state, callback, includes) {
 	// set the name of the app in the state object
 	state.appName = name;
 

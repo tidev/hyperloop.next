@@ -2,10 +2,10 @@
 
 'use strict';
 
-var chalk = require('chalk');
-var fs = require('fs-extra');
-var path = require('path');
-var util = require('./util');
+const chalk = require('chalk');
+const fs = require('fs-extra');
+const path = require('path');
+const util = require('./util');
 
 /**
  * A generator for Hyperloop source code files

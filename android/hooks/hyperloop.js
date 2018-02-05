@@ -150,14 +150,12 @@ exports.cliVersion = '>=3.2';
 		cli.on('build.android.compileJsFile', {
 			priority: 99999,
 			pre: function (data, finished) {
-				var fn = data.args[1];
-				if (files[fn]) {
-					data.args[0]['original'] = files[fn];
-					data.args[0]['contents'] = files[fn];
-					finished();
-				} else {
-					finished();
+				var filename = data.args[1]; // source filename
+				if (files[filename]) {
+					// modify the source code for the given file to our manipulated contents
+					data.args[0].contents = files[filename];
 				}
+				finished();
 			}
 		});
 

@@ -3,26 +3,25 @@
  * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
-var fs = require('fs'),
-	path = require('path'),
-	util = require('util'),
-	utillib = require('./util'),
-	classgen = require('./class');
-
+const fs = require('fs');
+const path = require('path');
+const util = require('util');
+const utillib = require('./util');
+const classgen = require('./class');
 const babylon = require('babylon');
 const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
 
-function Parser () {
+function Parser() {
 }
 
-function ParserState (state, code) {
+function ParserState(state, code) {
 	this.state = state || {};
 	this.code = code || '';
 }
 
-function JSParseError (message, node) {
+function JSParseError(message, node) {
 	this.line = (node.loc  || node.location).start.line;
 	this.column = (node.loc || node.location).start.column;
 	this.filename = (node.loc || node.location).filename;
@@ -66,7 +65,7 @@ ParserState.prototype.getReferences = function () {
 	return this.state.References;
 };
 
-function count (str, find) {
+function count(str, find) {
 	var re = new RegExp(find, 'g');
 	var found = str.match(re);
 	return found && found.length || 0;
@@ -85,7 +84,7 @@ function decodeStruct(str, offset) {
 	return str;
 }
 
-function getEncoding (state, metabase, imports, str, index) {
+function getEncoding(state, metabase, imports, str, index) {
 	var ch = str.charAt(index),
 		skip,
 		enc,
@@ -225,7 +224,7 @@ function getEncoding (state, metabase, imports, str, index) {
 	throw new Error("unknown encoding " + str + ' start at index ' + index);
 }
 
-function parseEncoding (state, metabase, imports, encoding) {
+function parseEncoding(state, metabase, imports, encoding) {
 	var i = encoding.indexOf('@:');
 	var rt = encoding.substring(0, i);
 	var argtypes = encoding.substring(i + 2);
@@ -241,11 +240,12 @@ function parseEncoding (state, metabase, imports, encoding) {
 	};
 }
 
-function generateIdentifier (selector, instance, cls) {
+function generateIdentifier(selector, instance, cls) {
 	return utillib.generateSafeSymbol(cls.name + '_' + selector + '_' + (instance ? '1': '0'));
 }
 
-function generateMethod (state, metabase, imports, cls, classDef, selector, encoding, instance, body) {
+// FIXME: Move this out to a template?
+function generateMethod(state, metabase, imports, cls, classDef, selector, encoding, instance, body) {
 	var details = parseEncoding(state, metabase, imports, encoding),
 		argnames = selector.split(':'),
 		code = [],
@@ -861,7 +861,7 @@ function findProgramNode(nodePath) {
 	return programPath.node;
 }
 
-function encodeFriendlyType (type, imports) {
+function encodeFriendlyType(type, imports) {
 	switch (type) {
 		case 'long': return 'l';
 		case 'int': return 'i';

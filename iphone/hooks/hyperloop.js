@@ -439,7 +439,8 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 	// look for any require which matches our hyperloop system frameworks
 
 	// parse the contents
-	// TODO: move all the regex require stuff into the parser
+	// TODO: move all the HyperloopVisitor require/import manipulation into the parser call right here
+	// Otherwise we do two parser/ast-traversal/generation passes!
 	this.parserState = generator.parseFromBuffer(contents, sourceFilename, this.parserState || undefined);
 
 	// empty AST
@@ -447,7 +448,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		return cb();
 	}
 
-	var relPath = path.relative(this.resourcesDir, destinationFilename);
+	const relPath = path.relative(this.resourcesDir, destinationFilename);
 
 	// get the result source code in case it was transformed and replace all system framework
 	// require() calls with the Hyperloop layer
@@ -606,11 +607,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 						self.includes[include] = 1;
 					}
 
-					// replace the require to point to our generated file path
-					// FIXME: what are the specifiers in this case?
-					// Single specifier that is:
-					// t.importDefaultSpecifier(local) == import local from 'mod-name';
-					// t.importNamespaceSpecifier(local) == import * as local from 'mod-name';
+					// replace the import to point to our generated file path
 					replacements.push(t.importDeclaration([t.importDefaultSpecifier(spec.local)], t.stringLiteral('/' + ref)));
 				});
 
