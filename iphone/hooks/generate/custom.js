@@ -749,7 +749,7 @@ function toJSObject(ref, node, def) {
 	if (node) {
 		switch (node.type) {
 			case 'Literal': // ESTree
-			case 'StringLiteral': // Babylon replacements...
+			case 'StringLiteral': // Babylon replacements
 			case 'NumericLiteral':
 			case 'BooleanLiteral':
 			case 'NullLiteral':
