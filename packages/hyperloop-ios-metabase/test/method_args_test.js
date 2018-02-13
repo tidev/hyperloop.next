@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('method args', function () {
 
 	it('should generate constructor', function (done) {
 		helper.generate(helper.getFixture('method_arg_constructor.h'), helper.getTempFile('method_arg_constructor.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -13,8 +18,9 @@ describe('method args', function () {
 				A: {
 					name: 'A',
 					filename: helper.getFixture('method_arg_constructor.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('method_arg_constructor.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '1',
 					methods: {
 						init: {
@@ -49,15 +55,18 @@ describe('method args', function () {
 
 	it('should generate method with SEL arg', function (done) {
 		helper.generate(helper.getFixture('method_arg_selector.h'), helper.getTempFile('method_arg_selector.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
 					name: 'A',
-					framework: 'fixtures',
+					framework: helper.getFixture('method_arg_selector.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					filename: helper.getFixture('method_arg_selector.h'),
 					line: '1',
 					methods: {
@@ -83,8 +92,9 @@ describe('method args', function () {
 					}
 				},
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('method_arg_selector.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					filename: helper.getFixture('method_arg_selector.h'),
 					line: '5',
 					methods: {
@@ -93,8 +103,8 @@ describe('method args', function () {
 								{
 									encoding: '@',
 									name: 'foo',
-									type: 'obj_interface',
-									value: 'A'
+									type: 'objc_pointer',
+									value: 'A *'
 								},
 								{
 									encoding: ':',
@@ -139,15 +149,18 @@ describe('method args', function () {
 
 	it('should generate method with multiple arg', function (done) {
 		helper.generate(helper.getFixture('method_arg_multi.h'), helper.getTempFile('method_arg_multi.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
 					name: 'A',
-					framework: 'fixtures',
+					framework: helper.getFixture('method_arg_multi.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					filename: helper.getFixture('method_arg_multi.h'),
 					line: '1',
 					methods: {

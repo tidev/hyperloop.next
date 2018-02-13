@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('block', function () {
 
 	it('should generate blocks', function (done) {
 		helper.generate(helper.getFixture('blocks.h'), helper.getTempFile('blocks.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -15,7 +20,8 @@ describe('block', function () {
 			should(json).have.property('classes', {
 				A: {
 					filename: helper.getFixture('blocks.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('blocks.h'),
+					introducedIn: '0.0.0',
 					line: '2',
 					methods: {
 						'do:': {
@@ -43,12 +49,13 @@ describe('block', function () {
 				},
 				Blockception: {
 					filename: helper.getFixture('blocks.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('blocks.h'),
+					introducedIn: '0.0.0',
 					line: '10',
 					methods: {
 						'blockWithin:': {
 							arguments: [
-							 	{
+								{
 									encoding: '@?',
 									name: 'block',
 									type: 'block',
@@ -71,10 +78,11 @@ describe('block', function () {
 				},
 				C: {
 					filename: helper.getFixture('blocks.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('blocks.h'),
+					introducedIn: '0.0.0',
 					line: '6',
 					methods: {
-						'foo': {
+						foo: {
 							arguments: [],
 							encoding: '@?16@0:8',
 							instance: true,
@@ -102,8 +110,9 @@ describe('block', function () {
 						}
 					],
 					filename: helper.getFixture('blocks.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('blocks.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '1',
 					name: 'B',
 					returns: {
@@ -117,15 +126,16 @@ describe('block', function () {
 				MyBlock: {
 					encoding: '@?',
 					filename: helper.getFixture('blocks.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('blocks.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '5',
 					type: 'block',
 					value: 'void (^)(void)'
 				}
 			});
 			should(json).have.property('blocks');
-			should(json.blocks).have.property('fixtures', [
+			should(json.blocks).have.property(helper.getFixture('blocks.h'), [
 				{
 					arguments: [
 						{

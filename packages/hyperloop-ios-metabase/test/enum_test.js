@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('enum', function () {
 
 	it('should generate enums', function (done) {
 		helper.generate(helper.getFixture('enums.h'), helper.getTempFile('enums.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -38,8 +43,9 @@ describe('enum', function () {
 			should(json.typedefs).have.property('NSMatrixMode', {
 				encoding: 'i',
 				filename: helper.getFixture('enums.h'),
-				framework: 'fixtures',
+				framework: helper.getFixture('enums.h'),
 				thirdparty: true,
+				introducedIn: '0.0.0',
 				line: '8',
 				type: 'enum',
 				value: 'enum _NSMatrixMode'

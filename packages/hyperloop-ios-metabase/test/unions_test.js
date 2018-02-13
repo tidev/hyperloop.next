@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('union', function () {
 
 	it('should generate unions', function (done) {
 		helper.generate(helper.getFixture('unions.h'), helper.getTempFile('unions.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -35,7 +40,8 @@ describe('union', function () {
 							type: 'char_s'
 						}
 					],
-					framework: 'fixtures',
+					framework: helper.getFixture('unions.h'),
+					introducedIn: '0.0.0',
 					thirdparty: true,
 					filename: helper.getFixture('unions.h'),
 					line: '1',

@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('var', function () {
 
 	it('should generate var', function (done) {
 		helper.generate(helper.getFixture('vars.h'), helper.getTempFile('vars.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -15,9 +20,10 @@ describe('var', function () {
 			should(json).not.have.property('enums');
 			should(json).have.property('vars', {
 				A: {
-					framework: 'fixtures',
+					framework: helper.getFixture('vars.h'),
 					thirdparty: true,
 					filename: helper.getFixture('vars.h'),
+					introducedIn: '0.0.0',
 					line: '1',
 					name: 'A',
 					type: 'int',
@@ -25,9 +31,10 @@ describe('var', function () {
 					encoding: 'i'
 				},
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('vars.h'),
 					thirdparty: true,
 					filename: helper.getFixture('vars.h'),
+					introducedIn: '0.0.0',
 					line: '2',
 					name: 'B',
 					type: 'int',

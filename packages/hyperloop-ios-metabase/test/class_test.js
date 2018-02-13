@@ -1,11 +1,31 @@
+/* eslint-disable no-unused-expressions */
+'use strict';
+
 var should = require('should'),
-	helper = require('./helper');
+	helper = require('./helper'),
+	path = require('path');
 
 describe('class', function () {
+	var sdkDir;
+	before(function (done) {
+		helper.getSimulatorSDK(function (err, settings) {
+			if (err) {
+				return done(err);
+			}
+			sdkDir = settings.sdkdir;
+			done();
+		});
+	});
+
+	function foundationFile(filename) {
+		return path.join(sdkDir, 'System/Library/Frameworks/Foundation.framework/Headers', filename);
+	}
 
 	it('should generate empty class', function (done) {
 		helper.generate(helper.getFixture('empty_class.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -27,7 +47,9 @@ describe('class', function () {
 
 	it('should generate empty class with system headers', function (done) {
 		helper.generate(helper.getFixture('empty_class_with_systemheaders.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -49,7 +71,9 @@ describe('class', function () {
 
 	it('should generate class with system headers', function (done) {
 		helper.generate(helper.getFixture('empty_class_with_systemheaders.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -71,15 +95,15 @@ describe('class', function () {
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			should(json.classes).have.property('NSString');
-			should(json.classes.NSString).have.property('filename', 'NSString.h');
+			should(json.classes.NSString).have.property('filename', foundationFile('NSString.h'));
 			should(json.classes.NSString).have.property('framework', 'Foundation');
-			should(json.classes.NSString).have.property('line', '70');
+			should(json.classes.NSString).have.property('line', '99');
 			should(json.classes.NSString).have.property('name', 'NSString');
 			should(json.classes.NSString).have.property('methods');
 			should(json.classes.NSString).have.property('properties');
 			should(json.classes.NSString).have.property('superclass', 'NSObject');
-			should(json.classes.NSString).have.property('protocols', ['NSCopying', 'NSMutableCopying', 'NSSecureCoding']);
-			should(json.classes.NSString).have.property('categories', ['NSStringExtensionMethods', 'NSStringEncodingDetection', 'NSExtendedStringPropertyListParsing', 'NSStringDeprecated', 'NSBundleExtensionMethods', 'NSStringPathExtensions', 'NSURLUtilities', 'NSLinguisticAnalysis']);
+			should(json.classes.NSString).have.property('protocols', [ 'NSCopying', 'NSMutableCopying', 'NSSecureCoding', 'NSItemProviderReading', 'NSItemProviderWriting' ]);
+			should(json.classes.NSString).have.property('categories', [ 'NSStringExtensionMethods', 'NSStringEncodingDetection', 'NSItemProvider', 'NSExtendedStringPropertyListParsing', 'NSStringDeprecated', 'NSBundleExtensionMethods', 'NSStringPathExtensions', 'NSURLUtilities', 'NSLinguisticAnalysis' ]);
 			should(json.classes.NSString.properties).have.property('uppercaseString');
 			should(json.classes.NSString.properties).have.property('stringByExpandingTildeInPath');
 			should(json.classes.NSString.methods).have.property('writeToURL:atomically:encoding:error:');
@@ -90,15 +114,18 @@ describe('class', function () {
 
 	it('should generate simple class', function (done) {
 		helper.generate(helper.getFixture('simple_class.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
 					filename: helper.getFixture('simple_class.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '1',
 					methods: {
 						a: {
@@ -129,15 +156,18 @@ describe('class', function () {
 
 	it('should generate simple class with protocol', function (done) {
 		helper.generate(helper.getFixture('simple_class_with_protocol.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_protocol.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_protocol.h'),
+					introducedIn: '0.0.0',
 					line: '6',
 					methods: {
 						a: {
@@ -154,14 +184,15 @@ describe('class', function () {
 						}
 					},
 					name: 'A',
-					protocols: ['B']
+					protocols: [ 'B' ]
 				}
 			});
 			should(json).have.property('protocols', {
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_protocol.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_protocol.h'),
+					introducedIn: '0.0.0',
 					line: '2',
 					methods: {
 						a: {
@@ -192,23 +223,27 @@ describe('class', function () {
 
 	it('should generate simple class with superclass', function (done) {
 		helper.generate(helper.getFixture('simple_class_with_superclass.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_superclass.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_superclass.h'),
+					introducedIn: '0.0.0',
 					line: '6',
 					name: 'A',
 					superclass: 'B'
 				},
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_superclass.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_superclass.h'),
+					introducedIn: '0.0.0',
 					line: '2',
 					methods: {
 						a: {
@@ -239,15 +274,18 @@ describe('class', function () {
 
 	it('should generate simple class with superclass and protocol', function (done) {
 		helper.generate(helper.getFixture('simple_class_with_superclass_and_protocol.h'), helper.getTempFile('class.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
 			should(json).have.property('classes', {
 				A: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
+					introducedIn: '0.0.0',
 					line: '10',
 					methods: {
 						a: {
@@ -276,13 +314,14 @@ describe('class', function () {
 						}
 					},
 					name: 'A',
-					protocols: ['B'],
+					protocols: [ 'B' ],
 					superclass: 'C'
 				},
 				C: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
+					introducedIn: '0.0.0',
 					line: '6',
 					methods: {
 						a: {
@@ -303,9 +342,10 @@ describe('class', function () {
 			});
 			should(json).have.property('protocols', {
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 					thirdparty: true,
 					filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
+					introducedIn: '0.0.0',
 					line: '2',
 					methods: {
 						b: {
@@ -324,7 +364,7 @@ describe('class', function () {
 					name: 'B'
 				}
 			});
- 			should(json.metadata).have.property('api-version', '1');
+			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
 			should(json.metadata).have.property('min-version', sdk.version);
 			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
@@ -336,7 +376,9 @@ describe('class', function () {
 
 	it('should generate class with properties', function (done) {
 		helper.generate(helper.getFixture('class_with_properties.h'), helper.getTempFile('class_with_properties.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -352,9 +394,10 @@ describe('class', function () {
 			should(json.metadata).have.property('platform', 'ios');
 			should(json).have.property('classes', {
 				A: {
-					framework: 'fixtures',
+					framework: helper.getFixture('class_with_properties.h'),
 					thirdparty: true,
 					filename: helper.getFixture('class_with_properties.h'),
+					introducedIn: '0.0.0',
 					line: '1',
 					methods: {
 						a: {
@@ -371,20 +414,20 @@ describe('class', function () {
 						},
 						b: {
 							arguments: [],
-							encoding: "f16@0:8",
+							encoding: 'f16@0:8',
 							instance: false,
-							name: "b",
+							name: 'b',
 							returns:
 							{
-								encoding: "f",
-								type: "float",
-								value: "float"
+								encoding: 'f',
+								type: 'float',
+								value: 'float'
 							},
-							selector: "b"
+							selector: 'b'
 						},
 						'setA:': {
 							arguments: [
-								{encoding:'f', name: 'a', type: 'float', value: 'float'}
+								{ encoding: 'f', name: 'a', type: 'float', value: 'float' }
 							],
 							instance: true,
 							encoding: 'v20@0:8f16',
@@ -408,7 +451,7 @@ describe('class', function () {
 							}
 						},
 						b: {
-							attributes: ["readonly", "class"],
+							attributes: [ 'readonly', 'class' ],
 							name: 'b',
 							optional: false,
 							type: {
@@ -425,7 +468,9 @@ describe('class', function () {
 
 	it('should generate class with categories', function (done) {
 		helper.generate(helper.getFixture('class_with_category.h'), helper.getTempFile('class_with_category.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -442,11 +487,12 @@ describe('class', function () {
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			should(json).have.property('classes', {
 				A: {
-					categories: ['', 'Name'],
+					categories: [ '', 'Name' ],
 					name: 'A',
 					filename: helper.getFixture('class_with_category.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('class_with_category.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '1',
 					methods: {
 						a: {
@@ -461,7 +507,14 @@ describe('class', function () {
 							},
 							selector: 'a'
 						},
-						//NOTE: b is missing since A() is private
+						b: {
+							arguments: [],
+							encoding: 'f16@0:8',
+							instance: true,
+							name: 'b',
+							returns: { encoding: 'f', type: 'float', value: 'float' },
+							selector: 'b'
+						},
 						c: {
 							arguments: [],
 							encoding: 'f16@0:8',
@@ -493,7 +546,16 @@ describe('class', function () {
 							},
 							selector: 'setA:'
 						},
-						//NOTE: setB: is missing since A() is private
+						'setB:': {
+							arguments: [
+								{ encoding: 'f', name: 'b', type: 'float', value: 'float' }
+							],
+							encoding: 'v20@0:8f16',
+							instance: true,
+							name: 'setB',
+							returns: { encoding: 'v', type: 'void', value: 'void' },
+							selector: 'setB:'
+						},
 						'setC:': {
 							arguments: [
 								{

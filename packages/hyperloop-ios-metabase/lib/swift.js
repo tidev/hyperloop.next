@@ -4,14 +4,14 @@
  */
 'use strict';
 
-var fs = require('fs'),
+const fs = require('fs'),
 	utillib = require('./util'),
 	spawn = require('child_process').spawn;
 
 /**
  * generate Swift AST output from a swift file
  */
-function generateSwiftAST (sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
+function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
 	var args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
 	if (xcodeTargetOS === 'iphoneos' || xcodeTargetOS === 'iphonesimulator') {
 		args.push('-target');
@@ -41,7 +41,7 @@ function generateSwiftAST (sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) 
 /**
  * return an encoding for a value
  */
-function getEncodingForValue (value) {
+function getEncodingForValue(value) {
 	value = value.toLowerCase();
 	switch (value) {
 		case 'int': return 'i';
@@ -70,7 +70,7 @@ function getEncodingForValue (value) {
 /**
  * encode a structure
  */
-function structDefinitionToEncoding (value) {
+function structDefinitionToEncoding(value) {
 	var str = '{' + value.name + '=';
 	value.fields && value.fields.forEach(function (field) {
 		str += field.encoding || getEncodingForValue(field.type || field.value);
@@ -81,7 +81,7 @@ function structDefinitionToEncoding (value) {
 /**
  * attempt to resolve a type object for a value
  */
-function resolveType (filename, metabase, value) {
+function resolveType(filename, metabase, value) {
 	if (utillib.isPrimitive(value.toLowerCase())) {
 		value = value.toLowerCase();
 		return {
@@ -114,13 +114,13 @@ function resolveType (filename, metabase, value) {
 /**
  * extract all the imports found in the buffer
  */
-function extractImports (buf) {
+function extractImports(buf) {
 	return (buf.match(/import\s*(\w+)/g) || []).map(function (m) {
 		return m.substring(6).replace(/;$/, '').trim();
 	});
 }
 
-function metabaseMerge (a, b) {
+function metabaseMerge(a, b) {
 	// simplified merge metabase json
 	[ 'typedefs', 'classes', 'structs', 'blocks', 'enums', 'functions', 'unions', 'vars' ].forEach(function (k) {
 		if (k in b) {
@@ -134,7 +134,7 @@ function metabaseMerge (a, b) {
 	return a;
 }
 
-function uniq (a) {
+function uniq(a) {
 	var copy = [];
 	for (var c = 0; c < a.length; c++) {
 		var e = a[c];
@@ -148,7 +148,7 @@ function uniq (a) {
 /**
  * return a merged metabase
  */
-function generateAndMerge (buildDir, sdk, sdkPath, iosMinVersion, imports, metabase, callback) {
+function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metabase, callback) {
 	if (imports.length === 0) { return callback(null, metabase); }
 	if (metabase.$includes) {
 		// if we have all the imports already in our metabase, just return instead of merging
@@ -184,7 +184,7 @@ function generateSwiftMangledClassName (appName, className) {
 /**
  * parse a swift file into a metabase type JSON result
  */
-function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTargetOS, metabase, framework, fn, callback) {
+function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTargetOS, metabase, framework, fn, callback) {
 	generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, function (err, buf) {
 		if (err) {
 			return callback(err, buf);

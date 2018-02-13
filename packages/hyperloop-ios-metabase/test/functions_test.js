@@ -1,4 +1,7 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('function', function () {
@@ -19,8 +22,9 @@ describe('function', function () {
 					arguments: [],
 					name: 'Foo',
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '1',
 					returns: {
 						type: 'void',
@@ -38,8 +42,9 @@ describe('function', function () {
 						}
 					],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '2',
 					name: 'Bar',
 					returns: {
@@ -64,8 +69,9 @@ describe('function', function () {
 						}
 					],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '3',
 					name: 'A',
 					returns: {
@@ -84,8 +90,9 @@ describe('function', function () {
 						}
 					],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '4',
 					name: 'Block',
 					returns: {
@@ -104,8 +111,9 @@ describe('function', function () {
 						}
 					],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '5',
 					name: 'NamedBlock',
 					returns: {
@@ -124,8 +132,9 @@ describe('function', function () {
 						}
 					],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '6',
 					name: 'Function',
 					returns: {
@@ -135,15 +144,16 @@ describe('function', function () {
 					}
 				},
 				Variadic: {
-					arguments: [{
+					arguments: [ {
 						encoding: '*',
 						name: '',
 						type: 'pointer',
 						value: 'char *'
-					}],
+					} ],
 					filename: helper.getFixture('functions.h'),
-					framework: 'fixtures',
+					framework: helper.getFixture('functions.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					line: '7',
 					name: 'Variadic',
 					returns: {
@@ -155,7 +165,7 @@ describe('function', function () {
 				}
 			});
 			should(json).have.property('blocks');
-			should(json.blocks).have.property('fixtures', [
+			should(json.blocks).have.property(helper.getFixture('functions.h'), [
 				{
 					arguments: [
 						{

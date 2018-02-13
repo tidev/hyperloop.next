@@ -1,11 +1,16 @@
-var should = require('should'),
+/* eslint-disable no-unused-expressions */
+'use strict';
+
+const should = require('should'),
 	helper = require('./helper');
 
 describe('struct', function () {
 
 	it('should generate structs', function (done) {
 		helper.generate(helper.getFixture('struct.h'), helper.getTempFile('struct.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');
@@ -24,15 +29,17 @@ describe('struct', function () {
 							type: 'float'
 						}
 					],
-					framework: 'fixtures',
+					framework: helper.getFixture('struct.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					filename: helper.getFixture('struct.h'),
 					line: '1',
 					name: 'A'
 				},
 				B: {
-					framework: 'fixtures',
+					framework: helper.getFixture('struct.h'),
 					thirdparty: true,
+					introducedIn: '0.0.0',
 					filename: helper.getFixture('struct.h'),
 					line: '2',
 					name: 'B'
