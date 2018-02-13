@@ -621,12 +621,32 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					// import UIView from 'UIKit/UIView'; spec.imported is undefined and tok[1] holds className
 					// import { UIView } from 'UIKit'; spec.imported.name == 'UIView'
 					const className = (spec.imported ? spec.imported.name : tok[1]);
+
+					self.logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+
 					// What if they did:
 					// import UIView from 'UIKit'; ? className would be null here. Technically this is bad import anyways
 					// as it should be: import UIKit from 'UIKit/UIKit'; or import { UIView } from 'UIKit';
 					// FIXME: Should we bomb out with an error saying it's ambiguous import?
 					const include = framework && framework.typeMap[className];
-					self.logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
+
+					// Ok, it's not a type in the framework, but is it an enum?
+					if (!include) {
+						// check for an enum that matches the name in the same framework
+						// FIXME: We don't have the full metabase generated here yet!
+						// FUCK. We use the includes set to pass in to generate the metabase!
+						// This is so fucking backwards. So the iOS metabase stuff will do one pass to get the frameworks
+						// and pull the types (classes/impls) from the headers, which are available now
+						// Then we use that for validation/collecting our list of "includes"
+						// which we later pass to the metabase generation code to use to cull the generated metabase?
+						const matchingEnum = self.metabase.enums[className];
+						if (matchingEnum && matchingEnum.framework === pkg) {
+							include = matchingEnum;
+							// it's a valid enum reference!
+							// becomes...
+							// import EnumName from '/hyperloop/Framework/EnumName';
+						}
+					}
 
 					// if we haven't found it by now, then we try to help before failing
 					if (!include && className !== pkg && !isBuiltin) {
