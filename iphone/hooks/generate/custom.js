@@ -3,9 +3,7 @@
  * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
-const fs = require('fs');
-const path = require('path');
-const util = require('util');
+
 const utillib = require('./util');
 const classgen = require('./class');
 const babylon = require('babylon');
@@ -57,8 +55,8 @@ ParserState.prototype.isSetterPropertyReferenced = function (prop) {
 
 ParserState.prototype.isFunctionReferenced = function (prop) {
 	if (!this.state.References) { return true; } // for unit testing
-	return this.state.References && this.state.References.functions && this.state.References.functions[prop] ||
-		this.isGetterPropertyReferenced(prop);
+	return this.state.References && this.state.References.functions && this.state.References.functions[prop]
+		|| this.isGetterPropertyReferenced(prop);
 };
 
 ParserState.prototype.getReferences = function () {
@@ -74,7 +72,7 @@ function count(str, find) {
 function decodeStruct(str, offset) {
 	offset = offset === undefined ? 0 : offset;
 	var i = str.indexOf('}', offset);
-	while ( i !== -1) {
+	while (i !== -1) {
 		var struct = str.substring(offset, i + 1);
 		if (count(struct, '{') === count(struct, '}')) {
 			return struct;
@@ -141,7 +139,7 @@ function getEncoding(state, metabase, imports, str, index) {
 				value: 'id',
 				skip: skip,
 				type: 'objc_interface',
-				encoding: skip ? '@?': '@'
+				encoding: skip ? '@?' : '@'
 			};
 		}
 		case '^': {
@@ -172,7 +170,7 @@ function getEncoding(state, metabase, imports, str, index) {
 				var encoding = '{' + cls;
 				struct = metabase.structs[cls];
 				struct.fields && struct.fields.forEach(function (f) {
-					encoding+=f.encoding;
+					encoding += f.encoding;
 				});
 				encoding += '}';
 				return {
@@ -221,7 +219,7 @@ function getEncoding(state, metabase, imports, str, index) {
 			}
 		}
 	}
-	throw new Error("unknown encoding " + str + ' start at index ' + index);
+	throw new Error('unknown encoding ' + str + ' start at index ' + index);
 }
 
 function parseEncoding(state, metabase, imports, encoding) {
@@ -241,7 +239,7 @@ function parseEncoding(state, metabase, imports, encoding) {
 }
 
 function generateIdentifier(selector, instance, cls) {
-	return utillib.generateSafeSymbol(cls.name + '_' + selector + '_' + (instance ? '1': '0'));
+	return utillib.generateSafeSymbol(cls.name + '_' + selector + '_' + (instance ? '1' : '0'));
 }
 
 // FIXME: Move this out to a template?
@@ -252,9 +250,9 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 		identifier = generateIdentifier(selector, instance, classDef),
 		methodName = utillib.camelCase(selector);
 
-	//TODO: if we are extended a class or implementing a protocol and overriding
-	//the method, we can just look up the method so that the developer doesn't have
-	//to specify the encoding
+	// TODO: if we are extended a class or implementing a protocol and overriding
+	// the method, we can just look up the method so that the developer doesn't have
+	// to specify the encoding
 
 	// add the class for JS generation later
 	var addMethod;
@@ -272,9 +270,9 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 	details.args.forEach(function (arg, index) {
 		var name = argnames[index];
 		if (index) {
-			method+=' '+name;
+			method += ' ' + name;
 		}
-		method+=':('+arg.value+')arg' + index;
+		method += ':(' + arg.value + ')arg' + index;
 		if (addMethod) {
 			arg.name = argnames[index];
 			cls.methods[methodName].arguments.push(arg);
@@ -295,9 +293,9 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 		}
 		details.args.forEach(function (arg, i) {
 			if (utillib.isObjectType(arg.type, arg.encoding)) {
-				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i +' =', ''));
+				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i + ' =', ''));
 			} else {
-				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i +' ='));
+				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i + ' ='));
 			}
 			args.push('_arg' + i);
 		});
@@ -322,7 +320,7 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 			} else {
 				code.push('\t\tif (result_ && [result_ isKindOfClass:[HyperloopPointer class]]) {');
 			}
-			code.push('\t\t' + utillib.generateObjCValue({imports:imports}, metabase, details.returns, details.returns, 'result', '\t\t'));
+			code.push('\t\t' + utillib.generateObjCValue({ imports: imports }, metabase, details.returns, details.returns, 'result', '\t\t'));
 			code.push('\t\t\tresult$ = result;');
 			if (utillib.isObjectType(details.returns.type, details.returns.encoding)) {
 				code.push('\t\t} else if ([result_ isEqual:[NSNull null]]==NO) {');
@@ -343,7 +341,8 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 
 Parser.generate = function (state, metabase) {
 	if (Object.keys(state.getClassNames())) {
-		var code = state.gencode || [], imports = state.imports || {};
+		var code = state.gencode || [],
+			imports = state.imports || {};
 		state.getClassNames().forEach(function (name) {
 			var classDef = state.getClassNamed(name);
 			var protocols = '';
@@ -361,7 +360,7 @@ Parser.generate = function (state, metabase) {
 			imports[found.framework + '/' + found.framework] = 1;
 			if (classDef.implements) {
 				if (!Array.isArray(classDef.implements)) {
-					protocols = [classDef.implements];
+					protocols = [ classDef.implements ];
 				} else {
 					protocols = classDef.implements;
 				}
@@ -378,7 +377,8 @@ Parser.generate = function (state, metabase) {
 			code.push('@interface ' + classDef.name + ' : ' + classDef.extends + protocols);
 			code.push('');
 			var methods = classDef.methods;
-			var interfaces = [], implementations = [];
+			var interfaces = [],
+				implementations = [];
 			methods && Object.keys(methods).forEach(function (m) {
 				var method = methods[m];
 				interfaces.push(generateMethod(state && state.state, metabase, imports, cls, classDef, method.selector, method.encoding, method.instance));
@@ -411,7 +411,7 @@ Parser.generate = function (state, metabase) {
 				cls.methods.addMethod = {
 					name: 'addMethod',
 					instance: false,
-					arguments:[],
+					arguments: [],
 					impl: function () {
 						return 'Hyperloop.addMethod(this, arguments[0]);';
 					}
@@ -492,7 +492,7 @@ function addMigrationHelpIfNeeded(state, node) {
 	state.needMigration = state.needMigration || [];
 	var migrationTable = utillib.getMethodTableForMigration();
 
-	if (['CallExpression', 'MemberExpression'].indexOf(node.type) === -1) {
+	if ([ 'CallExpression', 'MemberExpression' ].indexOf(node.type) === -1) {
 		return;
 	}
 
@@ -526,7 +526,7 @@ function traverseUpAndFindMigratableMethod(node, migrationTable) {
 		return null;
 	}
 
-	if (['CallExpression', 'MemberExpression'].indexOf(node.type) === -1) {
+	if ([ 'CallExpression', 'MemberExpression' ].indexOf(node.type) === -1) {
 		return null;
 	}
 
@@ -597,10 +597,10 @@ Parser.prototype.parse = function (buf, fn, state) {
 	const ast = babylon.parse(buf, { sourceFilename: fn, sourceType: 'module' });
 	let mutated = false;
 	const ASTWalker = {
-		ExpressionStatement: function(p) {
+		ExpressionStatement: function (p) {
 			p.node.expression && addSymbolReference(state, p.node.expression, 'getter');
 		},
-		CallExpression: function(p) {
+		CallExpression: function (p) {
 			// do symbol detection first
 			addSymbolReference(state, p.node.callee, 'getter');
 			if (p.node.callee.property) {
@@ -636,24 +636,24 @@ Parser.prototype.parse = function (buf, fn, state) {
 				addHyperloopMethodToClass(p, state);
 			}
 		},
-		VariableDeclaration: function(p) {
+		VariableDeclaration: function (p) {
 			if (p.node.declarations && p.node.declarations.length) {
 				p.node.declarations.forEach(function (decl) {
 					decl.init && addSymbolReference(state, decl.init, 'getter');
 				});
 			}
 		},
-		MemberExpression: function(p) {
+		MemberExpression: function (p) {
 			if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(p.parent.type)) {
 				addSymbolReference(state, p.node, 'getter');
 				addMigrationHelpIfNeeded(state, p.node);
 			}
 		},
-		AssignmentExpression: function(p) {
+		AssignmentExpression: function (p) {
 			addSymbolReference(state, p.node.left, 'setter');
 			addSymbolReference(state, p.node.right, 'getter');
 		},
-		Identifier: function(p) {
+		Identifier: function (p) {
 			if (isHyperloopReferenced(p, state)) {
 				// just record
 			}
@@ -671,29 +671,29 @@ Parser.prototype.parse = function (buf, fn, state) {
 };
 
 function isHyperloopMethodCall(node, method) {
-	return node &&
-		node.type === 'CallExpression' &&
-		node.callee &&
-		node.callee.type === 'MemberExpression' &&
-		node.callee.object &&
-		node.callee.object.type === 'Identifier' &&
-		node.callee.object.name === 'Hyperloop' &&
-		node.callee.property &&
-		node.callee.property.type === 'Identifier' &&
-		node.callee.property.name === method;
+	return node
+		&& node.type === 'CallExpression'
+		&& node.callee
+		&& node.callee.type === 'MemberExpression'
+		&& node.callee.object
+		&& node.callee.object.type === 'Identifier'
+		&& node.callee.object.name === 'Hyperloop'
+		&& node.callee.property
+		&& node.callee.property.type === 'Identifier'
+		&& node.callee.property.name === method;
 }
 
 function isHyperloopAddMethodCall(node, state) {
-	return node &&
-		node.type === 'CallExpression' &&
-		node.callee &&
-		node.callee.type === 'MemberExpression' &&
-		node.callee.property &&
-		node.callee.property.type === 'Identifier' &&
-		node.callee.property.name === 'addMethod' &&
-		node.callee.object &&
-		node.callee.object.type === 'Identifier' &&
-		node.callee.object.name in state.classesByVariable;
+	return node
+		&& node.type === 'CallExpression'
+		&& node.callee
+		&& node.callee.type === 'MemberExpression'
+		&& node.callee.property
+		&& node.callee.property.type === 'Identifier'
+		&& node.callee.property.name === 'addMethod'
+		&& node.callee.object
+		&& node.callee.object.type === 'Identifier'
+		&& node.callee.object.name in state.classesByVariable;
 }
 
 /**
@@ -791,7 +791,7 @@ function toJSObject(ref, node, def) {
 				return eval(op + right);
 			}
 		}
-		throw new JSParseError("Not sure what to do with this node: " + node.type, node);
+		throw new JSParseError('Not sure what to do with this node: ' + node.type, node);
 	} else {
 		return def;
 	}
@@ -821,7 +821,7 @@ function makeHyperloopClassFromCall(state, p) {
 	if (p.parent.type === 'VariableDeclarator') {
 		declarationNode = p.parent;
 	} else { // VariableDeclaration is parent
-		p.parent.declarations.forEach(function(declNode) {
+		p.parent.declarations.forEach(function (declNode) {
 			if (declNode.init === node) {
 				declarationNode = declNode;
 			}
@@ -855,7 +855,7 @@ function makeHyperloopClassFromCall(state, p) {
  * @return {Node}          Node for the Program
  */
 function findProgramNode(nodePath) {
-	const programPath = nodePath.findParent(function(p) {
+	const programPath = nodePath.findParent(function (p) {
 		return p.isProgram();
 	});
 	return programPath.node;
@@ -934,7 +934,7 @@ function addHyperloopMethodToClass(p, state) {
 		if (args) {
 			// allow it to be an array of friendly types
 			if (Array.isArray(args)) {
-				args = args.map(function(arg) {
+				args = args.map(function (arg) {
 					return encodeFriendlyType(arg, classSpec.importClasses);
 				}).join('');
 			}
@@ -955,7 +955,7 @@ function addHyperloopMethodToClass(p, state) {
 			throw new JSParseError('addMethod selector looks invalid. at least ' + argCount + ' arguments are required', node);
 		}
 	}
-	['selector', 'callback'].forEach(function(n) {
+	[ 'selector', 'callback' ].forEach(function (n) {
 		if (!(n in methodSpec)) {
 			throw new JSParseError('addMethod argument requires a "' + n + '" property which is the name of the method', node);
 		}

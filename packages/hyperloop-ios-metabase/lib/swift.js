@@ -1,9 +1,10 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
+'use strict';
+
 var fs = require('fs'),
-	util = require('util'),
 	utillib = require('./util'),
 	spawn = require('child_process').spawn;
 
@@ -11,7 +12,7 @@ var fs = require('fs'),
  * generate Swift AST output from a swift file
  */
 function generateSwiftAST (sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
-	var args = ['swiftc', '-sdk', sdkPath, '-dump-ast', fn];
+	var args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
 	if (xcodeTargetOS === 'iphoneos' || xcodeTargetOS === 'iphonesimulator') {
 		args.push('-target');
 		if (xcodeTargetOS === 'iphoneos') {
@@ -31,7 +32,7 @@ function generateSwiftAST (sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) 
 	});
 	child.on('exit', function (ec) {
 		if (ec === 1) {
-			return callback(new Error('Swift file at '+ fn + ' has compiler problems. Please check to make sure it compiles OK.'), buf);
+			return callback(new Error('Swift file at ' + fn + ' has compiler problems. Please check to make sure it compiles OK.'), buf);
 		}
 		callback(null, buf);
 	});
@@ -104,7 +105,7 @@ function resolveType (filename, metabase, value) {
 		};
 	} else if (metabase.typedefs && value in metabase.typedefs) {
 		var typedef = metabase.typedefs[value];
-		return {type:typedef.type, value: value, encoding: typedef.encoding};
+		return { type: typedef.type, value: value, encoding: typedef.encoding };
 	}
 	console.error('Swift Generation failed with unknown or unsupported type (' + value + ') found while compiling', filename);
 	process.exit(1);
@@ -121,7 +122,7 @@ function extractImports (buf) {
 
 function metabaseMerge (a, b) {
 	// simplified merge metabase json
-	['typedefs','classes','structs','blocks','enums','functions','unions','vars'].forEach(function (k) {
+	[ 'typedefs', 'classes', 'structs', 'blocks', 'enums', 'functions', 'unions', 'vars' ].forEach(function (k) {
 		if (k in b) {
 			Object.keys(b[k]).forEach(function (kk) {
 				if (!(kk in a)) {
@@ -303,7 +304,7 @@ function generateSwiftMetabase (buildDir, sdk, sdkPath, iosMinVersion, xcodeTarg
 							type: t
 						});
 					} else if (methodef && line.indexOf('(result') === 0 && lines[index + 1].trim().indexOf('(type_ident') === 0 && lines[index + 2].trim().indexOf('(component ') === 0) {
-						methodef.returns = resolveType(fn, metabase, componentRE.exec(lines[index+2].trim())[1]);
+						methodef.returns = resolveType(fn, metabase, componentRE.exec(lines[index + 2].trim())[1]);
 						methodef = null;
 					}
 				}

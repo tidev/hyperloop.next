@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "grunt",
-    "prepack": "sh build.sh"
+    "preinstall": "sh build.sh"
   },
   "repository": {
     "type": "git",
@@ -36,8 +36,7 @@
   "dependencies": {
     "async": "^1.4.2",
     "chalk": "^1.1.1",
-    "plist": "^1.1.0",
-    "semver": "^5.0.3",
-    "fs-extra": "^2.0.0"
+    "fs-extra": "^2.0.0",
+    "semver": "^5.0.3"
   }
 }

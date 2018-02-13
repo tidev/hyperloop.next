@@ -1,7 +1,9 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
+'use strict';
+
 var chalk = require('chalk'),
 	logger = {
 		info: function () {
@@ -21,7 +23,6 @@ var chalk = require('chalk'),
 		}
 	};
 
-
 function createLogger(log, level) {
 	log[level] && (logger[level] = function () {
 		var args = Array.prototype.slice.call(arguments);
@@ -30,7 +31,7 @@ function createLogger(log, level) {
 }
 
 function setLog (logFn) {
-	['info','debug','warn','error','trace'].forEach(function (level) {
+	[ 'info', 'debug', 'warn', 'error', 'trace' ].forEach(function (level) {
 		createLogger(logFn, level);
 	});
 }
@@ -42,7 +43,6 @@ Object.defineProperty(exports, 'logger', {
 		return logger;
 	}
 });
-
 
 function isPrimitive(type) {
 	switch (type) {

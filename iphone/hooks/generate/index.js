@@ -15,7 +15,7 @@ const gencustom = require('./custom');
 const CodeGenerator = require('./code-generator');
 const util = require('./util');
 
-function makeModule (modules, e, state) {
+function makeModule(modules, e, state) {
 	if (e.framework) {
 		if (!(e.framework in modules)) {
 			modules[e.framework] = {
@@ -35,7 +35,7 @@ function makeModule (modules, e, state) {
 	}
 }
 
-function merge (src, dest) {
+function merge(src, dest) {
 	if (src) {
 		dest =  dest || {};
 		for (var k in src) {
@@ -55,7 +55,7 @@ function merge (src, dest) {
  * @param {String} proto The protocol to look for in parent classes
  * @return {bool} True if protocol already implemented in a parent class, false otherwise.
  */
-function isProtocolImplementedBySuperClass (json, cls, proto) {
+function isProtocolImplementedBySuperClass(json, cls, proto) {
 	var parentClass = cls && cls.superclass;
 	while (parentClass) {
 		if (parentClass.protocols && parentClass.protocols.indexOf(proto) !== -1) {
@@ -74,7 +74,7 @@ function isProtocolImplementedBySuperClass (json, cls, proto) {
  *
  * @param {Object} protocols Object with protocols from the metabase
  */
-function processProtocolInheritance (protocols) {
+function processProtocolInheritance(protocols) {
 	var mergedProtocols = [];
 	/**
 	 * Recursively merges a protocol with all it's inherited protocols
@@ -127,10 +127,12 @@ function processProtocolInheritance (protocols) {
 	});
 }
 
-function generateBuiltins (json, callback) {
+function generateBuiltins(json, callback) {
 	var dir = path.join(__dirname, 'templates', 'builtins');
 	fs.readdir(dir, function (err, files) {
-		if (err) { return callback(err); }
+		if (err) {
+			return callback(err);
+		}
 		async.eachSeries(files, function (fn, cb) {
 			var gen = require(path.join(dir, fn));
 			gen(json, cb);
@@ -138,31 +140,35 @@ function generateBuiltins (json, callback) {
 	});
 }
 
-function generateFromJSON (name, json, state, callback, includes) {
+function generateFromJSON(name, json, state, callback, includes) {
 	// set the name of the app in the state object
 	state.appName = name;
 
-	if (!json) { return callback(); }
+	if (!json) {
+		return callback();
+	}
 
 	json.classes = json.classes || {};
 
 	generateBuiltins(json, function (err) {
-		if (err) { return callback(err); }
+		if (err) {
+			return callback(err);
+		}
 
 		if (!json.classes.NSObject) {
 			json.classes.NSObject = {
-				methods:{},
-				properties:{},
-				framework:'Foundation',
+				methods: {},
+				properties: {},
+				framework: 'Foundation',
 				name: 'NSObject'
 			};
 		}
 
 		// attach these base methods to NSObject
-		['stringValue','boolValue','intValue','charValue','floatValue','shortValue',
-		'longValue','longLongValue','unsignedIntValue','unsignedCharValue',
-		'unsignedShortValue','unsignedLongLongValue',
-		'unsignedLongValue','isNull', 'protect', 'unprotect'].forEach(function(t) {
+		[ 'stringValue', 'boolValue', 'intValue', 'charValue', 'floatValue', 'shortValue',
+			'longValue', 'longLongValue', 'unsignedIntValue', 'unsignedCharValue',
+			'unsignedShortValue', 'unsignedLongLongValue',
+			'unsignedLongValue', 'isNull', 'protect', 'unprotect' ].forEach(function (t) {
 			json.classes.NSObject.methods[t] = {
 				instance: true,
 				name: t,
@@ -188,7 +194,7 @@ function generateFromJSON (name, json, state, callback, includes) {
 		};
 
 		// remove these functions for now until we can fix them
-		['NSLogv', 'NSLog', 'UIApplicationMain'].forEach(function (fn) {
+		[ 'NSLogv', 'NSLog', 'UIApplicationMain' ].forEach(function (fn) {
 			if (json.functions) {
 				delete json.functions[fn];
 			}
@@ -251,7 +257,7 @@ function generateFromJSON (name, json, state, callback, includes) {
 			var struct = json.structs[k];
 			if (/^_+/.test(k)) {
 				// if we have leading underscores for struct names, trim them
-				struct.name = struct.name.replace(/^(_)+/g,'').trim();
+				struct.name = struct.name.replace(/^(_)+/g, '').trim();
 			}
 			sourceSet.structs[k] = genstruct.generate(json, struct);
 		});
@@ -293,7 +299,7 @@ function generateFromJSON (name, json, state, callback, includes) {
 			if (frameworkName[0] === '/') {
 				frameworkName = custom_frameworks[k] || k;
 			}
-			var mod = makeModule(modules, {framework: frameworkName, filename: ''}, state);
+			var mod = makeModule(modules, { framework: frameworkName, filename: '' }, state);
 			mod && blocks.forEach(function (block) {
 				block && mod.blocks.push(genblock.generateBlockWrapper(mod, json, block));
 			});

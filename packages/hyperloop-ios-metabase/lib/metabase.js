@@ -1,6 +1,6 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015-2017 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
 
@@ -8,7 +8,6 @@ var spawn = require('child_process').spawn,
 	exec = require('child_process').exec,
 	path = require('path'),
 	fs = require('fs-extra'),
-	plist = require('plist'),
 	async = require('async'),
 	semver = require('semver'),
 	crypto = require('crypto'),
@@ -17,11 +16,10 @@ var spawn = require('child_process').spawn,
 	swiftlilb = require('./swift'),
 	binary = path.join(__dirname, '..', 'bin', 'metabase');
 
-
 /**
  * return the configured SDK path
  */
-function getSDKPath (sdkType, callback) {
+function getSDKPath(sdkType, callback) {
 	exec('/usr/bin/xcrun --sdk ' + sdkType + ' --show-sdk-path', function (err, stdout) {
 		if (err) { return callback(err); }
 		return callback(null, stdout.trim());
@@ -31,7 +29,7 @@ function getSDKPath (sdkType, callback) {
 /**
  * convert an apple style version (9.0) to a semver compatible version
  */
-function appleVersionToSemver (ver) {
+function appleVersionToSemver(ver) {
 	var v = String(ver).split('.');
 	if (v.length === 1) {
 		return ver + '.0.0';
@@ -40,28 +38,6 @@ function appleVersionToSemver (ver) {
 		return ver + '.0';
 	}
 	return ver;
-}
-
-/**
- * return a parsed plist for a given framework
- */
-function getPlistForFramework (info, callback) {
-	if (fs.existsSync(info)) {
-		var child = spawn('/usr/bin/plutil',['-convert', 'xml1', info, '-o', '-']);
-		var out = '';
-		child.stdout.on('data', function (buf) {
-			out += buf.toString();
-		});
-		child.on('close', function (ex) {
-			if (ex) {
-				return callback(new Error('plistutil cannot convert ' + info));
-			}
-			var result = plist.parse(out);
-			return callback(null, result);
-		});
-	} else {
-		return callback();
-	}
 }
 
 /**
@@ -126,7 +102,7 @@ function extractImplementations (fn, files) {
 			// convention for user-generated files like Foo+Bar.h where Bar is a
 			// category of Foo, we exclude those
 			if (fn.indexOf('+') < 0) {
-				files[path.basename(fn).replace('.h','').trim()] = fn;
+				files[path.basename(fn).replace('.h', '').trim()] = fn;
 			}
 		}
 	}
@@ -223,11 +199,11 @@ class ModuleMetadata {
 /**
  * generate system framework includes mapping
  */
-function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
+function generateSystemFrameworks(sdkPath, iosMinVersion, callback) {
 	const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
 	const frameworksEntries = fs.readdirSync(frameworksPath).filter(entryName => /\.framework$/.test(entryName));
 	const frameworks = new Map();
-	iosMinVersion = appleVersionToSemver(iosMinVersion),
+	iosMinVersion = appleVersionToSemver(iosMinVersion);
 
 	async.each(frameworksEntries, function (frameworkPackageName, next) {
 		const frameworkName = frameworkPackageName.replace('.framework', '');
@@ -266,7 +242,7 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 function extractImplementationsFromFramework(frameworkName, frameworkPath, includes) {
 	var implementationToHeaderFileMap = includes[frameworkName] || {};
 	var headerFiles = collectFrameworkHeaders(frameworkPath);
-	headerFiles.forEach(function(headerFile) {
+	headerFiles.forEach(function (headerFile) {
 		extractImplementations(headerFile, implementationToHeaderFileMap);
 	});
 	includes[frameworkName] = implementationToHeaderFileMap;
@@ -287,7 +263,7 @@ function collectFrameworkHeaders(frameworkPath) {
 		return [];
 	}
 
-	var headerFiles = getAllHeaderFiles([frameworkHeadersPath]);
+	var headerFiles = getAllHeaderFiles([ frameworkHeadersPath ]);
 	var nestedFrameworksPath = path.join(frameworkPath, 'Frameworks');
 	if (fs.existsSync(nestedFrameworksPath)) {
 		fs.readdirSync(nestedFrameworksPath).forEach(function (subFrameworkEntry) {
@@ -313,7 +289,7 @@ function collectFrameworkHeaders(frameworkPath) {
  * @param {Array} extraHeaders Array of extra header search paths passed to the metabase parser
  * @param {Array} extraFrameworks Array of extra framework search paths passed to the metabase parser
  */
-function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders, extraFrameworks) {
+function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders, extraFrameworks) {
 	var cacheToken = createHashFromString(sdkPath + iosMinVersion + excludeSystem + JSON.stringify(includes));
 	var header = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.h');
 	var outfile = path.join(buildDir, 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken + '.json');
@@ -321,7 +297,7 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 	// Foundation header always needs to be included
 	var absoluteFoundationHeaderRegex = /Foundation\.framework\/Headers\/Foundation\.h$/;
 	var systemFoundationHeaderRegex = /^[<"]Foundation\/Foundation\.h[>"]$/;
-	var isFoundationIncluded = includes.some(function(header) {
+	var isFoundationIncluded = includes.some(function (header) {
 		return systemFoundationHeaderRegex.test(header) || absoluteFoundationHeaderRegex.test(header);
 	});
 	if (!isFoundationIncluded) {
@@ -334,18 +310,17 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 			var json = JSON.parse(fs.readFileSync(outfile));
 			json.$includes = includes;
 			return callback(null, json, path.resolve(outfile), path.resolve(header), true);
-		}
-		catch (e) {
+		} catch (e) {
 			// fall through and re-generate again
 		}
 	}
 
 	force && util.logger.trace('forcing generation of metabase to', outfile);
 
-	var contents =  '/**\n' +
-					' * HYPERLOOP GENERATED - DO NOT MODIFY\n' +
-					' */\n' +
-					includes.map(function (fn) {
+	var contents =  '/**\n'
+					+ ' * HYPERLOOP GENERATED - DO NOT MODIFY\n'
+					+ ' */\n'
+					+ includes.map(function (fn) {
 						if (fn) {
 							if (fn.charAt(0) === '<') {
 								return '#import ' + fn;
@@ -353,8 +328,8 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 								return '#import "' + fn + '"';
 							}
 						}
-					}).join('\n') +
-					'\n';
+					}).join('\n')
+					+ '\n';
 	fs.writeFileSync(header, contents);
 	var args = [
 		'-i', path.resolve(header),
@@ -387,21 +362,21 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 					triedToFixPermissions = true;
 					return runMetabase(binary, args);
 				} else {
-					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions by running: chmod +x ' + binary))
+					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions by running: chmod +x ' + binary));
 				}
 			}
 
 			throw e;
 		}
 		child.stdout.on('data', function (buf) {
-			util.logger.debug(String(buf).replace(/\n$/,''));
+			util.logger.debug(String(buf).replace(/\n$/, ''));
 		});
 		child.stderr.on('data', function (buf) {
 			// Without this, for whatever reason, the metabase parser never returns
 		});
 		child.on('error', callback);
 		child.on('exit', function (ex) {
-			util.logger.trace('metabase took', (Date.now()-ts), 'ms to generate');
+			util.logger.trace('metabase took', (Date.now() - ts), 'ms to generate');
 			if (ex) {
 				return callback(new Error('Metabase generation failed'));
 			}
@@ -409,13 +384,13 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 			json.$includes = includes;
 			return callback(null, json, path.resolve(outfile), path.resolve(header), false);
 		});
-	})(binary, args);
+	}(binary, args));
 }
 
 /**
  * return the system frameworks mappings as JSON for a given sdkType and minVersion
  */
-function getSystemFrameworks (cacheDir, sdkType, minVersion, callback) {
+function getSystemFrameworks(cacheDir, sdkType, minVersion, callback) {
 	var fn = 'metabase-mappings-' + sdkType + '-' + minVersion + '.json';
 	if (!fs.existsSync(cacheDir)) {
 		fs.mkdirSync(cacheDir);
@@ -427,9 +402,13 @@ function getSystemFrameworks (cacheDir, sdkType, minVersion, callback) {
 	}
 
 	getSDKPath(sdkType, function (err, sdkPath) {
-		if (err) { return callback(err); }
+		if (err) {
+			return callback(err);
+		}
 		generateSystemFrameworks(sdkPath, minVersion, function (err, frameworks) {
-			if (err) { return callback(err); }
+			if (err) {
+				return callback(err);
+			}
 			frameworks.set('$metadata', {
 				sdkType: sdkType,
 				minVersion: minVersion,
@@ -441,7 +420,7 @@ function getSystemFrameworks (cacheDir, sdkType, minVersion, callback) {
 	});
 }
 
-function recursiveReadDir (dir, result) {
+function recursiveReadDir(dir, result) {
 	result = result || [];
 	var files = fs.readdirSync(dir);
 	files.forEach(function (fn) {
@@ -458,7 +437,7 @@ function recursiveReadDir (dir, result) {
 /**
  * for an array of directories, return all validate header files
  */
-function getAllHeaderFiles (directories) {
+function getAllHeaderFiles(directories) {
 	var files = [];
 	directories.forEach(function (dir) {
 		recursiveReadDir(dir).forEach(function (fn) {
@@ -554,7 +533,7 @@ function generateUserFrameworksMetadata (frameworks, cacheDir, callback) {
  * @param {Function} callback Callback function
  */
 function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes, callback) {
-	var files = getAllHeaderFiles([staticLibrariesHeaderPath]);
+	var files = getAllHeaderFiles([ staticLibrariesHeaderPath ]);
 	files.forEach(function (fn) {
 		var fw;
 		var pos = fn.lastIndexOf('/');
@@ -699,8 +678,8 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	// check for any frameworks under the CocoaPods FRAMEWORK_SEARCH_PATHS
 	var cocoaPodsConfigurationBuildDir = getBuiltProductsRootPath(builder.projectDir, builder.xcodeTarget, builder.xcodeTargetOS);
 	var frameworkSearchPaths = (settings.FRAMEWORK_SEARCH_PATHS || '').split(' ');
-	tasks.push(function(next) {
-		async.each(frameworkSearchPaths, function(frameworkSearchPath, done) {
+	tasks.push(function (next) {
+		async.each(frameworkSearchPaths, function (frameworkSearchPath, done) {
 			frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', settings.PODS_ROOT);
 			// TIMOB-25829: CocoaPods < 1.4.0 uses $PODS_CONFIGURATION_BUILD_DIR, 1.4.0+ uses ${PODS_CONFIGURATION_BUILD_DIR}
 			// Remove regex once we bump the minimum version to 1.4.0+
@@ -709,12 +688,12 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 			if (!fs.existsSync(frameworkSearchPath)) {
 				return done();
 			}
-			detectFrameworks(frameworkSearchPath, function(err, frameworks) {
+			detectFrameworks(frameworkSearchPath, function (err, frameworks) {
 				if (err) {
 					return done(err);
 				}
 
-				async.each(Array.from(frameworks.values()), function(frameworkMetadata, nextFramework) {
+				async.each(Array.from(frameworks.values()), function (frameworkMetadata, nextFramework) {
 					if (modules.has(frameworkMetadata.name)) {
 						// If no use_frameworks! flag is set in the Podfile it is possible
 						// that we have a dummy static library whose headers are symlinked to
@@ -733,7 +712,7 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 		}, next);
 	});
 
-	async.series(tasks, function(err) {
+	async.series(tasks, function (err) {
 		if (err) {
 			return callback(err);
 		}
@@ -752,7 +731,7 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
  */
 function detectFrameworks(frameworkSearchPath, done) {
 	var frameworks = new Map();
-	async.each(fs.readdirSync(frameworkSearchPath), function(searchPathEntry, next) {
+	async.each(fs.readdirSync(frameworkSearchPath), function (searchPathEntry, next) {
 		var frameworkMatch = /([^/]+)\.framework$/.exec(searchPathEntry);
 		if (frameworkMatch === null) {
 			return next();
@@ -763,16 +742,16 @@ function detectFrameworks(frameworkSearchPath, done) {
 		var frameworkType = 'static';
 
 		var binaryPathAndFilename = path.join(frameworkPath, frameworkName);
-		var child = spawn('file', ['-b', binaryPathAndFilename]);
-		child.stdout.on('data', function(data) {
+		var child = spawn('file', [ '-b', binaryPathAndFilename ]);
+		child.stdout.on('data', function (data) {
 			if (data.toString().indexOf('dynamically linked shared library') !== -1) {
 				frameworkType = 'dynamic';
 			}
 		});
-		child.stderr.on('data', function(data) {
+		child.stderr.on('data', function (data) {
 			util.logger.error(data.toString());
 		});
-		child.on('close', function(code) {
+		child.on('close', function (code) {
 			if (code !== 0) {
 				return next(new Error('Could not detect framework type, command exited with code ' + code));
 			}
@@ -781,7 +760,7 @@ function detectFrameworks(frameworkSearchPath, done) {
 
 			next();
 		});
-	}, function(err) {
+	}, function (err) {
 		if (err) {
 			done(err);
 		}
@@ -805,7 +784,7 @@ function calculateCacheTokenFromPodLockfile (podLockfilePathAndFilename) {
 	if (!fs.existsSync(podLockfilePathAndFilename)) {
 		throw new Error('No Podfile.lock found in your project root. ');
 	}
-	var cacheTokenData = {podfile: '', specs: []};
+	var cacheTokenData = { podfile: '', specs: [] };
 	var podLockfileContent = fs.readFileSync(podLockfilePathAndFilename).toString();
 	var specChecksumRegex = /[ ]{2}[^.][^\s/]*:\s(.*)/ig;
 	var checksumMatches = specChecksumRegex.exec(podLockfileContent);
@@ -916,8 +895,6 @@ function readModulesMetadataFromCache(cachePathAndFilename) {
 	return modules;
 }
 
-
-
 /**
  * handle buffer output
  */
@@ -941,7 +918,7 @@ function createLogger (obj, fn) {
 				});
 			}
 		});
-	})();
+	}());
 }
 
 /**
@@ -949,7 +926,7 @@ function createLogger (obj, fn) {
  */
 function runIBTool (runDir, args, callback) {
 	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/ibtool', args, {cwd: runDir});
+		child = spawn('/usr/bin/ibtool', args, { cwd: runDir });
 	util.logger.debug('running /usr/bin/ibtool ' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -964,7 +941,7 @@ function runIBTool (runDir, args, callback) {
 
 function runMomcTool (runDir, sdk, args, callback) {
 	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/xcrun', ['--sdk', sdk, 'momc'].concat(args), {cwd: runDir});
+		child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'momc' ].concat(args), { cwd: runDir });
 	util.logger.debug('running /usr/bin/xcrun momc' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -979,7 +956,7 @@ function runMomcTool (runDir, sdk, args, callback) {
 
 function runMapcTool (runDir, sdk, args, callback) {
 	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/xcrun', ['--sdk', sdk, 'mapc'].concat(args), {cwd: runDir});
+		child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'mapc' ].concat(args), { cwd: runDir });
 	util.logger.debug('running /usr/bin/xcrun mapc' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -1032,7 +1009,7 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
 				return runMapcTool(path.dirname(file), sdk, args, cb);
 			}
 			case '.xcassets': {
-				//FIXME:
+				// FIXME:
 				break;
 			}
 			case '.storyboard': {
@@ -1093,7 +1070,7 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 		];
 	var buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
 		runDir = path.join(basedir, 'Pods'),
-		child = spawn(xcodesettings.xcodebuild, args, {cwd:runDir});
+		child = spawn(xcodesettings.xcodebuild, args, { cwd: runDir });
 	util.logger.debug('running ' + xcodesettings.xcodebuild + ' ' + args.join(' ') + ' ' + runDir);
 	util.logger.info('Building ' + chalk.green('CocoaPods') + ' dependencies');
 	createLogger(child.stdout, util.logger.trace);
@@ -1202,26 +1179,26 @@ function runPodInstallIfRequired(basedir, callback) {
 		async.waterfall([
 			isPodInstalled,
 			function (pod, callback) {
-				getCocoaPodsVersion(function(err, version) {
+				getCocoaPodsVersion(function (err, version) {
 					callback(err, pod, version);
 				});
 			},
 			function (pod, version, callback) {
-				validatePodfile(Podfile, version, function(err) {
+				validatePodfile(Podfile, version, function (err) {
 					callback(err, pod, version);
 				});
 			}
-		], function(err, pod, version) {
+		], function (err, pod, version) {
 			if (err) { return callback(err); }
 			util.logger.trace('Found CocoaPods ' + version + ' (' + pod + ')');
 			if (semver.lt(version, '1.0.0')) {
 				util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
-				return callback(new Error("Using a CocoaPods < 1.0.0 is not supported anymore."))
+				return callback(new Error('Using a CocoaPods < 1.0.0 is not supported anymore.'));
 			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
 			var spawn = require('child_process').spawn;
-			var args = ['install'];
-			var child = spawn(pod, args, {cwd:basedir});
+			var args = [ 'install' ];
+			var child = spawn(pod, args, { cwd: basedir });
 			createLogger(child.stdout, util.logger.trace);
 			createLogger(child.stderr, util.logger.warn);
 			child.on('error', callback);
