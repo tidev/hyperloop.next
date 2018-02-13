@@ -1,7 +1,7 @@
 'use strict';
 
-const should = require('should'),
-	spawn = require('child_process').spawn;
+const should = require('should'), // eslint-disable-line no-unused-vars
+	spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 
 describe('xcodebuild', function () {
 

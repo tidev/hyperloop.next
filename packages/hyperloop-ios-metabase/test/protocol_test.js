@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-expressions */
 'use strict';
 
-const assert = require('assert'),
-	should = require('should'),
+const should = require('should'),
 	helper = require('./helper');
 
 describe('protocol', function () {

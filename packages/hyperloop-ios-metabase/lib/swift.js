@@ -6,10 +6,15 @@
 
 const fs = require('fs'),
 	utillib = require('./util'),
-	spawn = require('child_process').spawn;
+	spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 
 /**
  * generate Swift AST output from a swift file
+ * @param {String} sdkPath absolute path to the iOS SDK directory
+ * @param {String} iosMinVersion i.e. '9.0'
+ * @param {String} xcodeTargetOS 'iphoneos' || 'iphonesimulator'
+ * @param {String} fn filename
+ * @param {Function} callback callback function
  */
 function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
 	var args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
@@ -40,6 +45,8 @@ function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
 
 /**
  * return an encoding for a value
+ * @param {String} value a type string
+ * @returns {String}
  */
 function getEncodingForValue(value) {
 	value = value.toLowerCase();
@@ -69,6 +76,8 @@ function getEncodingForValue(value) {
 
 /**
  * encode a structure
+ * @param {Object} value a struct Object
+ * @returns {String}
  */
 function structDefinitionToEncoding(value) {
 	var str = '{' + value.name + '=';
@@ -80,6 +89,10 @@ function structDefinitionToEncoding(value) {
 
 /**
  * attempt to resolve a type object for a value
+ * @param {String} filename file name
+ * @param {Object} metabase generated metabase
+ * @param {String} value value
+ * @return {Object}
  */
 function resolveType(filename, metabase, value) {
 	if (utillib.isPrimitive(value.toLowerCase())) {
@@ -90,7 +103,6 @@ function resolveType(filename, metabase, value) {
 			encoding: getEncodingForValue(value)
 		};
 	} else if (metabase.classes && value in metabase.classes) {
-		var cls = metabase.classes[value];
 		return {
 			value: value,
 			type: value,
@@ -113,6 +125,8 @@ function resolveType(filename, metabase, value) {
 
 /**
  * extract all the imports found in the buffer
+ * @param {String} buf buffer to match against
+ * @returns {String[]}
  */
 function extractImports(buf) {
 	return (buf.match(/import\s*(\w+)/g) || []).map(function (m) {
@@ -147,9 +161,19 @@ function uniq(a) {
 
 /**
  * return a merged metabase
+ * @param {String} buildDir output directory
+ * @param {String} sdk 'iphoneos' || 'iphonesimulator'
+ * @param {String} sdkPath absolute path to SDK directory
+ * @param {String} iosMinVersion i.e. '9.0'
+ * @param {Array} imports I don't know
+ * @param {Object} metabase generated metabase
+ * @param {Function} callback callback function
+ * @returns {void}
  */
 function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metabase, callback) {
-	if (imports.length === 0) { return callback(null, metabase); }
+	if (imports.length === 0) {
+		return callback(null, metabase);
+	}
 	if (metabase.$includes) {
 		// if we have all the imports already in our metabase, just return instead of merging
 		var need = [];
@@ -166,7 +190,9 @@ function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metaba
 	}
 	var metabasegen = require('./metabase');
 	metabasegen.generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, imports, false, function (err, json) {
-		if (err) { return callback(err); }
+		if (err) {
+			return callback(err);
+		}
 		var includes = uniq(metabase.$includes.concat(imports));
 		metabase = metabaseMerge(metabase, json);
 		metabase.$includes = includes;
@@ -176,13 +202,25 @@ function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metaba
 
 /**
  * return the swift managed class name for a given application and class name
+ * @param {String} appName app name used as a segment in the mangled name
+ * @param {String} className original class name
+ * @returns {String}
  */
-function generateSwiftMangledClassName (appName, className) {
+function generateSwiftMangledClassName(appName, className) {
 	return '_TtC' + appName.length + appName + className.length + className;
 }
 
 /**
  * parse a swift file into a metabase type JSON result
+ * @param {String} buildDir output directory
+ * @param {String} sdk 'iphoneos' || 'iphonesimulator'
+ * @param {String} sdkPath absolue filepath to ios SDK directory
+ * @param {String} iosMinVersion i.e. '9.0'
+ * @param {String} xcodeTargetOS 'iphoneos' || 'iphonesimulator'
+ * @param {Object} metabase generated metabase
+ * @param {String} framework name of the framework
+ * @param {String} fn file name
+ * @param {Function} callback callback function
  */
 function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTargetOS, metabase, framework, fn, callback) {
 	generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, function (err, buf) {
@@ -211,7 +249,9 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 		// we need to merge our metabase with any imports found in our swift file in case there are imports found in
 		// swift that we haven't imported in the incoming metabase
 		generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, includes, metabase, function (err, metabase) {
-			if (err) { return callback(err); }
+			if (err) {
+				return callback(err);
+			}
 
 			lines.forEach(function (line, index) {
 				line = line.toString().trim();
@@ -251,7 +291,7 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 							name: name,
 							public: false
 						};
-						tok.splice(2).forEach(function (t, i) {
+						tok.splice(2).forEach(function (t) {
 							if (publicAccessPattern.test(t)) {
 								vardef.public = true;
 							} else if (t.indexOf('type=') === 0) {
@@ -266,7 +306,6 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 						tok = line.split(' ');
 						name = tok[1].replace(/"/g, '').trim();
 						i = name.indexOf('(');
-						var args = [];
 						methodef = {
 							name: name,
 							public: false,
@@ -276,11 +315,11 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 							methodef.name = name.substring(0, i);
 							methodef.selector = methodef.name;
 							methodef.arguments = [];
-							name.substring(i + 1, name.length - 1).split(':').slice(1).forEach(function (t, i) {
+							name.substring(i + 1, name.length - 1).split(':').slice(1).forEach(function (t) {
 								methodef.selector += ':' + t;
 							});
 						}
-						tok.splice(2).forEach(function (t, i) {
+						tok.splice(2).forEach(function (t) {
 							if (publicAccessPattern.test(t)) {
 								methodef.public = true;
 							} else if (t.indexOf('type=') === 0) {

@@ -4,7 +4,7 @@
   "description": "Hyperloop Metabase Generator",
   "main": "index.js",
   "scripts": {
-    "test": "grunt",
+    "test": "JUNIT_REPORT_PATH=junit_report.xml grunt",
     "preinstall": "sh build.sh"
   },
   "repository": {
@@ -22,16 +22,15 @@
   },
   "homepage": "https://github.com/appcelerator/hyperloop-metabase",
   "devDependencies": {
-    "grunt": "^0.4.5",
-    "grunt-appc-coverage": "^0.2.4",
-    "grunt-appc-js": "^1.0.15",
+    "grunt": "^1.0.2",
+    "grunt-appc-js": "^2.0.1",
     "grunt-cli": "^1.2.0",
     "grunt-contrib-clean": "^0.6.0",
-    "grunt-contrib-jshint": "^0.11.2",
-    "grunt-kahvesi": "appcelerator-modules/grunt-kahvesi",
-    "grunt-mocha-test": "^0.12.7",
+    "grunt-mocha-istanbul": "^5.0.2",
+    "istanbul": "^0.4.5",
     "load-grunt-tasks": "^3.2.0",
     "mocha": "^2.2.5",
+    "mocha-jenkins-reporter": "^0.3.10",
     "should": "^7.0.2",
     "simple-plist": "^0.2.1"
   },

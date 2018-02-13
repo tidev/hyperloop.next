@@ -8,7 +8,9 @@ describe('function', function () {
 
 	it('should generate functions', function (done) {
 		helper.generate(helper.getFixture('functions.h'), helper.getTempFile('functions.json'), function (err, json, sdk) {
-			if (err) { return done(err); }
+			if (err) {
+				return done(err);
+			}
 			should(json).be.an.object;
 			should(sdk).be.an.object;
 			should(json).have.property('metadata');

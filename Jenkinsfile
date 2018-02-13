@@ -89,7 +89,18 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							// Run hook tests and then prune to production deps
 							dir('hooks') {
 								sh 'npm install'
-								sh 'npm test'
+								try {
+									sh 'npm test'
+								} finally {
+									// record results even if tests/coverage 'fails'
+									if (fileExists('junit_report.xml')) {
+										junit 'junit_report.xml'
+									}
+									if (fileExists('coverage/cobertura-coverage.xml')) {
+										step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+									}
+									sh 'npm prune --production'
+								}
 								sh 'npm prune --production'
 							}
 
@@ -138,12 +149,46 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					appc.install()
 					appc.installAndSelectSDK(sdkVersion)
 
+					echo 'Testing iOS metabase generator...'
+					dir('packages/hyperloop-ios-metabase') {
+						sh 'npm install'
+						try {
+							sh 'npm test'
+						} finally {
+							// record results even if tests/coverage 'fails'
+							if (fileExists('junit_report.xml')) {
+								junit 'junit_report.xml'
+							}
+							if (fileExists('coverage/cobertura-coverage.xml')) {
+								step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+							}
+							sh 'rm -rf node_modules' // wipe the node modules for now?
+						}
+					}
+
 					echo 'Building iOS module...'
 					dir('iphone') {
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 
-						// Check if xcpretty gem is installed
+						// Run hook tests
+						dir('hooks') {
+							sh 'npm install'
+							try {
+								sh 'npm test'
+							} finally {
+								// record results even if tests/coverage 'fails'
+								if (fileExists('junit_report.xml')) {
+									junit 'junit_report.xml'
+								}
+								if (fileExists('coverage/cobertura-coverage.xml')) {
+									step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
+								}
+								sh 'npm prune --production'
+							}
+						}
+
+						// Check if xcpretty gem is installed? Used by shell scripts when building
 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
 						// 	// FIXME Typically need sudo rights to do this!
 						// 	sh 'gem install xcpretty'

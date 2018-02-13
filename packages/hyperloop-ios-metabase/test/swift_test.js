@@ -3,7 +3,6 @@
 
 const should = require('should'),
 	helper = require('./helper'),
-	fs = require('fs'),
 	metabase = require('../lib/metabase');
 
 describe('swift', function () {
@@ -63,7 +62,7 @@ describe('swift', function () {
 	});
 
 	it('should handle syntax error', function (done) {
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('syntaxerror.swift'), function (err, result) {
+		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('syntaxerror.swift'), function (err) {
 			should(err).be.ok;
 			should(err.message).be.equal('Swift file at ' + helper.getFixture('syntaxerror.swift') + ' has compiler problems. Please check to make sure it compiles OK.');
 			done();

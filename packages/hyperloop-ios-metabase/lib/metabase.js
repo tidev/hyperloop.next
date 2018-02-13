@@ -4,8 +4,8 @@
  */
 'use strict';
 
-var spawn = require('child_process').spawn,
-	exec = require('child_process').exec,
+var spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
+	exec = require('child_process').exec, // eslint-disable-line security/detect-child-process
 	path = require('path'),
 	fs = require('fs-extra'),
 	async = require('async'),
@@ -18,16 +18,28 @@ var spawn = require('child_process').spawn,
 
 /**
  * return the configured SDK path
+ * @param {String} sdkType 'iphoneos' || 'iphonesimulator'
+ * @param {getSDKPathCallback} callback callback function
  */
 function getSDKPath(sdkType, callback) {
 	exec('/usr/bin/xcrun --sdk ' + sdkType + ' --show-sdk-path', function (err, stdout) {
-		if (err) { return callback(err); }
+		if (err) {
+			return callback(err);
+		}
 		return callback(null, stdout.trim());
 	});
 }
 
 /**
+ * @callback getSDKPathCallback
+ * @param {Error} err
+ * @param {string} stdout
+ */
+
+/**
  * convert an apple style version (9.0) to a semver compatible version
+ * @param {String} ver apple style version string
+ * @returns {String}
  */
 function appleVersionToSemver(ver) {
 	var v = String(ver).split('.');
@@ -198,6 +210,9 @@ class ModuleMetadata {
 
 /**
  * generate system framework includes mapping
+ * @param {String} sdkPath absolute file path to SDK directory
+ * @param {String} iosMinVersion i.e. '9.0'
+ * @param {generateSystemFrameworksCallback} callback callback function
  */
 function generateSystemFrameworks(sdkPath, iosMinVersion, callback) {
 	const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
@@ -227,6 +242,11 @@ function generateSystemFrameworks(sdkPath, iosMinVersion, callback) {
 		return callback(err, frameworks);
 	});
 }
+/**
+ * @callback generateSystemFrameworksCallback
+ * @param {Error} err
+ * @param {Map} frameworks
+ */
 
 /**
  * Extracts Objective-C interface implementations from all available header
@@ -280,14 +300,15 @@ function collectFrameworkHeaders(frameworkPath) {
  *
  * @param {String} buildDir cache directory to write the files
  * @param {String} sdk the sdk type such as iphonesimulator
- * @param {String} sdk path the path to the SDK
+ * @param {String} sdkPath path the path to the SDK
  * @param {String} iosMinVersion the min version such as 9.0
  * @param {Array} includes array of header paths (should be absolute paths)
  * @param {Boolean} excludeSystem if true, will exclude any system libraries in the generated output
- * @param {Function} callback function to receive the result which will be (err, json, json_file, header_file)
+ * @param {generateMetabaseCallback} callback function to receive the result which will be (err, json, json_file, header_file)
  * @param {Boolean} force if true, will not use cache
  * @param {Array} extraHeaders Array of extra header search paths passed to the metabase parser
  * @param {Array} extraFrameworks Array of extra framework search paths passed to the metabase parser
+ * @returns {void}
  */
 function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders, extraFrameworks) {
 	var cacheToken = createHashFromString(sdkPath + iosMinVersion + excludeSystem + JSON.stringify(includes));
@@ -324,10 +345,10 @@ function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, exclu
 						if (fn) {
 							if (fn.charAt(0) === '<') {
 								return '#import ' + fn;
-							} else {
-								return '#import "' + fn + '"';
 							}
+							return '#import "' + fn + '"';
 						}
+						return null; // should never happen...
 					}).join('\n')
 					+ '\n';
 	fs.writeFileSync(header, contents);
@@ -353,8 +374,9 @@ function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, exclu
 	var ts = Date.now();
 	var triedToFixPermissions = false;
 	(function runMetabase(binary, args) {
+		var child;
 		try {
-			var child = spawn(binary, args);
+			child = spawn(binary, args);
 		} catch (e) {
 			if (e.code === 'EACCES') {
 				if (!triedToFixPermissions) {
@@ -371,7 +393,7 @@ function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, exclu
 		child.stdout.on('data', function (buf) {
 			util.logger.debug(String(buf).replace(/\n$/, ''));
 		});
-		child.stderr.on('data', function (buf) {
+		child.stderr.on('data', function () {
 			// Without this, for whatever reason, the metabase parser never returns
 		});
 		child.on('error', callback);
@@ -386,9 +408,22 @@ function generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, includes, exclu
 		});
 	}(binary, args));
 }
+/**
+ * @callback generateMetabaseCallback
+ * @param {Error} err
+ * @param {Object} json
+ * @param {String} outfile
+ * @param {String} header
+ * @param {boolean} fromCache whether we grabbed from cache or generated
+ */
 
 /**
  * return the system frameworks mappings as JSON for a given sdkType and minVersion
+ * @param {String} cacheDir absolute path to cache directory
+ * @param {String} sdkType 'iphoneos' || 'iphonesimulator'
+ * @param {String} minVersion i.e. '9.0'
+ * @param {getSystemFrameworksCallback} callback callback function
+ * @returns {void}
  */
 function getSystemFrameworks(cacheDir, sdkType, minVersion, callback) {
 	var fn = 'metabase-mappings-' + sdkType + '-' + minVersion + '.json';
@@ -420,6 +455,12 @@ function getSystemFrameworks(cacheDir, sdkType, minVersion, callback) {
 	});
 }
 
+/**
+ * @callback getSystemFrameworksCallback
+ * @param {Error} err
+ * @param {Map} frameworks
+ */
+
 function recursiveReadDir(dir, result) {
 	result = result || [];
 	var files = fs.readdirSync(dir);
@@ -435,7 +476,9 @@ function recursiveReadDir(dir, result) {
 }
 
 /**
- * for an array of directories, return all validate header files
+ * for an array of directories, return all valid header files
+ * @param {String[]} directories Directories to traverse
+ * @returns {String[]}
  */
 function getAllHeaderFiles(directories) {
 	var files = [];
@@ -460,8 +503,9 @@ function getAllHeaderFiles(directories) {
  * @param {Array} directories Array of directories to scan for header files
  * @param {Function} callback Callback function
  * @param {String} frameworkName Name of the framework the scanned headers belong to
+ * @returns {void}
  */
-function generateUserSourceMappings (cacheDir, directories, callback, frameworkName) {
+function generateUserSourceMappings(cacheDir, directories, callback, frameworkName) {
 	var files = getAllHeaderFiles(directories);
 	var cacheToken = createHashFromString(frameworkName + JSON.stringify(files));
 	var cachePathAndFilename = path.join(cacheDir, 'metabase-mappings-user-' + cacheToken + '.json');
@@ -487,8 +531,9 @@ function generateUserSourceMappings (cacheDir, directories, callback, frameworkN
  * @param {Object} frameworks Object containing base info on all frameworks from the iOS builder
  * @param {String} cacheDir Path to cache directory
  * @param {Function} callback Callback function
+ * @returns {void}
  */
-function generateUserFrameworksMetadata (frameworks, cacheDir, callback) {
+function generateUserFrameworksMetadata(frameworks, cacheDir, callback) {
 	const frameworkNames = Object.keys(frameworks);
 	const cacheToken = createHashFromString(frameworkNames.join(''));
 	var cachePathAndFilename = path.join(cacheDir, 'metabase-user-frameworks-' + cacheToken + '.json');
@@ -531,6 +576,7 @@ function generateUserFrameworksMetadata (frameworks, cacheDir, callback) {
  * @param {String} staticLibrariesHeaderPath Path to directory with static library headers
  * @param {Object} includes Map of interface names and their header file for each library
  * @param {Function} callback Callback function
+ * @returns {void}
  */
 function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes, callback) {
 	var files = getAllHeaderFiles([ staticLibrariesHeaderPath ]);
@@ -564,8 +610,9 @@ function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes,
  * @param {ModuleMetadata} frameworkMetadata Metadata object containing all framework related info
  * @param {Object} includes Map of class names and their header file
  * @param {Function} callback Callback function
+ * @returns {void}
  */
-function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
+function generateFrameworkIncludeMap(frameworkMetadata, includes, callback) {
 	var frameworkName = frameworkMetadata.name;
 	var frameworkPath = frameworkMetadata.path;
 	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
@@ -638,7 +685,9 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
  *
  * @param {String} cacheDir Path to the cache directory
  * @param {Object} builder iOSBuilder instance
+ * @param {Object} settings sdk settings?
  * @param {Function} callback Callback function
+ * @returns {void}
  */
 function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	var podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
@@ -680,7 +729,7 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	var frameworkSearchPaths = (settings.FRAMEWORK_SEARCH_PATHS || '').split(' ');
 	tasks.push(function (next) {
 		async.each(frameworkSearchPaths, function (frameworkSearchPath, done) {
-			frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', settings.PODS_ROOT);
+			frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', settings.PODS_ROOT); // eslint-disable-line no-template-curly-in-string
 			// TIMOB-25829: CocoaPods < 1.4.0 uses $PODS_CONFIGURATION_BUILD_DIR, 1.4.0+ uses ${PODS_CONFIGURATION_BUILD_DIR}
 			// Remove regex once we bump the minimum version to 1.4.0+
 			frameworkSearchPath = frameworkSearchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, cocoaPodsConfigurationBuildDir);
@@ -819,11 +868,11 @@ function getBuiltProductsRootPath (basePath, configurationName, sdkType) {
 /**
  * Gets JSON encoded data from a cache file.
  *
- * @param {String} cacheDir Path to the cache directory
+ * @param {String} cachePathAndFilename Path to the cache file
  * @param {String} cacheToken Hash to identifiy the required cache file
  * @return {Object} The CocoaPods metabase mappings
  */
-function readFromCache (cachePathAndFilename) {
+function readFromCache(cachePathAndFilename) {
 	if (!fs.existsSync(cachePathAndFilename)) {
 		return null;
 	}
@@ -841,10 +890,10 @@ function readFromCache (cachePathAndFilename) {
 /**
  * Stores the given data in a cache file as JSON.
  *
- * @param {String} cacheDir Path of the cache file to write to
+ * @param {String} cachePathAndFilename Path of the cache file to write to
  * @param {Object} data The include mappings to store
  */
-function writeToCache (cachePathAndFilename, data) {
+function writeToCache(cachePathAndFilename, data) {
 	var cacheDir = path.dirname(cachePathAndFilename);
 	if (!fs.existsSync(cacheDir)) {
 		fs.mkdirSync(cacheDir);
@@ -870,6 +919,10 @@ function writeModulesMetadataToCache(modules, cachePathAndFilename) {
 	fs.writeFileSync(cachePathAndFilename, JSON.stringify(modulesObject));
 }
 
+/**
+ * @param  {String} cachePathAndFilename absolute path to cached file
+ * @return {Map}
+ */
 function readModulesMetadataFromCache(cachePathAndFilename) {
 	if (!fs.existsSync(cachePathAndFilename)) {
 		return null;
@@ -896,9 +949,12 @@ function readModulesMetadataFromCache(cachePathAndFilename) {
 }
 
 /**
- * handle buffer output
+ * Adds a green 'CocoaPods' prefix to any output from a child process.
+ * @param {ChildProcess} obj process
+ * @param {Function} fn callback function
+ * @returns {void}
  */
-function createLogger (obj, fn) {
+function createLogger(obj, fn) {
 	return (function () {
 		var cur = '';
 		obj.on('data', function (buf) {
@@ -923,10 +979,12 @@ function createLogger (obj, fn) {
 
 /**
  * run the ibtool
+ * @param {String} runDir absilute path to cwd to run inside
+ * @param {string[]} args command line arguments
+ * @param {Function} callback callback function
  */
-function runIBTool (runDir, args, callback) {
-	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/ibtool', args, { cwd: runDir });
+function runIBTool(runDir, args, callback) {
+	var child = spawn('/usr/bin/ibtool', args, { cwd: runDir });
 	util.logger.debug('running /usr/bin/ibtool ' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -940,8 +998,7 @@ function runIBTool (runDir, args, callback) {
 }
 
 function runMomcTool (runDir, sdk, args, callback) {
-	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'momc' ].concat(args), { cwd: runDir });
+	var child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'momc' ].concat(args), { cwd: runDir });
 	util.logger.debug('running /usr/bin/xcrun momc' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -954,9 +1011,8 @@ function runMomcTool (runDir, sdk, args, callback) {
 	});
 }
 
-function runMapcTool (runDir, sdk, args, callback) {
-	var spawn = require('child_process').spawn,
-		child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'mapc' ].concat(args), { cwd: runDir });
+function runMapcTool(runDir, sdk, args, callback) {
+	var child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'mapc' ].concat(args), { cwd: runDir });
 	util.logger.debug('running /usr/bin/xcrun mapc' + args.join(' ') + ' ' + runDir);
 	createLogger(child.stdout, util.logger.trace);
 	createLogger(child.stderr, util.logger.warn);
@@ -969,7 +1025,7 @@ function runMapcTool (runDir, sdk, args, callback) {
 	});
 }
 
-function compileResources (dir, sdk, appDir, wildcard, callback) {
+function compileResources(dir, sdk, appDir, wildcard, callback) {
 	// copy them into our target
 	var files = recursiveReadDir(dir);
 	async.each(files, function (file, cb) {
@@ -1046,16 +1102,15 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
 /**
  * Runs CocoaPods to build any required libraries
  *
- * @param basedir {String}
- * @param builder {iOSBuilder}
- * @param callback {Function}
+ * @param {String} basedir absolute path to build directory
+ * @param {iOSBuilder} builder iosBuilder
+ * @param {Function} callback callback function
  */
 function runCocoaPodsBuild (basedir, builder, callback) {
 	var sdkType = builder.xcodeTargetOS,
 		sdkVersion = builder.iosSdkVersion,
 		minSDKVersion = builder.minIosVer,
 		xcodesettings = builder.xcodeEnv.executables,
-		spawn = require('child_process').spawn,
 		// Make sure SDK version is always in MAJOR.MINOR format
 		sdk = sdkType + (/\d+\.\d+\.\d+/.test(sdkVersion) ? sdkVersion.substring(0, sdkVersion.lastIndexOf('.')) : sdkVersion),
 		productsDirectory = path.join(basedir, 'build/iphone/build/Products'),
@@ -1090,6 +1145,8 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 
 /**
  * parse the xcconfig file
+ * @param {String} fn absolute path to a file
+ * @returns {object}
  */
 function parseCocoaPodXCConfig (fn) {
 	var config = {};
@@ -1106,8 +1163,10 @@ function parseCocoaPodXCConfig (fn) {
 
 /**
  * generate a map of xcode settings for CocoaPods
+ * @param {String} basedir absolute path to base directory holding Pods
+ * @returns {Object}
  */
-function getCocoaPodsXCodeSettings (basedir) {
+function getCocoaPodsXCodeSettings(basedir) {
 	var podDir = path.join(basedir, 'Pods');
 	if (fs.existsSync(podDir)) {
 		var target = path.join(podDir, 'Target Support Files'),
@@ -1127,8 +1186,7 @@ function getCocoaPodsXCodeSettings (basedir) {
 	}
 }
 
-function isPodInstalled (callback) {
-	var exec = require('child_process').exec;
+function isPodInstalled(callback) {
 	return exec('which pod', function (err, stdout) {
 		if (err) {
 			return callback(new Error('CocoaPods not found in your PATH. You can install CocoaPods with: sudo gem install cocoapods'));
@@ -1140,10 +1198,10 @@ function isPodInstalled (callback) {
 /**
  * Determines the currently installed version of CocoaPods
  *
- * @param {Function} callback
+ * @param {getCocoaPodsVersionCallback} callback callback function
+ * @returns {void}
  */
-function getCocoaPodsVersion (callback) {
-	var exec = require('child_process').exec;
+function getCocoaPodsVersion(callback) {
 	return exec('pod --version', function (err, stdout) {
 		if (err) {
 			return callback(new Error('CocoaPods not found in your PATH. You can install CocoaPods with: sudo gem install cocoapods'));
@@ -1151,6 +1209,11 @@ function getCocoaPodsVersion (callback) {
 		return callback(null, stdout.trim());
 	});
 }
+/**
+ * @callback getCocoaPodsVersionCallback
+ * @param {Error} err
+ * @param {string} stdout
+ */
 
 function validatePodfile (podfilePath, version, callback) {
 	var podfileContent = fs.readFileSync(podfilePath);
@@ -1189,16 +1252,16 @@ function runPodInstallIfRequired(basedir, callback) {
 				});
 			}
 		], function (err, pod, version) {
-			if (err) { return callback(err); }
+			if (err) {
+				return callback(err);
+			}
 			util.logger.trace('Found CocoaPods ' + version + ' (' + pod + ')');
 			if (semver.lt(version, '1.0.0')) {
 				util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
 				return callback(new Error('Using a CocoaPods < 1.0.0 is not supported anymore.'));
 			}
 			util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
-			var spawn = require('child_process').spawn;
-			var args = [ 'install' ];
-			var child = spawn(pod, args, { cwd: basedir });
+			var child = spawn(pod, [ 'install' ], { cwd: basedir });
 			createLogger(child.stdout, util.logger.trace);
 			createLogger(child.stderr, util.logger.warn);
 			child.on('error', callback);

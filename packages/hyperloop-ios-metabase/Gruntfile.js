@@ -1,39 +1,39 @@
+'use strict';
+
 module.exports = function (grunt) {
 
 	// Project configuration.
 	grunt.initConfig({
-		mochaTest: {
+		mocha_istanbul: {
 			options: {
 				timeout: 30000,
-				reporter: 'spec',
+				reporter: 'mocha-jenkins-reporter',
 				ignoreLeaks: false,
-				globals: ['Hyperloop', 'HyperloopObject']
+				globals: [ 'Hyperloop', 'HyperloopObject' ],
+				reportFormats: [ 'lcov', 'cobertura' ],
+				check: {
+					statements: 22,
+					branches: 17,
+					functions: 21,
+					lines: 22
+				}
 			},
-			src: ['test/**/*_test.js']
+			src: [ 'test/**/*_test.js' ]
 		},
-		jshint: {
-			options: {
-				jshintrc: true,
-				force: true
-			},
-			src: ['*.js', 'lib/**/*.js']
+		appcJs: {
+			src: [
+				'Gruntfile.js',
+				'index.js',
+				'lib/**/*.js',
+				'test/**/*.js'
+			]
 		},
-		kahvesi: {
-			src: ['test/**/*.js']
-		},
-		appcCoverage: {
-			default_options: {
-				src: 'coverage/lcov.info',
-				force: true
-			}
-		},
-		clean: ['tmp']
+		clean: [ 'tmp' ]
 	});
 
 	// Load grunt plugins for modules
 	require('load-grunt-tasks')(grunt);
 
 	// register tasks
-	grunt.registerTask('cover', ['clean', 'kahvesi']);
-	grunt.registerTask('default', ['jshint', 'mochaTest', 'clean']);
+	grunt.registerTask('default', [ 'appcJs', 'mocha_istanbul', 'clean' ]);
 };

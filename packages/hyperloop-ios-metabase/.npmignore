@@ -6,3 +6,5 @@ unittest
 build.sh
 Gruntfile.js
 run.sh
+coverage
+retirejs.output.json

@@ -1,6 +1,6 @@
 'use strict';
 
-var spawn = require('child_process').spawn,
+var spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
 	plist = require('simple-plist'),
 	path = require('path'),
 	fs = require('fs-extra'),
