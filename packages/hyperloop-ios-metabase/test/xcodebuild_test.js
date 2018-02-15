@@ -4,6 +4,7 @@ const should = require('should'), // eslint-disable-line no-unused-vars
 	spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 
 describe('xcodebuild', function () {
+	this.timeout(120000); // 2 minutes
 
 	it('should run unit tests', function (done) {
 		var child = spawn('xcodebuild', [ 'test', '-scheme', 'unittest' ]);
