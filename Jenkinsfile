@@ -142,7 +142,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 			} // node
 		},
 		'iOS': {
-			node('osx && xcode') {
+			node('osx && xcode-9') { // need xcode 9 to match expected metabase values for ios sdk
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
