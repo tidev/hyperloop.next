@@ -3,6 +3,7 @@
 
 const should = require('should'),
 	helper = require('./helper'),
+	swift = require('../lib/swift'),
 	metabase = require('../lib/metabase');
 
 describe('swift', function () {
@@ -30,7 +31,7 @@ describe('swift', function () {
 	});
 
 	it('should generate swift class', function (done) {
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('simple_class.swift'), function (err, result) {
+		swift.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('simple_class.swift'), function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -51,7 +52,7 @@ describe('swift', function () {
 	});
 
 	it('should not generate private swift class', function (done) {
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('private_class.swift'), function (err, result) {
+		swift.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('private_class.swift'), function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result.imports).be.eql([ 'UIKit' ]);
@@ -62,7 +63,7 @@ describe('swift', function () {
 	});
 
 	it('should handle syntax error', function (done) {
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('syntaxerror.swift'), function (err) {
+		swift.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('syntaxerror.swift'), function (err) {
 			should(err).be.ok;
 			should(err.message).be.equal('Swift file at ' + helper.getFixture('syntaxerror.swift') + ' has compiler problems. Please check to make sure it compiles OK.');
 			done();
@@ -71,7 +72,7 @@ describe('swift', function () {
 
 	// FIXME: CGRectMake is explicitly unavailable
 	it.skip('should generate swift class with functions', function (done) { // eslint-disable-line
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('class_functions.swift'), function (err, result) {
+		swift.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('class_functions.swift'), function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -141,7 +142,7 @@ describe('swift', function () {
 	});
 
 	it('should generate swift class with properties', function (done) {
-		metabase.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('class_properties.swift'), function (err, result) {
+		swift.generateSwiftMetabase(helper.getTempDir(), 'iphonesimulator', sdkdir, '9.0', 'iphonesimulator', json, 'Swift', helper.getFixture('class_properties.swift'), function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -171,7 +172,7 @@ describe('swift', function () {
 	});
 
 	it('should generate managled class names', function () {
-		var value = metabase.generateSwiftMangledClassName('a', 'b');
+		const value = swift.generateSwiftMangledClassName('a', 'b');
 		should(value).be.equal('_TtC1a1b');
 	});
 

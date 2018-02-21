@@ -160,6 +160,15 @@ namespace hyperloop {
 		}
 		metadata["sdk-path"] = context->getSDKPath();
 		metadata["min-version"] = context->getMinVersion();
+
+		metadata["dependencies"] = Json::Value(Json::arrayValue);
+		auto dependencies = context->getDependentFrameworks();
+		if (dependencies.size() > 0) {
+			for (auto d : dependencies) {
+				metadata["dependencies"].append(d);
+			}
+		}
+
 		auto t = std::time(NULL);
 		char mbstr[100];
 		if (std::strftime(mbstr, sizeof(mbstr), "%FT%TZ", std::gmtime(&t))) {
@@ -249,7 +258,7 @@ namespace hyperloop {
 		return kv;
 	}
 
-	ParserContext::ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool _excludeSys) : sdkPath(_sdkPath), minVersion(_minVersion), excludeSys(_excludeSys), previous(nullptr), current(nullptr) {
+	ParserContext::ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool _excludeSys, const std::string &_frameworkFilter) : sdkPath(_sdkPath), minVersion(_minVersion), excludeSys(_excludeSys), frameworkFilter(_frameworkFilter), previous(nullptr), current(nullptr) {
 		this->tree.setContext(this);
 	}
 
@@ -284,6 +293,17 @@ namespace hyperloop {
 		return false;
 	}
 
+	bool ParserContext::isFrameworkLocation (const std::string& location) {
+		if (location.find(this->getFrameworkFilter()) != std::string::npos) {
+			return true;
+		}
+
+		// Record the item in some dependency metadata.
+		// Should we record more/different info than filepath?
+		dependencies.insert(location);
+		return false;
+	}
+
 	/**
 	 * begin parsing the translation unit
 	 */
@@ -309,7 +329,8 @@ namespace hyperloop {
 		getSourceLocation(cursor, ctx, location);
 		ctx->updateLocation(location);
 
-		if (ctx->excludeSystemAPIs() && ctx->isSystemLocation(location["filename"])) {
+		if ((ctx->excludeSystemAPIs() && ctx->isSystemLocation(location["filename"]))
+			|| (ctx->filterToSingleFramework() && !ctx->isFrameworkLocation(location["filename"]))) {
 			return CXChildVisit_Continue;
 		}
 
@@ -409,9 +430,9 @@ namespace hyperloop {
 	/**
 	 * parse the translation unit and output to outputFile
 	 */
-	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath, std::string &minVersion, bool excludeSys) {
+	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath, std::string &minVersion, bool excludeSys, std::string &frameworkFilter) {
 		auto cursor = clang_getTranslationUnitCursor(tu);
-		auto ctx = new ParserContext(sdkPath, minVersion, excludeSys);
+		auto ctx = new ParserContext(sdkPath, minVersion, excludeSys, frameworkFilter);
 		clang_visitChildren(cursor, begin, ctx);
 		ClassDefinition::complete(ctx);
 		return ctx;

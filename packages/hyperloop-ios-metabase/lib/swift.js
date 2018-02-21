@@ -17,7 +17,7 @@ const fs = require('fs'),
  * @param {Function} callback callback function
  */
 function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
-	var args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
+	const args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
 	if (xcodeTargetOS === 'iphoneos' || xcodeTargetOS === 'iphonesimulator') {
 		args.push('-target');
 		if (xcodeTargetOS === 'iphoneos') {
@@ -28,8 +28,8 @@ function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
 			args.push(simArch + '-apple-ios' + iosMinVersion);
 		}
 	}
-	var child = spawn('xcrun', args),
-		buf = '';
+	const child = spawn('xcrun', args);
+	let buf = '';
 	// swiftc -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -dump-ast MySwift.swift
 	child.on('error', callback);
 	child.stderr.on('data', function (data) {
@@ -80,7 +80,7 @@ function getEncodingForValue(value) {
  * @returns {String}
  */
 function structDefinitionToEncoding(value) {
-	var str = '{' + value.name + '=';
+	let str = '{' + value.name + '=';
 	value.fields && value.fields.forEach(function (field) {
 		str += field.encoding || getEncodingForValue(field.type || field.value);
 	});
@@ -109,14 +109,14 @@ function resolveType(filename, metabase, value) {
 			encoding: '@'
 		};
 	} else if (metabase.structs && value in metabase.structs) {
-		var str = metabase.structs[value];
+		const str = metabase.structs[value];
 		return {
 			value: value,
 			type: value,
 			encoding: structDefinitionToEncoding(str)
 		};
 	} else if (metabase.typedefs && value in metabase.typedefs) {
-		var typedef = metabase.typedefs[value];
+		const typedef = metabase.typedefs[value];
 		return { type: typedef.type, value: value, encoding: typedef.encoding };
 	}
 	console.error('Swift Generation failed with unknown or unsupported type (' + value + ') found while compiling', filename);
@@ -134,29 +134,25 @@ function extractImports(buf) {
 	});
 }
 
-function metabaseMerge(a, b) {
-	// simplified merge metabase json
-	[ 'typedefs', 'classes', 'structs', 'blocks', 'enums', 'functions', 'unions', 'vars' ].forEach(function (k) {
-		if (k in b) {
-			Object.keys(b[k]).forEach(function (kk) {
-				if (!(kk in a)) {
-					a[kk] = b[kk];
-				}
-			});
-		}
-	});
-	return a;
-}
-
 function uniq(a) {
-	var copy = [];
+	const copy = [];
 	for (var c = 0; c < a.length; c++) {
-		var e = a[c];
+		const e = a[c];
 		if (copy.indexOf(e) < 0) {
 			copy.push(e);
 		}
 	}
 	return copy;
+}
+
+/**
+ * return the swift managed class name for a given application and class name
+ * @param {String} appName app name used as a segment in the mangled name
+ * @param {String} className original class name
+ * @returns {String}
+ */
+function generateSwiftMangledClassName(appName, className) {
+	return '_TtC' + appName.length + appName + className.length + className;
 }
 
 /**
@@ -176,8 +172,8 @@ function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metaba
 	}
 	if (metabase.$includes) {
 		// if we have all the imports already in our metabase, just return instead of merging
-		var need = [];
-		for (var c = 0; c < imports.length; c++) {
+		const need = [];
+		for (let c = 0; c < imports.length; c++) {
 			if (metabase.$includes.indexOf(imports[c]) < 0) {
 				need.push(imports[c]);
 			}
@@ -188,26 +184,16 @@ function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metaba
 		// only generate any missing imports to speed up the merge
 		imports = need;
 	}
-	var metabasegen = require('./metabase');
+	const metabasegen = require('./metabase');
 	metabasegen.generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, imports, false, function (err, json) {
 		if (err) {
 			return callback(err);
 		}
-		var includes = uniq(metabase.$includes.concat(imports));
-		metabase = metabaseMerge(metabase, json);
+		const includes = metabase.$includes ? uniq(metabase.$includes.concat(imports)) : imports;
+		metabase = metabasegen.merge(metabase, json);
 		metabase.$includes = includes;
 		return callback(null, metabase);
 	});
-}
-
-/**
- * return the swift managed class name for a given application and class name
- * @param {String} appName app name used as a segment in the mangled name
- * @param {String} className original class name
- * @returns {String}
- */
-function generateSwiftMangledClassName(appName, className) {
-	return '_TtC' + appName.length + appName + className.length + className;
 }
 
 /**
@@ -227,24 +213,14 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 		if (err) {
 			return callback(err, buf);
 		}
-		var classes = {},
-			classdef,
-			methodef,
-			vardef,
-			// read our imports from the file so we can generate an appropriate metabase
-			imports = extractImports(fs.readFileSync(fn).toString()),
-			tok,
-			name,
-			i,
-			lines = buf.split(/\n/),
-			componentRE = /component id='(.*)'/,
-			patternNamedRE = /pattern_named type='(\w+)' '(\w+)'/,
-			typeRE = /type='(\w+)'/,
-			publicAccessPattern = /access=(public|open)/,
-			// turn our imports into includes for the metabase generation
-			includes = imports.map(function (name) {
-				return '<' + name + '/' + name + '.h>';
-			});
+
+		// read our imports from the file so we can generate an appropriate metabase
+		const imports = extractImports(fs.readFileSync(fn).toString());
+		// turn our imports into includes for the metabase generation
+		const includes = imports.map(function (name) {
+			return '<' + name + '/' + name + '.h>';
+		});
+		const lines = buf.split(/\n/);
 
 		// we need to merge our metabase with any imports found in our swift file in case there are imports found in
 		// swift that we haven't imported in the incoming metabase
@@ -252,14 +228,23 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 			if (err) {
 				return callback(err);
 			}
+			const componentRE = /component id='(.*)'/;
+			const patternNamedRE = /pattern_named type='(\w+)' '(\w+)'/;
+			const typeRE = /type='(\w+)'/;
+			const publicAccessPattern = /access=(public|open)/;
+
+			const classes = {};
+			let classdef,
+				methodef,
+				vardef;
 
 			lines.forEach(function (line, index) {
 				line = line.toString().trim();
 				if (line) {
 					// console.log('line=>', line.substring(0, 5));
 					if (line.indexOf('(class_decl ') === 0) {
-						tok = line.split(' ');
-						var cls = tok[1].replace(/"/g, '').trim();
+						const tok = line.split(' ');
+						const cls = tok[1].replace(/"/g, '').trim();
 						classdef = {
 							name: cls,
 							public: false,
@@ -285,8 +270,8 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 							classdef = null;
 						}
 					} else if (line.indexOf('(var_decl') === 0 && classdef) {
-						tok = line.split(' ');
-						name = tok[1].replace(/"/g, '').trim();
+						const tok = line.split(' ');
+						const name = tok[1].replace(/"/g, '').trim();
 						vardef = {
 							name: name,
 							public: false
@@ -303,9 +288,9 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 							classdef.properties[name] = vardef;
 						}
 					} else if (line.indexOf('(func_decl ') === 0 && line.indexOf('getter_for=') < 0) {
-						tok = line.split(' ');
-						name = tok[1].replace(/"/g, '').trim();
-						i = name.indexOf('(');
+						const tok = line.split(' ');
+						const name = tok[1].replace(/"/g, '').trim();
+						const i = name.indexOf('(');
 						methodef = {
 							name: name,
 							public: false,
@@ -336,8 +321,8 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 							methodef = null;
 						}
 					} else if (methodef && line.indexOf('(pattern_named ') === 0 && patternNamedRE.test(line)) {
-						var re = patternNamedRE.exec(line);
-						var t = resolveType(fn, metabase, re[1]);
+						const re = patternNamedRE.exec(line);
+						const t = resolveType(fn, metabase, re[1]);
 						methodef.arguments.push({
 							name: re[2],
 							type: t

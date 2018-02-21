@@ -24,3 +24,5 @@ coverage
 
 junit_report.xml
 retirejs.output.json
+
+tmp/

@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -24,22 +24,21 @@ const coreLib = {
 };
 
 const path = require('path');
-const exec = require('child_process').exec;
+const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
 const hm = require('hyperloop-metabase');
-const metabase = hm.metabase;
-const ModuleMetadata = metabase.ModuleMetadata;
+const ModuleMetadata = hm.frameworks.ModuleMetadata;
 const fs = require('fs-extra');
 const crypto = require('crypto');
 const chalk = require('chalk');
 const async = require('async');
 const HL = chalk.magenta.inverse('Hyperloop');
-const semver = require('semver');
 
 const babylon = require('babylon');
 const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
 const generator = require('./generate');
+const ScanReferencesTask = require('./tasks/scan-references-scan-references-task');
 
 /**
  * The Hyperloop builder object. Contains the build logic and state.
@@ -127,6 +126,9 @@ HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
 
 /**
  * called for each JS resource to process them
+ * @param {Object} builder builder
+ * @param {Array} builder.args arguments to hook
+ * @param {Function} callback callback function
  */
 HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 	try {
@@ -154,6 +156,7 @@ HyperloopiOSBuilder.prototype.init = function init(callback) {
 		'validate',
 		'setup',
 		'wireupBuildHooks',
+		// Here we gather up the various frameworks the user could refer to.
 		'getSystemFrameworks',
 		'generateCocoaPods',
 		'processThirdPartyFrameworks',
@@ -205,7 +208,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		return m.id === 'hyperloop' && (!m.platform || m.platform.indexOf('ios') !== -1 || m.platform.indexOf('iphone') !== -1);
 	});
 	if (!usingHyperloop) {
-		var pkg = require(path.join(__dirname, '..', 'package.json'));
+		const pkg = require('./package.json');
 		this.logger.error('You cannot use the Hyperloop compiler without configuring the module.');
 		this.logger.error('Add the following to your tiapp.xml <modules> section:');
 		this.logger.error('');
@@ -255,39 +258,41 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
-		if (mod.id === 'hyperloop') {
-			var JSCoreFlag = this.builder.tiapp.ios['use-jscore-framework'];
-			var usesJSCore = JSCoreFlag === undefined || JSCoreFlag === true;
-
-			// check for built-in JSCore but only warn if not set
-			if (!usesJSCore) {
-				this.logger.info('The Hyperloop compiler works best with the built-in iOS JavaScriptCore library.');
-				this.logger.info('In Titanium SDK 7.0.0+, the built-in JavaScriptCore library is used by default.');
-				this.logger.info('Either remove the following flag or explicitly enable it to use the recommended settings:');
-				this.logger.info('');
-				this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
-				this.logger.info('');
-				mod.libName = coreLib.TiCore;
-			} else {
-				mod.libName = coreLib.JSCore;
-			}
-			mod.libFile = path.join(mod.modulePath, mod.libName);
-			mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
-			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
-			return true;
+		if (mod.id !== 'hyperloop') {
+			return false;
 		}
+		const JSCoreFlag = this.builder.tiapp.ios['use-jscore-framework'];
+		const usesJSCore = JSCoreFlag === undefined || JSCoreFlag === true;
+
+		// check for built-in JSCore but only warn if not set
+		if (!usesJSCore) {
+			this.logger.info('The Hyperloop compiler works best with the built-in iOS JavaScriptCore library.');
+			this.logger.info('In Titanium SDK 7.0.0+, the built-in JavaScriptCore library is used by default.');
+			this.logger.info('Either remove the following flag or explicitly enable it to use the recommended settings:');
+			this.logger.info('');
+			this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
+			this.logger.info('');
+			mod.libName = coreLib.TiCore;
+		} else {
+			mod.libName = coreLib.JSCore;
+		}
+		mod.libFile = path.join(mod.modulePath, mod.libName);
+		mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
+		this.logger.debug('Using Hyperloop library -> ' + mod.libName);
+		return true;
 	}, this);
 };
 
 /**
  * Gets the system frameworks from the Hyperloop Metabase.
+ * @param {Function} callback typical callback function
  */
 HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks(callback) {
-	hm.metabase.getSystemFrameworks(this.hyperloopBuildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
+	hm.frameworks.getSystemFrameworks(this.hyperloopBuildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
 		if (!err) {
-			this.systemFrameworks = new Map(systemFrameworks);
+			this.systemFrameworks = new Map(systemFrameworks); // copy the map
 
-			this.sdkInfo = this.systemFrameworks.get('$metadata');
+			this.sdkInfo = this.systemFrameworks.get('$metadata'); // TODO: Gather current SDK info separately! This hack is not very nice
 			this.systemFrameworks.delete('$metadata');
 
 			this.systemFrameworks.forEach(frameworkMetadata => {
@@ -301,10 +306,12 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
 
 /**
  * Has the Hyperloop Metabase generate the CocoaPods and then adds the symbols to the map of frameworks.
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
 	// attempt to handle CocoaPods for third-party frameworks
-	hm.metabase.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, modules) {
+	hm.frameworks.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, modules) {
 		if (!err) {
 			this.hasCocoaPods = modules && modules.size > 0;
 			if (this.hasCocoaPods) {
@@ -321,6 +328,8 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 
 /**
  * Gets frameworks for any third-party dependencies defined in the Hyperloop config and compiles them.
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThirdPartyFrameworks(callback) {
 	var frameworks = this.frameworks;
@@ -347,13 +356,14 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	 * Processes any frameworks from modules or the app's platform/ios folder
 	 *
 	 * @param {Function} next Callback function
+	 * @return {void}
 	 */
 	function processFrameworks(next) {
 		if (!builder.frameworks || Object.keys(builder.frameworks).length === 0) {
 			return next();
 		}
 
-		hm.metabase.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function (err, modules) {
+		hm.frameworks.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function (err, modules) {
 			if (err) {
 				return next(err);
 			}
@@ -377,39 +387,30 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	 */
 	function processConfiguredThirdPartySource(next) {
 		async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
-			var lib = thirdparty[frameworkName];
+			const lib = thirdparty[frameworkName];
 
 			logger.debug('Generating includes for third-party source ' + frameworkName.green + ' (defined in appc.js)');
 			async.series([
 				function (cb) {
-					var headers = arrayifyAndResolve(lib.header);
+					const headers = arrayifyAndResolve(lib.header);
 					if (headers) {
-						hm.metabase.generateUserSourceMappings(
-							hyperloopBuildDir,
-							headers,
-							function (err, includes) {
-								if (!err && includes && includes[frameworkName]) {
-									const metadata = new ModuleMetadata(frameworkName, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
-									metadata.typeMap = includes[frameworkName];
-									frameworks.set(metadata.name, metadata);
-								}
-								cb(err);
-							},
-							frameworkName
-						);
+						// Creates a 'static' framework pointing at the first header as the location
+						const metadata = new ModuleMetadata(frameworkName, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
+						frameworks.set(metadata.name, metadata);
+						cb();
 					} else {
 						cb();
 					}
 				},
 
 				function (cb) {
-					var resources = arrayifyAndResolve(lib.resource);
+					const resources = arrayifyAndResolve(lib.resource);
 					if (resources) {
-						var extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
+						const extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
 						async.eachLimit(resources, 5, function (dir, cb2) {
 							// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
 							// .xcmappingmodel, .xcassets, .storyboard)
-							hm.metabase.compileResources(dir, sdk, xcodeAppDir, false, function (err) {
+							hm.resources.compileResources(dir, sdk, xcodeAppDir, false, function (err) {
 								if (!err) {
 									builder.copyDirSync(dir, xcodeAppDir, {
 										ignoreFiles: extRegExp
@@ -426,8 +427,8 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 				function (cb) {
 					// generate metabase for swift files (if found)
-					var sources = arrayifyAndResolve(lib.source);
-					var swiftRegExp = /\.swift$/;
+					const sources = arrayifyAndResolve(lib.source);
+					const swiftRegExp = /\.swift$/;
 
 					sources && sources.forEach(function (dir) {
 						fs.readdirSync(dir).forEach(function (filename) {
@@ -453,12 +454,16 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 /**
  * Detects the configured swift version
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(callback) {
-	var that = this;
+	const that = this;
 	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
-		if (err) { return callback(err); }
-		var versionMatch = stdout.match(/version\s(\d.\d)/);
+		if (err) {
+			return callback(err);
+		}
+		const versionMatch = stdout.match(/version\s(\d.\d)/);
 		if (versionMatch !== null) {
 			that.swiftVersion = versionMatch[1];
 		}
@@ -474,6 +479,7 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
  * @param {String} sourceFilename - path to original JS file
  * @param {String} destinationFilename - path to destination JS file
  * @param {Function} cb - callback function
+ * @returns {void}
  */
 HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFilename, destinationFilename, cb) {
 	const contents = obj.contents;
@@ -494,207 +500,20 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		return cb();
 	}
 
-	const relPath = path.relative(this.resourcesDir, destinationFilename);
-
-	// get the result source code in case it was transformed and replace all system framework
-	// require() calls with the Hyperloop layer
-	const requireRegexp = /[\w_/\-\\.]+/ig;
-	const self = this;
-	const HyperloopVisitor = {
-		// ES5-style require calls
-		CallExpression: function (p) {
-			const theString = p.node.arguments[0];
-			let requireMatch;
-			if (p.get('callee').isIdentifier({ name: 'require' }) // Is this a require call?
-				&& theString && t.isStringLiteral(theString)     // Is the 1st param a literal string?
-				&& (requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
-			) {
-				// hyperloop includes will always have a slash
-				const tok = requireMatch[0].split('/');
-				const pkg = tok[0];
-
-				// is it a normal js require or from alloy? do nothing...
-				if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
-					return;
-				}
-
-				// if we use something like require("UIKit")
-				// that should require the helper such as require("UIKit/UIKit");
-				const className = tok[1] || pkg;
-				const framework = self.frameworks.get(pkg);
-				const include = framework && framework.typeMap[className];
-				const isBuiltin = pkg === 'Titanium';
-
-				self.logger.trace('Checking require for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
-
-				// if the framework is not found, then check if it was possibly mispelled
-				if (!framework && !isBuiltin) {
-					const pkgSoundEx = soundEx(pkg);
-					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
-						return soundEx(frameworkName) === pkgSoundEx;
-					});
-
-					if (maybes.length) {
-						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use '
-							+ maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
-					}
-					// don't inject anything
-					return;
-				}
-
-				// remember any used frameworks
-				if (!isBuiltin) {
-					self.usedFrameworks.set(pkg, self.frameworks.get(pkg));
-				}
-
-				// if we haven't found it by now, then we try to help before failing
-				if (!include && className !== pkg && !isBuiltin) {
-					const classNameSoundEx = soundEx(className);
-
-					self.frameworks.forEach(frameworkMetadata => {
-						if (frameworkMetadata.typeMap[className]) {
-							throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
-						}
-
-						if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
-							throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath + ')');
-						}
-					}, self);
-
-					throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
-				}
-
-				const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
-				self.references[ref] = 1;
-
-				if (include) {
-					// record our includes in which case we found a match
-					self.includes[include] = 1;
-				}
-
-				// replace the require to point to our generated file path
-				p.replaceWith(
-					t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ])
-				);
-			}
-		},
-		// ES6+-style imports
-		ImportDeclaration: function (p) {
-			const theString = p.node.source;
-			const replacements = [];
-			let requireMatch;
-			if (theString && t.isStringLiteral(theString)   // module name is a string literal
-				&& (requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
-			) {
-				// hyperloop includes will always have a slash
-				const tok = requireMatch[0].split('/');
-				const pkg = tok[0];
-
-				// is it a normal js require or from alloy? do nothing...
-				if (pkg === 'alloy' || pkg.charAt(0) === '.' || pkg.charAt(0) === '/') {
-					return;
-				}
-				const isBuiltin = pkg === 'Titanium';
-				const framework = self.frameworks.get(pkg);
-
-				// if the framework is not found, then check if it was possibly mispelled
-				if (!framework && !isBuiltin) {
-					const pkgSoundEx = soundEx(pkg);
-					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
-						return soundEx(frameworkName) === pkgSoundEx;
-					});
-
-					if (maybes.length) {
-						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use '
-							+ maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
-					}
-					// don't inject anything
-					return;
-				}
-
-				// remember any used frameworks
-				if (!isBuiltin) {
-					self.usedFrameworks.set(pkg, self.frameworks.get(pkg));
-				}
-
-				p.node.specifiers.forEach(function (spec) {
-					// import UIView from 'UIKit/UIView'; spec.imported is undefined and tok[1] holds className
-					// import { UIView } from 'UIKit'; spec.imported.name == 'UIView'
-					const className = (spec.imported ? spec.imported.name : tok[1]);
-
-					self.logger.trace('Checking import for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
-
-					// What if they did:
-					// import UIView from 'UIKit'; ? className would be null here. Technically this is bad import anyways
-					// as it should be: import UIKit from 'UIKit/UIKit'; or import { UIView } from 'UIKit';
-					// FIXME: Should we bomb out with an error saying it's ambiguous import?
-					const include = framework && framework.typeMap[className];
-
-					// Ok, it's not a type in the framework, but is it an enum?
-					if (!include) {
-						// check for an enum that matches the name in the same framework
-						// FIXME: We don't have the full metabase generated here yet!
-						// FUCK. We use the includes set to pass in to generate the metabase!
-						// This is so fucking backwards. So the iOS metabase stuff will do one pass to get the frameworks
-						// and pull the types (classes/impls) from the headers, which are available now
-						// Then we use that for validation/collecting our list of "includes"
-						// which we later pass to the metabase generation code to use to cull the generated metabase?
-						const matchingEnum = self.metabase.enums[className];
-						if (matchingEnum && matchingEnum.framework === pkg) {
-							include = matchingEnum;
-							// it's a valid enum reference!
-							// becomes...
-							// import EnumName from '/hyperloop/Framework/EnumName';
-						}
-					}
-
-					// if we haven't found it by now, then we try to help before failing
-					if (!include && className !== pkg && !isBuiltin) {
-						const classNameSoundEx = soundEx(className);
-
-						self.frameworks.forEach(frameworkMetadata => {
-							if (frameworkMetadata.typeMap[className]) {
-								throw new Error('Are you trying to use the iOS class "' + className + '" located in the framework "' + frameworkMetadata.name + '", not in "' + pkg + '"? (' + relPath + ')');
-							}
-
-							if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
-								throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath + ')');
-							}
-						}, self);
-
-						throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". (' + relPath + ')');
-					}
-
-					const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
-					self.references[ref] = 1;
-
-					if (include) {
-						// record our includes in which case we found a match
-						self.includes[include] = 1;
-					}
-
-					// replace the import to point to our generated file path
-					replacements.push(t.importDeclaration([ t.importDefaultSpecifier(spec.local) ], t.stringLiteral('/' + ref)));
-				});
-
-				// Apply replacements
-				if (replacements.length == 1) {
-					p.replaceWith(replacements[0]);
-				} else {
-					//
-					p.replaceWithMultiple(replacements);
-				}
-			}
+	const result = ScanReferencesTask.scanForReferences(contents, sourceFilename, this.frameworks, this.hyperloopBuildDir, this.sdkInfo.sdkPath, this.minVersion, this.logger);
+	// Do something with references! Loop through and gather list of used frameworks and types!
+	result.references.forEach((value, key) => {
+		this.references[`/hyperloop/${key.toLowerCase()}/${value.toLowerCase()}`] = 1;
+		if (!this.usedFrameworks.has(key)) {
+			this.usedFrameworks.set(key, this.frameworks.get(key));
 		}
-	};
+	});
 
-	const ast = babylon.parse(contents, { sourceFilename: sourceFilename, sourceType: 'module' });
-	traverse(ast, HyperloopVisitor);
-	let newContents = generate(ast, {}).code;
+	let newContents = result.replacedContent;
 
 	// TODO: Remove once we combine the custom acorn-based parser and the babylon parser above!
 	// Or maybe it can go now? The migration stuff is noted that it could be removed in 3.0.0...
-	var needMigration = this.parserState.state.needMigration;
+	const needMigration = this.parserState.state.needMigration;
 	if (needMigration.length > 0) {
 		this.needMigration[sourceFilename] = needMigration;
 
@@ -707,7 +526,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
 	} else {
 		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
-		// modify the contents stored int he state object passed thorugh the hook,
+		// modify the contents stored in the state object passed through the hook,
 		// so that SDK CLI can use new contents for minification/transpilation
 		obj.contents = newContents;
 	}
@@ -717,6 +536,8 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 /**
  * Generates the metabase from the required Hyperloop files and then generate the source the source
  * files from that metabase.
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles(callback) {
 	// no hyperloop files detected, we can stop here
@@ -733,124 +554,75 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		this.logger.trace('Not necessarily forcing a metabase rebuild if already cached');
 	}
 
-	function generateMetabaseCallback(err, metabase, outfile, header, cached) {
-		if (err) {
-			return callback(err);
+	// Do we have an umbrella header for every framework?
+	this.frameworks.forEach(frameworkMeta => {
+		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
+			this.logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
 		}
+	});
 
-		this.metabase = metabase;
-		this.metabase.classes = this.metabase.classes || {};
-
-		if (!cached) {
-			this.normalizeFrameworks(outfile);
-			this.determineFrameworkAvailability();
-		} else {
-			this.populateFrameworkAvailabiltyFromCache();
-		}
-
-		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
-			// if cached, skip generation
-			this.logger.info('Skipping ' + HL + ' compile, already generated...');
-			return callback();
-		}
-
-		// this has to be serial because each successful call to generateSwiftMetabase() returns a
-		// new metabase object that will be passed into the next file
-		async.eachSeries(this.swiftSources, function (entry, cb) {
-			this.logger.info('Generating metabase for swift ' + chalk.cyan(entry.framework + ' ' + entry.source));
-			hm.metabase.generateSwiftMetabase(
-				this.hyperloopBuildDir,
-				this.sdkInfo.sdkType,
-				this.sdkInfo.sdkPath,
-				this.sdkInfo.minVersion,
-				this.builder.xcodeTargetOS,
-				this.metabase,
-				entry.framework,
-				entry.source,
-				function (err, result, newMetabase) {
-					if (!err) {
-						this.metabase = newMetabase;
-					} else if (result) {
-						this.logger.error(result);
-					}
-					cb(err);
-				}.bind(this)
-			);
-		}.bind(this), callback);
-	}
-
-	var extraHeaderSearchPaths = [];
-	var extraFrameworkSearchPaths = [];
-	if (this.hasCocoaPods) {
-		var addSearchPathsFromCocoaPods = function (target, source) {
-			if (!source) {
-				return;
-			}
-
-			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
-			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
-			var paths = source.split(' ');
-			paths.forEach(function (path) {
-				if (path === '$(inherited)') {
-					return;
-				}
-
-				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
-				searchPath = searchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, cocoaPodsConfigurationBuildDir);
-				searchPath = searchPath.replace(/"/g, '');
-
-				target.push(searchPath);
-			});
-		}.bind(this);
-
-		addSearchPathsFromCocoaPods(extraHeaderSearchPaths, this.cocoaPodsBuildSettings.HEADER_SEARCH_PATHS);
-		addSearchPathsFromCocoaPods(extraFrameworkSearchPaths, this.cocoaPodsBuildSettings.FRAMEWORK_SEARCH_PATHS);
-	}
 	if (this.hyperloopConfig.ios.thirdparty) {
 		// Throw a deprecation warning regarding thirdparty-references in the appc.js
 		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 4.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
 
 		this.headers = [];
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function (frameworkName) {
-			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
-			var headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [ thirdPartyFrameworkConfig.header ];
+			const thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
+			const headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [ thirdPartyFrameworkConfig.header ];
 			headerPaths.forEach(function (headerPath) {
-				var searchPath = path.resolve(this.builder.projectDir, headerPath);
-				extraHeaderSearchPaths.push(searchPath);
-				extraFrameworkSearchPaths.push(searchPath);
+				const searchPath = path.resolve(this.builder.projectDir, headerPath);
 				this.headers.push(searchPath);
 			}, this);
 		}, this);
 	}
-	if (this.builder.frameworks) {
-		Object.keys(this.builder.frameworks).forEach(function (frameworkName) {
-			var frameworkInfo = this.builder.frameworks[frameworkName];
-			extraFrameworkSearchPaths.push(path.dirname(frameworkInfo.path));
-		}, this);
-	}
 
-	// Framwork umbrella headers are required to propery resolve forward declarations
-	this.frameworks.forEach(frameworkMeta => {
-		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
-			this.logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
-		}
+	// TODO We already are generating metabases on the fly...
+	// Maybe here we generate metabases of any dependencies of used frameworks? Or somehow traverse the used set and add dependencies to it?
+	//
+	// Looks like it also does some swift metabase generation....
+	// Can we gather the full set of swift sources and treat them as another "framework"?
+	// It looks like we gather the set of imports from the swift files and generate metabases for them
+	// merge it all together and then stuff classes from the swift file into the metabase
+	//
+	// So in a way we're treating each swift source file as a "framework" right now
+	// I'd prefer to treat the full set as one framework that we generate a metabase for
+	// And then possibly any dependency frameworks should get their metabases generated as well?
 
-		this.includes[frameworkMeta.umbrellaHeader] = 1;
+	this.metabase = {};
+	// Loop over used frameworks and merge all the metabases together into "this.metabase"
+	this.usedFrameworks.forEach(frameworkMeta => {
+		hm.metabase.generateFrameworkMetabase(this.hyperloopBuildDir, this.sdkInfo.sdkPath, this.minVersion, frameworkMeta, function (err, json) {
+			hm.metabase.merge(this.metabase, json);
+		});
 	});
 
-	// generate the metabase from our includes
-	hm.metabase.generateMetabase(
-		this.hyperloopBuildDir,
-		this.sdkInfo.sdkType,
-		this.sdkInfo.sdkPath,
-		this.sdkInfo.minVersion,
-		Object.keys(this.includes),
-		false, // don't exclude system libraries
-		generateMetabaseCallback.bind(this),
-		this.builder.forceCleanBuild || this.forceMetabase,
-		extraHeaderSearchPaths,
-		extraFrameworkSearchPaths
-	);
+	// FIXME This assumes generation of a single metabase that includes all dependencies
+	// We shoudl really treat the full set  of swift files as a single "framework" that gets one metabase generated (or keep the metabase-per-file approach)
+	// And any system/3rd-party dependencies just get reported in metadata not built into the same metabase file!
+
+	// this has to be serial because each successful call to generateSwiftMetabase() returns a
+	// new metabase object that will be passed into the next file
+	async.eachSeries(this.swiftSources, function (entry, cb) {
+		this.logger.info('Generating metabase for swift ' + chalk.cyan(entry.framework + ' ' + entry.source));
+		hm.swift.generateSwiftMetabase(
+			this.hyperloopBuildDir,
+			this.sdkInfo.sdkType,
+			this.sdkInfo.sdkPath,
+			this.sdkInfo.minVersion,
+			this.builder.xcodeTargetOS,
+			this.metabase,
+			entry.framework,
+			entry.source,
+			function (err, result, newMetabase) {
+				if (!err) {
+					this.metabase = newMetabase;
+				} else if (result) {
+					this.logger.error(result);
+				}
+				cb(err);
+			}.bind(this)
+		);
+	}.bind(this), callback);
 };
 
 /**
@@ -867,68 +639,69 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
  * @param {Object} metadata Metabdata object for a symbol (class, struct etc)
  * @param {Object} fileToFrameworkMap Map with all known mappings of header files to their framework
  */
-HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks(outfile) {
-	if (this.frameworks.size === 0) {
-		return;
-	}
-
-	var headerToFrameworkMap = {};
-	for (const metadata of this.frameworks.values()) {
-		var classes = Object.keys(metadata.typeMap);
-		for (var c = 0; c < classes.length; c++) {
-			var headerPathAndFilename = metadata.typeMap[classes[c]];
-			headerToFrameworkMap[headerPathAndFilename] = metadata.name;
-		}
-	}
-
-	function normalizeFrameworksInGroup(metadataGroup) {
-		if (!metadataGroup) {
-			return;
-		}
-		Object.keys(metadataGroup).forEach(function (entryName) {
-			var metadata = metadataGroup[entryName];
-			if (metadata.framework[0] !== '/') {
-				return;
-			}
-
-			if (headerToFrameworkMap[metadata.filename]) {
-				metadata.framework = headerToFrameworkMap[metadata.filename];
-				if (metadata.filename.indexOf('Pods/Headers/Public') === -1) {
-					// All files that do not come from CocoaPods are custom third-party
-					// sources configured in appc.js and need this property set to true
-					// to not generate an ObjC module wrapper.
-					metadata.customSource = true;
-				}
-			} else {
-				delete metadata.framework;
-			}
-		});
-	}
-
-	normalizeFrameworksInGroup(this.metabase.protocols);
-	normalizeFrameworksInGroup(this.metabase.classes);
-	normalizeFrameworksInGroup(this.metabase.structs);
-	normalizeFrameworksInGroup(this.metabase.functions);
-	normalizeFrameworksInGroup(this.metabase.vars);
-	normalizeFrameworksInGroup(this.metabase.enums);
-	normalizeFrameworksInGroup(this.metabase.typedefs);
-	if (this.metabase.blocks) {
-		Object.keys(this.metabase.blocks).forEach(function (entryName) {
-			if (entryName[0] === '/' && headerToFrameworkMap[entryName]) {
-				var normalizedFrameworkName = headerToFrameworkMap[entryName];
-				var frameworkBlocks = this.metabase.blocks[normalizedFrameworkName] || [];
-				frameworkBlocks = frameworkBlocks.concat(this.metabase.blocks[entryName].filter(function (block) {
-					return frameworkBlocks.every(function (existingBlock) {
-						return existingBlock.signature !== block.signature;
-					});
-				}));
-				this.metabase.blocks[normalizedFrameworkName] = frameworkBlocks;
-				delete this.metabase.blocks[entryName];
-			}
-		}, this);
-	}
-	fs.writeFileSync(outfile, JSON.stringify(this.metabase, null, 2));
-};
+// HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks(outfile) {
+// 	if (this.frameworks.size === 0) {
+// 		return;
+// 	}
+//
+// 	// map header files to the containing framework name
+// 	const headerToFrameworkMap = {};
+// 	for (const metadata of this.frameworks.values()) {
+// 		const classes = Object.keys(metadata.typeMap);
+// 		for (let c = 0; c < classes.length; c++) {
+// 			const headerPathAndFilename = metadata.typeMap[classes[c]];
+// 			headerToFrameworkMap[headerPathAndFilename] = metadata.name;
+// 		}
+// 	}
+//
+// 	function normalizeFrameworksInGroup(metadataGroup) {
+// 		if (!metadataGroup) {
+// 			return;
+// 		}
+// 		Object.keys(metadataGroup).forEach(function (entryName) {
+// 			var metadata = metadataGroup[entryName];
+// 			if (metadata.framework[0] !== '/') {
+// 				return;
+// 			}
+//
+// 			if (headerToFrameworkMap[metadata.filename]) {
+// 				metadata.framework = headerToFrameworkMap[metadata.filename];
+// 				if (metadata.filename.indexOf('Pods/Headers/Public') === -1) {
+// 					// All files that do not come from CocoaPods are custom third-party
+// 					// sources configured in appc.js and need this property set to true
+// 					// to not generate an ObjC module wrapper.
+// 					metadata.customSource = true;
+// 				}
+// 			} else {
+// 				delete metadata.framework;
+// 			}
+// 		});
+// 	}
+//
+// 	normalizeFrameworksInGroup(this.metabase.protocols);
+// 	normalizeFrameworksInGroup(this.metabase.classes);
+// 	normalizeFrameworksInGroup(this.metabase.structs);
+// 	normalizeFrameworksInGroup(this.metabase.functions);
+// 	normalizeFrameworksInGroup(this.metabase.vars);
+// 	normalizeFrameworksInGroup(this.metabase.enums);
+// 	normalizeFrameworksInGroup(this.metabase.typedefs);
+// 	if (this.metabase.blocks) {
+// 		Object.keys(this.metabase.blocks).forEach(function (entryName) {
+// 			if (entryName[0] === '/' && headerToFrameworkMap[entryName]) {
+// 				var normalizedFrameworkName = headerToFrameworkMap[entryName];
+// 				var frameworkBlocks = this.metabase.blocks[normalizedFrameworkName] || [];
+// 				frameworkBlocks = frameworkBlocks.concat(this.metabase.blocks[entryName].filter(function (block) {
+// 					return frameworkBlocks.every(function (existingBlock) {
+// 						return existingBlock.signature !== block.signature;
+// 					});
+// 				}));
+// 				this.metabase.blocks[normalizedFrameworkName] = frameworkBlocks;
+// 				delete this.metabase.blocks[entryName];
+// 			}
+// 		}, this);
+// 	}
+// 	fs.writeFileSync(outfile, JSON.stringify(this.metabase, null, 2));
+// };
 
 /**
  * Determines the general availability of a framework by iterating over the
@@ -938,51 +711,55 @@ HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks
  * framework. If no version information is available at all we set it to 0.0.0
  * which means its available on all devices.
  */
-HyperloopiOSBuilder.prototype.determineFrameworkAvailability = function determineFrameworkAvailability() {
-	const cacheData = {};
-	const unknownIntroducedIn = '100.0.0';
-	this.frameworks.forEach(metadata => {
-		let earliestIntroducedIn = unknownIntroducedIn;
-		Object.keys(metadata.typeMap).forEach(symbolName => {
-			const classMeta = this.metabase.classes[symbolName];
-			if (!classMeta || typeof classMeta.introducedIn !== 'string') {
-				return;
-			}
-
-			if (semver.lt(classMeta.introducedIn, earliestIntroducedIn)) {
-				earliestIntroducedIn = classMeta.introducedIn;
-			}
-		}, this);
-		metadata.introducedIn = earliestIntroducedIn !== unknownIntroducedIn ? earliestIntroducedIn : '0.0.0';
-		cacheData[metadata.name] = metadata.introducedIn;
-	}, this);
-
-	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
-	fs.writeFileSync(cachePathAndFilename, JSON.stringify(cacheData));
-};
+// HyperloopiOSBuilder.prototype.determineFrameworkAvailability = function determineFrameworkAvailability() {
+// 	const cacheData = {};
+// 	const unknownIntroducedIn = '100.0.0';
+// 	this.frameworks.forEach(metadata => {
+// 		let earliestIntroducedIn = unknownIntroducedIn;
+// 		Object.keys(metadata.typeMap).forEach(symbolName => {
+// 			const classMeta = this.metabase.classes[symbolName];
+// 			if (!classMeta || typeof classMeta.introducedIn !== 'string') {
+// 				return;
+// 			}
+//
+// 			if (semver.lt(classMeta.introducedIn, earliestIntroducedIn)) {
+// 				earliestIntroducedIn = classMeta.introducedIn;
+// 			}
+// 		}, this);
+// 		metadata.introducedIn = earliestIntroducedIn !== unknownIntroducedIn ? earliestIntroducedIn : '0.0.0';
+// 		cacheData[metadata.name] = metadata.introducedIn;
+// 	}, this);
+//
+// 	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
+// 	fs.writeFileSync(cachePathAndFilename, JSON.stringify(cacheData));
+// };
 
 /**
  * Updates the framework map and sets all cached introducedIn values from cache.
  *
  * This only needs to be done in the main frameworks property since all other
  * Maps reference the same metadata objects.
+ *
+ * @return {void}
  */
-HyperloopiOSBuilder.prototype.populateFrameworkAvailabiltyFromCache = function populateFrameworkAvailabiltyFromCache() {
-	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
-	let availabilityMap = {};
-	try {
-		availabilityMap = JSON.parse(fs.readFileSync(cachePathAndFilename));
-	} catch (e) {
-		return this.determineFrameworkAvailability();
-	}
-
-	Object.keys(availabilityMap).forEach(frameworkName => {
-		this.frameworks.get(frameworkName).introducedIn = availabilityMap[frameworkName];
-	});
-};
+// HyperloopiOSBuilder.prototype.populateFrameworkAvailabiltyFromCache = function populateFrameworkAvailabiltyFromCache() {
+// 	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
+// 	let availabilityMap = {};
+// 	try {
+// 		availabilityMap = JSON.parse(fs.readFileSync(cachePathAndFilename));
+// 	} catch (e) {
+// 		return this.determineFrameworkAvailability();
+// 	}
+//
+// 	Object.keys(availabilityMap).forEach(frameworkName => {
+// 		this.frameworks.get(frameworkName).introducedIn = availabilityMap[frameworkName];
+// 	});
+// };
 
 /**
  * Generates the symbol reference based on the references from the metabase's parser state.
+ * This is used as a sort of check to see if we need to re-generate JS stubs.
+ * We check for an existing file with the same contents. If not, we force stub generation.
  */
 HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolReference() {
 
@@ -1003,14 +780,18 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
 
 /**
  * Compiles the resources from the metabase.
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
-	hm.metabase.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false, callback);
+	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	hm.resources.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false, callback);
 };
 
 /**
  * Generates stubs from the metabase.
+ * @param {Function} callback typical async callback function
+ * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 
@@ -1025,7 +806,17 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 
 	// now generate the stubs
 	this.logger.debug('Generating stubs');
-	var started = Date.now();
+	const started = Date.now();
+	// FIXME: We need to generate stubs from the set of used frameworks (and their dependencies)
+	// Plus builtins separately!
+	// FIXME: only do this if we actually used builtins!
+	const builtinsMetabase = { classes: {} };
+	generator.generateBuiltins(builtinsMetabase, function (err, result) {
+		// ok builtinsMetabase should now be good to generate stubs with!
+	});
+
+	// TODO Now merge the metabases of all used frameworks in-memory and then generate source from that?
+
 	generator.generateFromJSON(
 		this.builder.tiapp.name,
 		this.metabase,
@@ -1035,10 +826,10 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 				return callback(err);
 			}
 
-			var codeGenerator = new generator.CodeGenerator(sourceSet, modules, this);
+			const codeGenerator = new generator.CodeGenerator(sourceSet, modules, this);
 			codeGenerator.generate(this.hyperloopJSDir);
 
-			var duration = Date.now() - started;
+			const duration = Date.now() - started;
 			this.logger.info('Generation took ' + duration + ' ms');
 
 			callback();
@@ -1053,7 +844,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles() {
 	// copy any native generated file references so that we can compile them
 	// as part of xcodebuild
-	var keys = Object.keys(this.references);
+	const keys = Object.keys(this.references);
 
 	// only if we found references, otherwise, skip
 	if (!keys.length) {
@@ -1062,7 +853,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 	// check to see if we have any specific file native modules and copy them in
 	keys.forEach(function (ref) {
-		var file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
+		const file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
@@ -1070,7 +861,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 
 	// check to see if we have any package modules and copy them in
 	this.usedFrameworks.forEach(frameworkMetadata => {
-		var file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
+		const file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
@@ -1590,9 +1381,8 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
 
 /**
  * Clean up unwanted files.
- * @param {Object} data - The hook payload.
  */
-HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
+HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles() {
 	// remove empty Framework directory that might have been created by cocoapods
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
@@ -1611,13 +1401,13 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
  * @param {Object} data - The hook payload.
  */
 HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
-	var args = data.args[1];
-	var quotesRegExp = /^"(.*)"$/;
-	var substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
+	const args = data.args[1];
+	const quotesRegExp = /^"(.*)"$/;
+	const substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
 
 	function splitValue(value) {
-		var part,
-			parts = [];
+		let part;
+		const parts = [];
 		while ((part = substrRegExp.exec(value)) !== null) {
 			parts.push(part[0].replace(quotesRegExp, '$1'));
 		}
@@ -1721,7 +1511,7 @@ function soundEx(str, scale) {
 
 	var build = split.map(function (letter) {
 		for (var num in keys) {
-			if (keys[num].indexOf(letter) != -1) {
+			if (keys[num].indexOf(letter) !== -1) {
 				return map[keys[num]];
 			}
 		}

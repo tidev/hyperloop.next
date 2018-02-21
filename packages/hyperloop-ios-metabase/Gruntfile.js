@@ -28,7 +28,7 @@ module.exports = function (grunt) {
 				'test/**/*.js'
 			]
 		},
-		clean: [ 'tmp' ]
+		clean: [ 'tmp', 'test/tmp' ]
 	});
 
 	// Load grunt plugins for modules

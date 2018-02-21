@@ -1,10 +1,12 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-env node, mocha */
+/* eslint no-unused-expressions: "off", security/detect-non-literal-require: "off" */
 'use strict';
 
 const should = require('should'),
+	async = require('async'),
 	gencustom = require('../generate/custom'),
 	fs = require('fs-extra'),
-	metabase = require('hyperloop-metabase').metabase,
+	hm = require('hyperloop-metabase'),
 	generator = require('../generate/index'),
 	util = require('../generate/util'),
 	nodePath = require('path'),
@@ -59,20 +61,42 @@ describe('generate', function () {
 	this.timeout(10000);
 
 	function generateStub(includes, className, cb) {
-		metabase.getSystemFrameworks(buildDir, 'iphonesimulator', '9.0', function (err, frameworkMap) {
-			metabase.generateMetabase(buildDir, frameworkMap.get('$metadata').sdkType, frameworkMap.get('$metadata').sdkPath, frameworkMap.get('$metadata').minVersion, includes, false, function (err, json) {
-				should(err).not.be.ok;
-				should(json).be.ok;
-				const state = new gencustom.ParserState();
+		// FIXME This should really test the same workflow we use in the hook!
+		hm.frameworks.getSystemFrameworks(buildDir, 'iphonesimulator', '9.0', function (err, frameworkMap) {
+			should(err).not.be.ok;
+			should(frameworkMap).be.ok;
+			frameworkMap.has('$metadata').should.be.true;
 
-				generator.generateFromJSON('TestApp', json, state, function (err, sourceSet, modules) {
+			let metabase = {};
+			const state = new gencustom.ParserState();
+			const metadata = frameworkMap.get('$metadata');
+			const sdkPath = metadata.sdkPath;
+			const minVersion = metadata.minVersion;
+			const frameworks = [];
+			frameworkMap.forEach(framework => {
+				frameworks.push(framework);
+			});
+
+			async.eachSeries(frameworks, function (framework, next) {
+				hm.metabase.generateFrameworkMetabase(buildDir, sdkPath, minVersion, framework, function (err, json) {
+					// we should have a metabase just for this framework now, if we could find such a framework!
+					should(err).not.be.ok;
+					should(json).be.ok;
+
+					metabase = hm.metabase.merge(metabase, json); // merge in to a single "metabase"
+					next();
+				});
+			}, function (err) {
+				should(err).not.be.ok;
+
+				generator.generateFromJSON('TestApp', metabase, state, function (err, sourceSet, modules) {
 					if (err) {
 						return cb(err);
 					}
 
 					const codeGenerator = new generator.CodeGenerator(sourceSet, modules, {
 						parserState: state,
-						metabase: json,
+						metabase: metabase,
 						references: [ 'hyperloop/' + className.toLowerCase() ],
 						frameworks: frameworkMap
 					});
@@ -80,7 +104,7 @@ describe('generate', function () {
 
 					cb();
 				}, []);
-			}, true);
+			});
 		});
 	}
 
@@ -94,14 +118,14 @@ describe('generate', function () {
 		global.Hyperloop = Hyperloop;
 		global.HyperloopObject = HyperloopObject;
 
-		fs.emptyDirSync(buildDir);
+		// fs.emptyDirSync(buildDir);
 	});
 
 	before(function () {
-		var proxyCount = 0;
-		var Module = require('module').Module;
-		var old_nodeModulePaths = Module._nodeModulePaths;
-		var appModulePaths = [];
+		let proxyCount = 0;
+		const Module = require('module').Module;
+		const old_nodeModulePaths = Module._nodeModulePaths;
+		const appModulePaths = [];
 
 		util.setLog({
 			trace: function () {},
@@ -112,7 +136,7 @@ describe('generate', function () {
 
 		// borrowed from https://github.com/patrick-steele-idem/app-module-path-node/blob/master/lib/index.js
 		Module._nodeModulePaths = function (from) {
-			var paths = old_nodeModulePaths.call(this, from);
+			let paths = old_nodeModulePaths.call(this, from);
 
 			// Only include the app module path for top-level modules
 			// that were not installed:
@@ -131,7 +155,7 @@ describe('generate', function () {
 				}
 			}
 
-			var parent;
+			let parent;
 			path = nodePath.normalize(path);
 
 			if (appModulePaths.indexOf(path) === -1) {
@@ -179,7 +203,7 @@ describe('generate', function () {
 		// setup the node path to resolve files that we generated
 		addPath(nodePath.dirname(buildDir));
 
-		var originalRequire = Module.prototype.require;
+		const originalRequire = Module.prototype.require;
 		Module.prototype.require = function (path) {
 			if (/^\/hyperloop/.test(path)) {
 				path = path.slice(1);
@@ -189,14 +213,15 @@ describe('generate', function () {
 	});
 
 	it('should generate UIView', function (done) {
-		var includes = [
+		// TODO Can we just pass in a list of requires and ask it to generate the right stubs?
+		const includes = [
 			'UIKit/UIView.h'
 		];
 		generateStub(includes, 'UIKit/UIView', function (err) {
 			should(err).not.be.ok;
-			var UIView = require(nodePath.join(buildDir, 'uikit/uiview.js'));
+			const UIView = require(nodePath.join(buildDir, 'uikit/uiview.js'));
 			should(UIView).be.a.function;
-			var view = new UIView();
+			const view = new UIView();
 			should(view).be.an.object;
 			should(UIView.name).be.equal('UIView');
 			should(UIView.new).be.a.function;
@@ -207,14 +232,14 @@ describe('generate', function () {
 	});
 
 	it('should generate NSString', function (done) {
-		var includes = [
+		const includes = [
 			'Foundation/NSString.h'
 		];
 		generateStub(includes, 'Foundation/NSString', function (err) {
 			should(err).not.be.ok;
-			var NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
+			const NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
 			should(NSString).be.a.function;
-			var view = new NSString();
+			const view = new NSString();
 			should(view).be.an.object;
 			should(NSString.name).be.equal('NSString');
 			should(NSString.new).be.a.function;
@@ -230,9 +255,9 @@ describe('generate', function () {
 		];
 		generateStub(includes, 'UIKit/UILabel', function (err) {
 			should(err).not.be.ok;
-			var UILabel = require(nodePath.join(buildDir, 'uikit/uilabel.js'));
+			const UILabel = require(nodePath.join(buildDir, 'uikit/uilabel.js'));
 			should(UILabel).be.a.function;
-			var label = new UILabel();
+			const label = new UILabel();
 			should(label).be.an.object;
 			should(UILabel.name).be.equal('UILabel');
 			should(UILabel.new).be.a.function;
@@ -253,26 +278,26 @@ describe('generate', function () {
 	});
 
 	it('should always generate Foundation', function (done) {
-		var includes = [
+		const includes = [
 			'<Intents/INPreferences.h>'
 		];
 		generateStub(includes, 'Intents/INPreferences', function (err) {
 			should(err).not.be.ok;
 			// Check some Foundation basics...
-			var Foundation = require(nodePath.join(buildDir, 'foundation/foundation.js'));
+			const Foundation = require(nodePath.join(buildDir, 'foundation/foundation.js'));
 			should(Foundation).be.a.function;
 			should(Foundation.NSUTF8StringEncoding).be.a.number;
-			var NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
+			const NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
 			should(NSString).be.a.function;
 			should(NSString.name).be.equal('NSString');
-			var instance = new NSString();
+			const instance = new NSString();
 			should(instance).be.an.object;
 			should(instance.className).be.equal('NSString');
 			should(instance.$native).be.an.object;
 
 			// ... and if INPreferences is generated correctly, which does not work without
 			// explicitly including Foundation framework
-			var INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
+			const INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
 			should(INPreferences).be.a.function;
 			should(INPreferences.siriAuthorizationStatus).be.a.function;
 			done();

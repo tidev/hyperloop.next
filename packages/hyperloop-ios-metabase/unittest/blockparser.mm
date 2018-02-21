@@ -88,7 +88,7 @@
 }
 
 - (void)testSimpleBlockAsJSON {
-	hyperloop::ParserContext context("sdk", "9.0", false);
+	hyperloop::ParserContext context("sdk", "9.0", false, "");
 	Json::Value json = hyperloop::callbackToJSON(&context, "void (^)(void)");
 	XCTAssertTrue(json);
 	XCTAssertTrue(json["signature"].asString() == "void (^)(void)");
@@ -103,7 +103,7 @@
 }
 
 - (void)testBlockWithArgAsJSON {
-	hyperloop::ParserContext context("sdk", "9.0", false);
+	hyperloop::ParserContext context("sdk", "9.0", false, "");
 	Json::Value json = hyperloop::callbackToJSON(&context, "void (^)(int)");
 	XCTAssertTrue(json);
 	XCTAssertTrue(json["signature"].asString() == "void (^)(int)");
@@ -122,7 +122,7 @@
 }
 
 - (void)testBlockWithArgAndReturnAsJSON {
-	hyperloop::ParserContext context("sdk", "9.0", false);
+	hyperloop::ParserContext context("sdk", "9.0", false, "");
 	Json::Value json = hyperloop::callbackToJSON(&context, "int (^)(int)");
 	XCTAssertTrue(json);
 	XCTAssertTrue(json["signature"].asString() == "int (^)(int)");
@@ -141,7 +141,7 @@
 }
 
 - (void)testBlockWithTypedefAsJSON {
-	hyperloop::ParserContext context("sdk", "9.0", false);
+	hyperloop::ParserContext context("sdk", "9.0", false, "");
 	CXCursor cursor;
 	cursor.kind = CXCursor_TypedefDecl;
 	auto type = new hyperloop::TypeDefinition(cursor, "dispatch_block_t", &context);

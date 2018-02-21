@@ -127,19 +127,34 @@ function processProtocolInheritance(protocols) {
 	});
 }
 
+/**
+ * Modifiesd an existing metabase JSON object with builtins
+ * @param  {Object}   json metabase JSON object
+ * @param  {Function} callback Typical async callback function
+ * @return {void}
+ */
 function generateBuiltins(json, callback) {
-	var dir = path.join(__dirname, 'templates', 'builtins');
+	const dir = path.join(__dirname, 'templates', 'builtins');
 	fs.readdir(dir, function (err, files) {
 		if (err) {
 			return callback(err);
 		}
 		async.eachSeries(files, function (fn, cb) {
-			var gen = require(path.join(dir, fn));
+			const gen = require(path.join(dir, fn)); // eslint-disable-line security/detect-non-literal-require
 			gen(json, cb);
 		}, callback);
 	});
 }
 
+/**
+ * Generates JS stubs from a metabase (json)
+ * @param  {String}   name     [description]
+ * @param  {Object}   json     The metabase used to generate the JS stubs
+ * @param  {gencustom.ParserState}   state    [description]
+ * @param  {Function} callback [description]
+ * @param  {Map<string, ModuleMetadata}   includes [description]
+ * @return {void}
+ */
 function generateFromJSON(name, json, state, callback, includes) {
 	// set the name of the app in the state object
 	state.appName = name;
@@ -322,6 +337,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 /**
  * parse from a buffer
+ * @returns {gencustom.ParserState}
  */
 function parseBuffer(buf, fn, state) {
 	var parser = new gencustom();
@@ -331,3 +347,4 @@ function parseBuffer(buf, fn, state) {
 exports.generateFromJSON = generateFromJSON;
 exports.parseFromBuffer = parseBuffer;
 exports.CodeGenerator = CodeGenerator;
+exports.generateBuiltins = generateBuiltins;
