@@ -1,7 +1,7 @@
 import UIKit
 
 
-public class MyUI : UIView {
+public class MyClassPropertyUI : UIView {
 
 	public var someProperty : Double
 	{

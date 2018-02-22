@@ -6,6 +6,7 @@
 
 const fs = require('fs'),
 	utillib = require('./util'),
+	async = require('async'),
 	metabaselib = require('./metabase'),
 	spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 
@@ -349,7 +350,7 @@ function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTarge
 
 /**
  * Parses a single swift source file and extract the classes defined within.
- * @param  {String}   framework     name of the framework to assignthis file to
+ * @param  {String}   framework     name of the framework to assign this file to
  * @param  {string} fn            filename of the swift source
  * @param  {Object}   metabase      Metabase of dependencies to look up types
  * @param {String} sdkPath absolue filepath to ios SDK directory
@@ -490,36 +491,57 @@ function extractSwiftClasses(framework, fn, metabase, sdkPath, iosMinVersion, xc
  */
 function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, iosMinVersion, xcodeTargetOS, swiftFiles, callback) {
 	// read our imports from the file so we can generate an appropriate metabase
-	let imports = [];
-	swiftFiles.forEach(fn => {
-		imports = imports.concat(extractImports(fs.readFileSync(fn).toString()));
-	});
+	const imports = new Set();
+	async.each(swiftFiles, (file, next) => {
+		// This only supports imports of a framework name, NOT specifying type of the import or "sub-modules"
+		// FOR NOW, that is...
+		extractImports(fs.readFileSync(file).toString()).forEach(i => {
+			imports.add(i);
+		});
+		next();
+	}, err => {
+		if (err) {
+			callback(err);
+		}
 
-	// This only supports imports of a framework name, NOT specifying type of the import or "sub-modules"\
-	// FOR NOW, that is...
+		// Ok, so we know what the set of swift files imported, now let's generate a
+		// deep, unified metabase from the frameworks used plus all dependencies
+		metabaselib.unifiedMetabase(cacheDir, sdkPath, iosMinVersion, frameworks, Array.from(imports), (err, metabase) => {
+			if (err) {
+				return callback(err);
+			}
 
-	// So the import should match a framework name for now. We can just grab a framework's metabase (and those of it's dependencies)
-	// to resolve types below.
-	let metabase = {
-		classes: {}
-	};
-	// FIXME: This needs to use async to verify we do this in series!
-	imports.forEach((name) => {
-		const framework = frameworks.get(name);
-		metabaselib.generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, (err, json) => {
-			metabase = metabaselib.merge(metabase, json);
+			let generated = { classes: {} };
+			// TODO: Generate the classes in parallel, then merge them sync at the end!
+			async.eachSeries(swiftFiles, (file, next) => {
+				extractSwiftClasses(name, file, metabase, sdkPath, iosMinVersion, xcodeTargetOS, (err, classes) => {
+					if (err) {
+						return next(err);
+					}
+					// merge the classes into a single metabase!
+					generated = metabaselib.merge(generated, { classes: classes });
+					next();
+				});
+			}, err => {
+				if (err) {
+					return callback(err);
+				}
+
+				// Add metadata to the metabase!
+				generated.metadata = {
+					'api-version': '1',
+					dependencies: [], // TODO: inject the imports?
+					'min-version': iosMinVersion,
+					platform: 'ios',
+					'system-generated': 'true',
+					generated: new Date().toISOString(),
+					'sdk-path': sdkPath
+				};
+
+				callback(null, generated);
+			});
 		});
 	});
-
-	// FIXME This needs to use async to gather them all and then merge in series!
-	let generated = {};
-	swiftFiles.forEach(fn => {
-		extractSwiftClasses(name, fn, metabase, sdkPath, iosMinVersion, xcodeTargetOS, (err, classes) => {
-			// merge the classes into a single metabase!
-			generated = metabaselib.merge(generated, { classes: classes });
-		});
-	});
-	callback(null, generated);
 }
 
 exports.generateSwiftFrameworkMetabase = generateSwiftFrameworkMetabase;

@@ -7,6 +7,7 @@
 const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
 	path = require('path'),
 	fs = require('fs-extra'),
+	async = require('async'),
 	util = require('./util'),
 	binary = path.join(__dirname, '..', 'bin', 'metabase');
 
@@ -284,7 +285,74 @@ function merge(a, b) {
 	return a;
 }
 
+/**
+ * [extractFrameworksFromDependencies description]
+ * @param  {string[]} headers [description]
+ * @return {Set<string>}         [description]
+ */
+function extractFrameworksFromDependencies(headers) {
+	const frameworks = new Set();
+	headers.forEach(file => {
+		const index = file.indexOf('.framework');
+		if (index !== -1) {
+			const frameworkName = file.substring(file.lastIndexOf('/', index) + 1, index);
+			frameworks.add(frameworkName);
+		}
+	});
+	return frameworks;
+}
+
+/**
+ * Given the map of all frameworks, and an array of framework names that we
+ * explicitly depend upon, generate a unified metabase from those frameworks
+ * plus all of their dependencies.
+ * @param  {string} cacheDir cache dir to place metabase JSON files
+ * @param  {string} sdkPath path to ios sdk to use
+ * @param  {string} minVersion minimum iOS version, i.e. '9.0'
+ * @param  {Map<string,ModuleMetadata>}   frameworkMap map of all frameworks
+ * @param  {string[]}   frameworksToGenerate array of framework names we need to include
+ * @param  {runMetabaseBinaryCallback} callback async callback function
+ */
+function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworksToGenerate, callback) {
+	let metabase = {};
+	const frameworksDone = [];
+
+	async.whilst(
+		function () { return frameworksToGenerate.length > 0; },
+		function (next) {
+			const frameworkToGenerate = frameworksToGenerate.shift();
+			const framework = frameworkMap.get(frameworkToGenerate);
+			// TODO: Can we generate multiple at once async? Basically grab the full set to do and do them each in parallel?
+
+			// TODO: God damn it, why do we have to keep passing cache dir, sdk path, min ios version around?
+			// Can't we just bake this into the ModuleMetadata object and be done with it?
+			generateFrameworkMetabase(cacheDir, sdkPath, minVersion, framework, function (err, json) {
+				// we should have a metabase just for this framework now, if we could find such a framework!
+				metabase = merge(metabase, json); // merge in to a single "metabase"
+
+				const dependentHeaders = json.metadata.dependencies;
+				// extract the frameworks from dependencies!
+				const dependentFrameworks = extractFrameworksFromDependencies(dependentHeaders);
+				dependentFrameworks.forEach(dependency => {
+					// Add to our todo list if we haven't already done it and it's not already on our todo list
+					if (!frameworksDone.includes(dependency) && !frameworksToGenerate.includes(dependency)) {
+						frameworksToGenerate.push(dependency);
+					}
+				});
+				next();
+			});
+		},
+		function (err) {
+			if (err) {
+				return callback(err);
+			}
+			return callback(null, metabase);
+		}
+	);
+}
+
 // public API
 exports.merge = merge;
 exports.generateFrameworkMetabase = generateFrameworkMetabase;
-exports.generateMetabase = generateMetabase;
+exports.generateMetabase = generateMetabase; // TODO: Remove!
+exports.unifiedMetabase = unifiedMetabase;

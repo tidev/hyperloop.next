@@ -3,7 +3,6 @@
 'use strict';
 
 const should = require('should'),
-	async = require('async'),
 	gencustom = require('../generate/custom'),
 	fs = require('fs-extra'),
 	hm = require('hyperloop-metabase'),
@@ -60,82 +59,36 @@ describe('generate', function () {
 
 	this.timeout(10000);
 
-	/**
-	 * [extractFrameworksFromDependencies description]
-	 * @param  {string[]} headers [description]
-	 * @return {Set<string>}         [description]
-	 */
-	function extractFrameworksFromDependencies(headers) {
-		const frameworks = new Set();
-		headers.forEach(file => {
-			const index = file.indexOf('.framework');
-			if (index !== -1) {
-				const frameworkName = file.substring(file.lastIndexOf('/', index) + 1, index);
-				frameworks.add(frameworkName);
-			}
-		});
-		return frameworks;
-	}
-
 	function generateStub(frameworkName, className, cb) {
 		hm.frameworks.getSDKPath('iphonesimulator', (err, sdkPath) => {
 			// FIXME This should really test the same workflow we use in the hook!
-			// FIXME: As a first step, can we generate framework metabases deeply? (aka look at dependencies collected in a metabase and ensure we've generated any dependent metabases)
 			hm.frameworks.getSystemFrameworks(buildDir, sdkPath, function (err, frameworkMap) {
 				should(err).not.be.ok;
 				should(frameworkMap).be.ok;
 				frameworkMap.has('$metadata').should.be.false;
 
-				let metabase = {};
 				const state = new gencustom.ParserState();
 				const minVersion = '9.0';
 				const frameworksToGenerate = [ frameworkName ];
-				const frameworksDone = [];
+				hm.metabase.unifiedMetabase(buildDir, sdkPath, minVersion, frameworkMap, frameworksToGenerate, (err, metabase) => {
+					should(err).not.be.ok;
 
-				async.whilst(
-					function () { return frameworksToGenerate.length > 0; },
-					function (next) {
-						const frameworkToGenerate = frameworksToGenerate.shift();
-						const framework = frameworkMap.get(frameworkToGenerate);
-						hm.metabase.generateFrameworkMetabase(buildDir, sdkPath, minVersion, framework, function (err, json) {
-							// we should have a metabase just for this framework now, if we could find such a framework!
-							should(err).not.be.ok;
-							should(json).be.ok;
+					generator.generateFromJSON('TestApp', metabase, state, function (err, sourceSet, modules) {
+						if (err) {
+							return cb(err);
+						}
 
-							metabase = hm.metabase.merge(metabase, json); // merge in to a single "metabase"
-
-							const dependentHeaders = json.metadata.dependencies;
-							// extract the frameworks from dependencies!
-							const dependentFrameworks = extractFrameworksFromDependencies(dependentHeaders);
-							dependentFrameworks.forEach(dependency => {
-								// Add to our todo list if we haven't already done it and it's not already on our todo list
-								if (!frameworksDone.includes(dependency) && !frameworksToGenerate.includes(dependency)) {
-									frameworksToGenerate.push(dependency);
-								}
-							});
-							next();
+						const codeGenerator = new generator.CodeGenerator(sourceSet, modules, {
+							parserState: state,
+							metabase: metabase,
+							references: [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ],
+							frameworks: frameworkMap
 						});
-					},
-					function (err) {
-						should(err).not.be.ok;
+						codeGenerator.generate(buildDir);
 
-						generator.generateFromJSON('TestApp', metabase, state, function (err, sourceSet, modules) {
-							if (err) {
-								return cb(err);
-							}
-
-							const codeGenerator = new generator.CodeGenerator(sourceSet, modules, {
-								parserState: state,
-								metabase: metabase,
-								references: [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ],
-								frameworks: frameworkMap
-							});
-							codeGenerator.generate(buildDir);
-
-							cb();
-						}, []);
-					}
-				);
+						cb();
+					}, []);
+				});
 			});
 		});
 	}

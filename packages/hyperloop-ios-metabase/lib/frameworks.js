@@ -209,7 +209,7 @@ function detectFramework(frameworkPath) {
  * umbrellaHeader and usesSwift based on info gathered from the framework on disk.
  */
 function sniffFramework(frameworkMetadata) { // TODO Move into constructor?
-	// If there's a Modules/modulu.modulemap, use it to give us correct umbrella header
+	// If there's a Modules/module.modulemap, use it to give us correct umbrella header
 	// and detect if swift is used or not.
 	const modulesPath = path.join(frameworkMetadata.path, 'Modules');
 	if (!fs.existsSync(modulesPath)) {
@@ -255,6 +255,11 @@ function sniffFramework(frameworkMetadata) { // TODO Move into constructor?
 				frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, umbrellaDirMatch[1]);
 			}
 		}
+	}
+
+	// Do we have an umbrella header? If the umbrella header doesn't exist, I think we need to blow up
+	if (!frameworkMetadata.umbrellaHeader || !fs.existsSync(frameworkMetadata.umbrellaHeader)) {
+		throw new Error(`Unable to detect framework umbrella header for ${frameworkMetadata.name}.`);
 	}
 
 	return frameworkMetadata;

@@ -577,7 +577,17 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 		return callback(new StopHyperloopCompileError());
 	}
 
-	GenerateMetabaseTask.generate();
+	const frameworksUsed = [];
+	this.usedFrameworks.forEach((meta, name) => {
+		frameworksUsed.push(name);
+	});
+	GenerateMetabaseTask.generateMetabase(this.hyperloopBuildDir, this.frameworks, this.logger, (err, metabase) => {
+		if (err) {
+			return callback(err);
+		}
+		this.metabase = metabase;
+		callback(null);
+	});
 
 	fs.ensureDirSync(this.hyperloopJSDir);
 

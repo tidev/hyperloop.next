@@ -24,97 +24,72 @@ const hm = require('hyperloop-metabase');
 /**
  * [generateMetabase description]
  * @param  {string}   buildDir   path to directory where metabase json files will be cached
- * @param  {Map<string,ModuleMetadata>}   usedFrameworks [description]
+ * @param  {string} sdkPath path to iOS SDK
+ * @param  {string} minVersion minimum iOS version, i.e. '9.0'
+ * @param  {string} sdkType 'iphoneos' || 'iphonesimulator'
+ * @param  {Map<string,ModuleMetadata>}   frameworkMap [description]
+ * @param  {string[]} usedFrameworkNames list of explicitly used frameworks
+ * @param  {object[]} swiftSources array of swift source file metadata
  * @param  {Object}   logger     [description]
  * @param  {Function} callback   [description]
  * @return {void}
  */
-function generateMetabase(buildDir, usedFrameworks, logger, callback) {
+function generateMetabase(buildDir, sdkPath, minVersion, sdkType, frameworkMap, usedFrameworkNames, swiftSources, logger, callback) {
 	// no hyperloop files detected, we can stop here
-	if (!this.includes.length && !Object.keys(this.references).length) {
-		logger.info('Skipping ' + HL + ' compile, no usage found ...');
-		return callback(new StopHyperloopCompileError());
-	}
+	// if (!this.includes.length && !Object.keys(this.references).length) {
+	// 	logger.info('Skipping ' + HL + ' compile, no usage found ...');
+	// 	return callback(new StopHyperloopCompileError());
+	// }
 
 	fs.ensureDirSync(buildDir);
 
-	// Do we have an umbrella header for every framework?
-	usedFrameworks.forEach(frameworkMeta => {
-		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
-			logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
+	// Loop through swift sources and group by framework name!
+	const swiftFrameworks = new Map();
+	swiftSources.forEach(entry => {
+		let files = [];
+		if (swiftFrameworks.has(entry)) {
+			files = swiftFrameworks.get(entry.framework);
 		}
+		files.push(entry.source);
+		swiftFrameworks.set(entry.framework, files);
 	});
+	const swiftFrameworkNames = Array.from(swiftFrameworks.keys());
 
-	// TODO We actually should already have metabases generated for each framework...
-	// But we should go through the list of used frameworks and generate metabases for their dependencies?
-
-	// TODO We already are generating metabases on the fly...
-	// Maybe here we generate metabases of any dependencies of used frameworks? Or somehow traverse the used set and add dependencies to it?
-	//
-	// Looks like it also does some swift metabase generation....
-	// Can we gather the full set of swift sources and treat them as another "framework"?
-	// It looks like we gather the set of imports from the swift files and generate metabases for them
-	// merge it all together and then stuff classes from the swift file into the metabase
-	//
-	// So in a way we're treating each swift source file as a "framework" right now
-	// I'd prefer to treat the full set as one framework that we generate a metabase for
-	// And then possibly any dependency frameworks should get their metabases generated as well?
-
-	let metabase = {};
-	async.each();
-
-	const frameworks = [];
-	usedFrameworks.forEach(framework => {
-		frameworks.push(framework);
-	});
-
-	async.eachSeries(frameworks, function (framework, next) {
-		hm.metabase.generateFrameworkMetabase(buildDir, sdkPath, minVersion, framework, function (err, json) {
-			// we should have a metabase just for this framework now, if we could find such a framework!
-			metabase = hm.metabase.merge(metabase, json); // merge in to a single "metabase"
-			next();
-		});
-	}, function (err) {
+	// FIXME: Shouldn't we be generating swift frameworks earlier when we gather other frameworks?
+	// Then we can just treat them like any other frameworks here and just call unifiedMetabase on the set of system/user/3rd-party/swift frameworks
+	let masterMetabase = {};
+	hm.metabase.unifiedMetabase(buildDir, sdkPath, minVersion, frameworkMap, usedFrameworkNames, (err, metabase) => {
 		if (err) {
 			return callback(err);
 		}
+		masterMetabase = metabase;
 
-		hm.swift.generateSwiftFrameworkMetabase(usedFrameworks, sdkPath, minVersion, sdkType, switfSources, (err, json) => {
-
-		});
-
-		// Done merging metabases!
-		// FIXME This assumes generation of a single metabase that includes all dependencies
-		// We should really treat the full set of swift files as a single "framework" that gets one metabase generated (or keep the metabase-per-file approach)
-		// And any system/3rd-party dependencies just get reported in metadata not built into the same metabase file!
-
-		// this has to be serial because each successful call to generateSwiftMetabase() returns a
-		// new metabase object that will be passed into the next file
-		async.eachSeries(this.swiftSources, function (entry, cb) {
-			logger.info('Generating metabase for swift ' + chalk.cyan(entry.framework + ' ' + entry.source));
-			hm.swift.generateSwiftMetabase(
-				buildDir,
-				sdkType,
-				sdkPath,
-				minVersion,
-				this.builder.xcodeTargetOS,
-				metabase,
-				entry.framework,
-				entry.source,
-				function (err, result, newMetabase) {
-					if (!err) {
-						metabase = newMetabase;
-					} else if (result) {
-						logger.error(result);
-					}
-					cb(err);
+		// Now do swift metabases
+		const swiftMetabases = [];
+		// TODO: Can we generate a ModuleMetadata equivalent for this Swift source framework?
+		async.each(swiftFrameworkNames, (name, next) => {
+			const swiftFiles = swiftFrameworks.get(name);
+			// logger.info('Generating metabase for swift framework ' + chalk.cyan(name + ' ' + swiftFiles));
+			hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdkPath, minVersion, sdkType, swiftFiles, (err, swiftMetabase) => {
+				if (err) {
+					return next(err);
 				}
-			);
-		}.bind(this), function (err) {
+
+				swiftMetabases.push(swiftMetabase);
+				next();
+			});
+		}, err => {
 			if (err) {
 				return callback(err);
 			}
-			callback(null, metabase);
+
+			// Merge the swift metabases into the master one from system/etc frameworks.
+			swiftMetabases.forEach(swiftMetabase => {
+				masterMetabase = hm.metabase.merge(masterMetabase, swiftMetabase);
+			});
+
+			// OK we've merged them all together!
+			callback(null, masterMetabase);
 		});
 	});
 }
