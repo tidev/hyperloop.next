@@ -1,12 +1,12 @@
 /* eslint-disable no-unused-expressions */
 'use strict';
 
-var should = require('should'),
+const should = require('should'),
 	helper = require('./helper'),
 	path = require('path');
 
 describe('class', function () {
-	var sdkDir;
+	let sdkDir;
 	before(function (done) {
 		helper.getSimulatorSDK(function (err, settings) {
 			if (err) {

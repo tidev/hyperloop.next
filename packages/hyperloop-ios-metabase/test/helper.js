@@ -79,12 +79,13 @@ function generate(input, output, callback, excludeSystemAPIs) {
 				args.push('-x');
 			}
 			const child = spawn(bin, args);
-			// child.stderr.on('data', function (buf) {
-			// 	// process.stderr.write(buf);
-			// });
-			// child.stdout.on('data', function (buf) {
-			// 	// process.stdout.write(buf);
-			// });
+			// if we don't hook these events, for whatever reason it may hang on some tests
+			child.stderr.on('data', function (buf) { // eslint-disable-line
+				// process.stderr.write(buf);
+			});
+			child.stdout.on('data', function (buf) { // eslint-disable line
+				// process.stdout.write(buf);
+			});
 			child.on('close', function (e) {
 				if (e !== 0) {
 					return callback(new Error('metabase generation failed'));

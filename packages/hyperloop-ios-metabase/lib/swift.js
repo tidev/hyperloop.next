@@ -137,17 +137,6 @@ function extractImports(buf) {
 	});
 }
 
-function uniq(a) {
-	const copy = [];
-	for (var c = 0; c < a.length; c++) {
-		const e = a[c];
-		if (copy.indexOf(e) < 0) {
-			copy.push(e);
-		}
-	}
-	return copy;
-}
-
 /**
  * return the swift managed class name for a given application and class name
  * @param {String} appName app name used as a segment in the mangled name
@@ -156,196 +145,6 @@ function uniq(a) {
  */
 function generateSwiftMangledClassName(appName, className) {
 	return '_TtC' + appName.length + appName + className.length + className;
-}
-
-/**
- * return a merged metabase
- * @param {String} buildDir output directory
- * @param {String} sdk 'iphoneos' || 'iphonesimulator'
- * @param {String} sdkPath absolute path to SDK directory
- * @param {String} iosMinVersion i.e. '9.0'
- * @param {Array} imports I don't know
- * @param {Object} metabase generated metabase
- * @param {Function} callback callback function
- * @returns {void}
- */
-function generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, imports, metabase, callback) {
-	if (imports.length === 0) {
-		return callback(null, metabase);
-	}
-	if (metabase.$includes) {
-		// if we have all the imports already in our metabase, just return instead of merging
-		const need = [];
-		for (let c = 0; c < imports.length; c++) {
-			if (metabase.$includes.indexOf(imports[c]) < 0) {
-				need.push(imports[c]);
-			}
-		}
-		if (need.length === 0) {
-			return callback(null, metabase);
-		}
-		// only generate any missing imports to speed up the merge
-		imports = need;
-	}
-	metabaselib.generateMetabase(buildDir, sdk, sdkPath, iosMinVersion, imports, false, function (err, json) {
-		if (err) {
-			return callback(err);
-		}
-		const includes = metabase.$includes ? uniq(metabase.$includes.concat(imports)) : imports;
-		metabase = metabaselib.merge(metabase, json);
-		metabase.$includes = includes;
-		return callback(null, metabase);
-	});
-}
-
-/**
- * parse a swift file into a metabase type JSON result
- * @param {String} buildDir output directory
- * @param {String} sdk 'iphoneos' || 'iphonesimulator'
- * @param {String} sdkPath absolue filepath to ios SDK directory
- * @param {String} iosMinVersion i.e. '9.0'
- * @param {String} xcodeTargetOS 'iphoneos' || 'iphonesimulator'
- * @param {Object} metabase generated metabase
- * @param {String} framework name of the framework
- * @param {String} fn file name
- * @param {Function} callback callback function
- * @deprecated Use generateSwiftFrameworkMetabase
- */
-function generateSwiftMetabase(buildDir, sdk, sdkPath, iosMinVersion, xcodeTargetOS, metabase, framework, fn, callback) {
-	generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, function (err, buf) {
-		if (err) {
-			return callback(err, buf);
-		}
-
-		// read our imports from the file so we can generate an appropriate metabase
-		const imports = extractImports(fs.readFileSync(fn).toString());
-		// turn our imports into includes for the metabase generation
-		const includes = imports.map(function (name) {
-			return '<' + name + '/' + name + '.h>';
-		});
-		const lines = buf.split(/\n/);
-
-		// we need to merge our metabase with any imports found in our swift file in case there are imports found in
-		// swift that we haven't imported in the incoming metabase
-		generateAndMerge(buildDir, sdk, sdkPath, iosMinVersion, includes, metabase, function (err, metabase) {
-			if (err) {
-				return callback(err);
-			}
-			const componentRE = /component id='(.*)'/;
-			const patternNamedRE = /pattern_named type='(\w+)' '(\w+)'/;
-			const typeRE = /type='(\w+)'/;
-			const publicAccessPattern = /access=(public|open)/;
-
-			const classes = {};
-			let classdef,
-				methodef,
-				vardef;
-
-			lines.forEach(function (line, index) {
-				line = line.toString().trim();
-				if (line) {
-					// console.log('line=>', line.substring(0, 5));
-					if (line.indexOf('(class_decl ') === 0) {
-						const tok = line.split(' ');
-						const cls = tok[1].replace(/"/g, '').trim();
-						classdef = {
-							name: cls,
-							public: false,
-							methods: {},
-							properties: {},
-							filename: fn,
-							thirdparty: true,
-							framework: framework,
-							language: 'swift'
-						};
-						tok.slice(2).forEach(function (t, i) {
-							if (publicAccessPattern.test(t)) {
-								classdef.public = true;
-							} else if (t.indexOf('inherits:') === 0) {
-								classdef.superclass = tok[i + 3]; // 2 is sliced so add + 1
-							}
-						});
-						if (classdef.public) {
-							delete classdef.public;
-							classes[classdef.name] = classdef;
-							metabase.classes[classdef.name] = classdef;
-						} else {
-							classdef = null;
-						}
-					} else if (line.indexOf('(var_decl') === 0 && classdef) {
-						const tok = line.split(' ');
-						const name = tok[1].replace(/"/g, '').trim();
-						vardef = {
-							name: name,
-							public: false
-						};
-						tok.splice(2).forEach(function (t) {
-							if (publicAccessPattern.test(t)) {
-								vardef.public = true;
-							} else if (t.indexOf('type=') === 0) {
-								vardef.type = resolveType(fn, metabase, typeRE.exec(t)[1]);
-							}
-						});
-						if (vardef.public) {
-							delete vardef.public;
-							classdef.properties[name] = vardef;
-						}
-					} else if (line.indexOf('(func_decl ') === 0 && line.indexOf('getter_for=') < 0) {
-						const tok = line.split(' ');
-						const name = tok[1].replace(/"/g, '').trim();
-						const i = name.indexOf('(');
-						methodef = {
-							name: name,
-							public: false,
-							instance: true
-						};
-						if (i) {
-							methodef.name = name.substring(0, i);
-							methodef.selector = methodef.name;
-							methodef.arguments = [];
-							name.substring(i + 1, name.length - 1).split(':').slice(1).forEach(function (t) {
-								methodef.selector += ':' + t;
-							});
-						}
-						tok.splice(2).forEach(function (t) {
-							if (publicAccessPattern.test(t)) {
-								methodef.public = true;
-							} else if (t.indexOf('type=') === 0) {
-								if (t.indexOf('type=\'' + classdef.name + '.Type') === 0) {
-									// this is a class method
-									methodef.instance = false;
-								}
-							}
-						});
-						if (classdef && methodef.public) {
-							delete methodef.public;
-							classdef.methods[methodef.name] = methodef;
-						} else {
-							methodef = null;
-						}
-					} else if (methodef && line.indexOf('(pattern_named ') === 0 && patternNamedRE.test(line)) {
-						const re = patternNamedRE.exec(line);
-						const t = resolveType(fn, metabase, re[1]);
-						methodef.arguments.push({
-							name: re[2],
-							type: t
-						});
-					} else if (methodef && line.indexOf('(result') === 0 && lines[index + 1].trim().indexOf('(type_ident') === 0 && lines[index + 2].trim().indexOf('(component ') === 0) {
-						methodef.returns = resolveType(fn, metabase, componentRE.exec(lines[index + 2].trim())[1]);
-						methodef = null;
-					}
-				}
-			});
-
-			callback(null, {
-				imports: imports,
-				classes: classes,
-				filename: fn
-			}, metabase);
-
-		});
-
-	});
 }
 
 /**
@@ -511,7 +310,10 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, ios
 				return callback(err);
 			}
 
-			let generated = { classes: {} };
+			let generated = {
+				classes: {},
+				imports: Array.from(imports)
+			};
 			// TODO: Generate the classes in parallel, then merge them sync at the end!
 			async.eachSeries(swiftFiles, (file, next) => {
 				extractSwiftClasses(name, file, metabase, sdkPath, iosMinVersion, xcodeTargetOS, (err, classes) => {
@@ -545,5 +347,4 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, ios
 }
 
 exports.generateSwiftFrameworkMetabase = generateSwiftFrameworkMetabase;
-exports.generateSwiftMetabase = generateSwiftMetabase;
-exports.generateSwiftMangledClassName = generateSwiftMangledClassName;
+exports.generateSwiftMangledClassName = generateSwiftMangledClassName; // only exported for testing!

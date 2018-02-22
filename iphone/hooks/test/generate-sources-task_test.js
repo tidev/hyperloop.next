@@ -11,6 +11,15 @@ const should = require('should'),
 	nodePath = require('path'),
 	buildDir = nodePath.join(__dirname, '..', 'tmp', 'hyperloop');
 
+const GenerateSourcesTask = require('../tasks/generate-sources-task');
+const noopBunyanLogger = {
+	trace: () => { },
+	debug: () => { },
+	info: () => { },
+	warn: () => { },
+	error: () => { },
+};
+
 function Hyperloop () {
 }
 
@@ -55,7 +64,7 @@ HyperloopProxy.prototype.inspect = function () {
 	return '[HyperloopProxy ' + this.$native + ']';
 };
 
-describe('generate', function () {
+describe('GenerateSourcesTask', function () {
 
 	this.timeout(10000);
 
@@ -73,21 +82,8 @@ describe('generate', function () {
 				hm.metabase.unifiedMetabase(buildDir, sdkPath, minVersion, frameworkMap, frameworksToGenerate, (err, metabase) => {
 					should(err).not.be.ok;
 
-					generator.generateFromJSON('TestApp', metabase, state, function (err, sourceSet, modules) {
-						if (err) {
-							return cb(err);
-						}
-
-						const codeGenerator = new generator.CodeGenerator(sourceSet, modules, {
-							parserState: state,
-							metabase: metabase,
-							references: [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ],
-							frameworks: frameworkMap
-						});
-						codeGenerator.generate(buildDir);
-
-						cb();
-					}, []);
+					const references = [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ];
+					GenerateSourcesTask.generateSources(buildDir, 'TestApp', metabase, state, frameworkMap, references, noopBunyanLogger, cb);
 				});
 			});
 		});
@@ -197,7 +193,6 @@ describe('generate', function () {
 		};
 	});
 
-	// FIXME this is unable to look up typedef GLenum, which should be in OpenGLES framework's metabase but is not...
 	it('should generate UIView', function (done) {
 		generateStub('UIKit', 'UIView', function (err) {
 			should(err).not.be.ok;

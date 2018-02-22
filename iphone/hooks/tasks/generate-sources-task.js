@@ -2,16 +2,20 @@
 // TODO This should generate JS wrappers for native types!
 const generator = require('../generate');
 
+/**
+ * Given a unified metabase, the parserState (which tracks symbol references),
+ * the list of wrapper references, and the frameworks - generates JS wrappers.
+ * @param  {string}   outputDir    Where to place the generated JS wrappers
+ * @param  {string}   name         app name?
+ * @param  {object}   metabase     Unified metabase from all references frameworks (and their dependencies)
+ * @param  {ParserState}   parserState  parser state that tracks low-level symbol references?
+ * @param  {Map<string, ModuleMetadata>}   frameworkMap [description]
+ * @param  {object}   references   really used as Set<string> where the keys are hyperloop wrapper references (i.e. '/hyperloop/uikit/uilabel.js')
+ * @param  {object}   logger       logger
+ * @param  {Function} callback     async callback function.
+ * @return {void}
+ */
 function generateSources(outputDir, name, metabase, parserState, frameworkMap, references, logger, callback) {
-	// if (!this.parserState) {
-	// 	this.logger.info('Skipping ' + HL + ' stub generation. Empty AST.');
-	// 	return callback();
-	// }
-	// if (!this.forceStubGeneration) {
-	// 	this.logger.debug('Skipping stub generation');
-	// 	return callback();
-	// }
-
 	const fauxBuilder = {
 		parserState: parserState,
 		metabase: metabase,

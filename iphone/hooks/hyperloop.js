@@ -37,6 +37,7 @@ const StopHyperloopCompileError = require('./lib/error');
 const generator = require('./generate');
 const ScanReferencesTask = require('./tasks/scan-references-task');
 const GenerateMetabaseTask = require('./tasks/generate-metabase-task');
+const GenerateSourcesTask = require('./tasks/generate-sources-task');
 
 /**
  * The Hyperloop builder object. Contains the build logic and state.
@@ -577,81 +578,24 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 		return callback(new StopHyperloopCompileError());
 	}
 
-	const frameworksUsed = [];
-	this.usedFrameworks.forEach((meta, name) => {
-		frameworksUsed.push(name);
-	});
-	GenerateMetabaseTask.generateMetabase(this.hyperloopBuildDir, this.frameworks, this.logger, (err, metabase) => {
-		if (err) {
-			return callback(err);
-		}
-		this.metabase = metabase;
-		callback(null);
-	});
+	const frameworksUsed = Array.from(this.usedFrameworks.keys());
 
-	fs.ensureDirSync(this.hyperloopJSDir);
-
-	if (this.builder.forceCleanBuild || this.forceMetabase) {
-		this.logger.trace('Forcing a metabase rebuild');
-	} else {
-		this.logger.trace('Not necessarily forcing a metabase rebuild if already cached');
-	}
-
-	// Do we have an umbrella header for every framework?
-	this.frameworks.forEach(frameworkMeta => {
-		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
-			this.logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
-		}
-	});
-
-	// TODO We already are generating metabases on the fly...
-	// Maybe here we generate metabases of any dependencies of used frameworks? Or somehow traverse the used set and add dependencies to it?
-	//
-	// Looks like it also does some swift metabase generation....
-	// Can we gather the full set of swift sources and treat them as another "framework"?
-	// It looks like we gather the set of imports from the swift files and generate metabases for them
-	// merge it all together and then stuff classes from the swift file into the metabase
-	//
-	// So in a way we're treating each swift source file as a "framework" right now
-	// I'd prefer to treat the full set as one framework that we generate a metabase for
-	// And then possibly any dependency frameworks should get their metabases generated as well?
-
-	this.metabase = {};
-	// Loop over used frameworks and merge all the metabases together into "this.metabase"
-	this.usedFrameworks.forEach(frameworkMeta => {
-		// FIXME: This runs async. We should probably gather all the generated metabases and merge them together after in series!
-		hm.metabase.generateFrameworkMetabase(this.hyperloopBuildDir, this.sdkInfo.sdkPath, this.minVersion, frameworkMeta, function (err, json) {
-			hm.metabase.merge(this.metabase, json);
+	GenerateMetabaseTask.generateMetabase(
+		this.hyperloopBuildDir,
+		this.sdkInfo.sdkPath,
+		this.sdkInfo.minVersion,
+		this.sdkInfo.sdkType,
+		this.frameworks,
+		frameworksUsed,
+		this.swiftSources,
+		this.logger,
+		(err, metabase) => {
+			if (err) {
+				return callback(err);
+			}
+			this.metabase = metabase;
+			callback(null);
 		});
-	});
-
-	// FIXME This assumes generation of a single metabase that includes all dependencies
-	// We should really treat the full set of swift files as a single "framework" that gets one metabase generated (or keep the metabase-per-file approach)
-	// And any system/3rd-party dependencies just get reported in metadata not built into the same metabase file!
-
-	// this has to be serial because each successful call to generateSwiftMetabase() returns a
-	// new metabase object that will be passed into the next file
-	async.eachSeries(this.swiftSources, function (entry, cb) {
-		this.logger.info('Generating metabase for swift ' + chalk.cyan(entry.framework + ' ' + entry.source));
-		hm.swift.generateSwiftMetabase(
-			this.hyperloopBuildDir,
-			this.sdkInfo.sdkType,
-			this.sdkInfo.sdkPath,
-			this.sdkInfo.minVersion,
-			this.builder.xcodeTargetOS,
-			this.metabase,
-			entry.framework,
-			entry.source,
-			function (err, result, newMetabase) {
-				if (!err) {
-					this.metabase = newMetabase;
-				} else if (result) {
-					this.logger.error(result);
-				}
-				cb(err);
-			}.bind(this)
-		);
-	}.bind(this), callback);
 };
 
 /**
@@ -701,38 +645,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 		return callback();
 	}
 
-	// now generate the stubs
-	this.logger.debug('Generating stubs');
-	const started = Date.now();
-	// FIXME: We need to generate stubs from the set of used frameworks (and their dependencies)
-	// Plus builtins separately!
-	// FIXME: only do this if we actually used builtins!
-	const builtinsMetabase = { classes: {} };
-	generator.generateBuiltins(builtinsMetabase, function (err, result) {
-		// ok builtinsMetabase should now be good to generate stubs with!
-	});
-
-	// TODO Now merge the metabases of all used frameworks in-memory and then generate source from that?
-
-	generator.generateFromJSON(
-		this.builder.tiapp.name,
-		this.metabase,
-		this.parserState,
-		function (err, sourceSet, modules) {
-			if (err) {
-				return callback(err);
-			}
-
-			const codeGenerator = new generator.CodeGenerator(sourceSet, modules, this);
-			codeGenerator.generate(this.hyperloopJSDir);
-
-			const duration = Date.now() - started;
-			this.logger.info('Generation took ' + duration + ' ms');
-
-			callback();
-		}.bind(this),
-		this.frameworks
-	);
+	GenerateSourcesTask.generateSources(this.hyperloopJSDir, this.builder.tiapp.name, this.metabase, this.parserState, this.frameworks, this.references, this.logger, callback);
 };
 
 /**

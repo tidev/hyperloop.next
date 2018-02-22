@@ -1,10 +1,7 @@
 // TODO: Make into an incremental appc-task!
 'use strict';
 const fs = require('fs-extra');
-const chalk = require('chalk');
 const async = require('async');
-const HL = chalk.magenta.inverse('Hyperloop');
-const StopHyperloopCompileError = require('../lib/error');
 const hm = require('hyperloop-metabase');
 
 // TODO Take in the list of used frameworks/references...
@@ -35,12 +32,6 @@ const hm = require('hyperloop-metabase');
  * @return {void}
  */
 function generateMetabase(buildDir, sdkPath, minVersion, sdkType, frameworkMap, usedFrameworkNames, swiftSources, logger, callback) {
-	// no hyperloop files detected, we can stop here
-	// if (!this.includes.length && !Object.keys(this.references).length) {
-	// 	logger.info('Skipping ' + HL + ' compile, no usage found ...');
-	// 	return callback(new StopHyperloopCompileError());
-	// }
-
 	fs.ensureDirSync(buildDir);
 
 	// Loop through swift sources and group by framework name!
