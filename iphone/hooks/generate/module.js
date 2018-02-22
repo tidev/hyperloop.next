@@ -4,8 +4,6 @@
  */
 'use strict';
 const util = require('./util');
-const path = require('path');
-const fs = require('fs');
 
 function makeModule(json, module, state) {
 	var entry = {
@@ -68,16 +66,18 @@ function makeModule(json, module, state) {
  */
 function generate(json, mod, state) {
 	// for now, skip non frameworks
-	if (mod.framework.indexOf('/') >= 0 || mod.customSource) { return; }
+	if (mod.framework.indexOf('/') >= 0 || mod.customSource) {
+		return;
+	}
 	// generate the objective-c module
-	var m = makeModule(json, mod, state);
-	var found = json.classes[mod.name];
+	const m = makeModule(json, mod, state);
+	const found = json.classes[mod.name];
 	m.excludeHeader = !!found;
-	if (m.class.properties.length ||
-		m.class.class_methods.length ||
-		m.class.obj_class_method.length ||
-		Object.keys(m.class.static_variables).length ||
-		m.class.blocks.length) {
+	if (m.class.properties.length
+		|| m.class.class_methods.length
+		|| m.class.obj_class_method.length
+		|| Object.keys(m.class.static_variables).length
+		|| m.class.blocks.length) {
 		m.frameworks[mod.framework] = 1;
 	}
 

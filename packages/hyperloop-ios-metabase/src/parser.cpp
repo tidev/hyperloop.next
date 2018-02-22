@@ -169,6 +169,14 @@ namespace hyperloop {
 			}
 		}
 
+		metadata["files"] = Json::Value(Json::arrayValue);
+		auto files = context->getFileListing();
+		if (files.size() > 0) {
+			for (auto d : files) {
+				metadata["files"].append(d);
+			}
+		}
+
 		auto t = std::time(NULL);
 		char mbstr[100];
 		if (std::strftime(mbstr, sizeof(mbstr), "%FT%TZ", std::gmtime(&t))) {
@@ -277,10 +285,30 @@ namespace hyperloop {
 		this->current = current;
 	}
 
-	bool ParserContext::isSystemLocation (const std::string &location) const {
-		if (location.find(this->getSDKPath()) != std::string::npos) {
-			return true;
+	bool ParserContext::excludeLocation (const std::string &location) {
+		files.insert(location);
+		if (this->filterToSingleFramework()) {
+			bool isCoreFoundation = this->getFrameworkFilter().find("/CoreFoundation.framework") != std::string::npos;
+			if (isCoreFoundation) {
+				return !this->isSystemLocation(location) && !this->isFrameworkLocation(location);
+			}
+			bool isFoundation = this->getFrameworkFilter().find("/Foundation.framework") != std::string::npos;
+			// If framework filter is Foundation, and the location ends in NSObject.h, don't exclude!
+			// Should this actually be in CoreFoundation?
+			if (isFoundation && (location.find("NSObject.h") != std::string::npos)) {
+				return false;
+			}
+			return !this->isFrameworkLocation(location);
 		}
+
+		return this->excludeSystemAPIs() && this->isSystemLocation(location);
+	}
+
+	bool ParserContext::isSystemLocation (const std::string &location) const {
+		// SDK Path is in every system framework. Not helpful for determine if it's a non-framework system path!
+		// if (location.find(this->getSDKPath()) != std::string::npos) {
+		// 	return true;
+		// }
 
 		if (location.find("/usr/include/") != std::string::npos) {
 			return true;
@@ -329,8 +357,7 @@ namespace hyperloop {
 		getSourceLocation(cursor, ctx, location);
 		ctx->updateLocation(location);
 
-		if ((ctx->excludeSystemAPIs() && ctx->isSystemLocation(location["filename"]))
-			|| (ctx->filterToSingleFramework() && !ctx->isFrameworkLocation(location["filename"]))) {
+		if (ctx->excludeLocation(location["filename"])) {
 			return CXChildVisit_Continue;
 		}
 

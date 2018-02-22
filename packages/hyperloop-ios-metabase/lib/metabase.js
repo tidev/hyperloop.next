@@ -102,6 +102,61 @@ function generateMetabase(cacheDir, sdk, sdkPath, iosMinVersion, includes, exclu
  */
 
 /**
+ * [recursiveReadDir description]
+ * @param  {string} dir path to directory to traverse
+ * @param  {string[]} result accumulator for recursive calls
+ * @return {string[]}
+ */
+function recursiveReadDir(dir, result) {
+	result = result || [];
+	const files = fs.readdirSync(dir);
+	files.forEach(fn => {
+		const fp = path.join(dir, fn);
+		if (fs.statSync(fp).isDirectory()) {
+			recursiveReadDir(fp, result);
+		} else {
+			result.push(fp);
+		}
+	});
+	return result;
+}
+
+/**
+ * for an array of directories, return all valid header files
+ *
+ * @param  {string[]} directories [description]
+ * @return {[type]}             [description]
+ */
+function getAllHeaderFiles(directories) {
+	const files = [];
+	directories.forEach(dir => {
+		recursiveReadDir(dir).forEach(fn => {
+			if (/\.(h(pp)?|swift)$/.test(fn)) {
+				files.push(fn);
+			}
+		});
+	});
+	return files;
+}
+
+/**
+ * Iterates over a framework's Headers directory and any nested frameworks to
+ * collect the paths to all available header files of a framework.
+ *
+ * @param {String} frameworkHeadersPath Full path to the framework's umbrella header file/directory
+ * @return {string[]} List with paths to all found header files
+ */
+function collectFrameworkHeaders(frameworkHeadersPath) {
+	const stats = fs.statSync(frameworkHeadersPath);
+	if (stats.isFile()) { // umbrella header file
+		return [ frameworkHeadersPath ];
+	} else if (stats.isDirectory()) { // umbrella header directory
+		return getAllHeaderFiles([ frameworkHeadersPath ]);
+	}
+	return [];
+}
+
+/**
  * [generateFrameworkMetabase description]
  * @param  {String}   cacheDir output directory
  * @param  {String}   sdkPath path to iOS SDK to use
@@ -119,7 +174,7 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
 	const prefix = 'metabase-' + framework.name + '-' + cacheToken;
 	const header = path.resolve(path.join(cacheDir, prefix + '.h'));
 	const outfile = path.resolve(path.join(cacheDir, prefix + '.json'));
-	const includes = [ framework.umbrellaHeader ];
+	const includes = collectFrameworkHeaders(framework.umbrellaHeader);
 
 	// check for cached version and attempt to return if found
 	if (!force && fs.existsSync(header) && fs.existsSync(outfile)) {
@@ -214,11 +269,14 @@ function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, c
  */
 function merge(a, b) {
 	// simplified merge metabase json
-	[ 'typedefs', 'classes', 'structs', 'blocks', 'enums', 'functions', 'unions', 'vars' ].forEach(function (k) {
-		if (k in b) {
-			Object.keys(b[k]).forEach(function (kk) {
-				if (!(kk in a)) {
-					a[kk] = b[kk];
+	const topLevelKeys = [ 'blocks', 'classes', 'enums', 'functions', 'protocols', 'structs', 'typedefs', 'unions', 'vars' ];
+	topLevelKeys.forEach(function (topLevelKey) {
+		if (topLevelKey in b) {
+			Object.keys(b[topLevelKey]).forEach(function (subkey) {
+				const topLevelA = a[topLevelKey] || {};
+				if (!(subkey in topLevelA)) {
+					topLevelA[subkey] = b[topLevelKey][subkey];
+					a[topLevelKey] = topLevelA;
 				}
 			});
 		}

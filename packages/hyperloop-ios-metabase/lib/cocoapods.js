@@ -82,7 +82,7 @@ function getCocoaPodsVersion(callback) {
  */
 
 function validatePodfile(podfilePath, version, callback) {
-	var podfileContent = fs.readFileSync(podfilePath);
+	const podfileContent = fs.readFileSync(podfilePath);
 	if (semver.gte(version, '1.0.0')) {
 		if (!/:integrate_targets\s*=>\s*false/.test(podfileContent)) {
 			util.logger.error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option:');
@@ -149,10 +149,17 @@ function runPodInstallIfRequired(basedir, callback) {
 *
 * @param {String} basedir absolute path to build directory
 * @param {iOSBuilder} builder iosBuilder
+* @param {string} builder.xcodeTargetOS sdk type 'iphoneos' || 'iphonesimulator'
+* @param {string} builder.iosSdkVersion sdk version (i.e. '11.2')
+* @param {string} builder.minIosVer min ios version (i.e. 9.0')
+* @param {string} builder.xcodeEnv xcode environment data
+* @param {object} builder.xcodeEnv.executables info on various xcode related executables
+* @param {string} builder.xcodeEnv.executables.xcodebuild path to xcodebuild
+* @param {string} builder.xcodeTarget 'Release' || 'Debug
 * @param {Function} callback callback function
 */
 function runCocoaPodsBuild(basedir, builder, callback) {
-	var sdkType = builder.xcodeTargetOS,
+	const sdkType = builder.xcodeTargetOS,
 		sdkVersion = builder.iosSdkVersion,
 		minSDKVersion = builder.minIosVer,
 		xcodesettings = builder.xcodeEnv.executables,
@@ -168,7 +175,7 @@ function runCocoaPodsBuild(basedir, builder, callback) {
 			'SYMROOT=' + productsDirectory,
 			'ONLY_ACTIVE_ARCH=NO'
 		];
-	var buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
+	const buildOutDir = path.join(productsDirectory, buildConfigurationName + '-' + sdkType),
 		runDir = path.join(basedir, 'Pods'),
 		child = spawn(xcodesettings.xcodebuild, args, { cwd: runDir });
 	util.logger.debug('running ' + xcodesettings.xcodebuild + ' ' + args.join(' ') + ' ' + runDir);

@@ -16,6 +16,7 @@ const CodeGenerator = require('./code-generator');
 const util = require('./util');
 
 function makeModule(modules, e, state) {
+	// TODO: I don't think we need state here!
 	if (e.framework) {
 		if (!(e.framework in modules)) {
 			modules[e.framework] = {
@@ -56,7 +57,7 @@ function merge(src, dest) {
  * @return {bool} True if protocol already implemented in a parent class, false otherwise.
  */
 function isProtocolImplementedBySuperClass(json, cls, proto) {
-	var parentClass = cls && cls.superclass;
+	let parentClass = cls && cls.superclass;
 	while (parentClass) {
 		if (parentClass.protocols && parentClass.protocols.indexOf(proto) !== -1) {
 			return true;
@@ -83,10 +84,10 @@ function processProtocolInheritance(protocols) {
 	 * @param {Number} logIntendationLevel Intendation level for debugging messages
 	 */
 	function mergeWithParentProtocols(protocol, logIntendationLevel) {
-		var logIntendationCharacter = '  ';
-		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
-		var parentProtocols = protocol.protocols;
-		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
+		const logIntendationCharacter = '  ';
+		let logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
+		const parentProtocols = protocol.protocols;
+		const protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
 		util.logger.trace(logIntendation + 'Processing inherited protocols of ' + protocolSignature);
 		logIntendation = logIntendationCharacter.repeat(logIntendationLevel);
 
@@ -107,7 +108,10 @@ function processProtocolInheritance(protocols) {
 				util.logger.trace(logIntendation + 'Invalid protocol meta information. ' + protocol.name.red + ' cannot have itself as parent, skipping.');
 				return;
 			}
-			var parentProtocol = protocols[parentProtocolName];
+			const parentProtocol = protocols[parentProtocolName];
+			if (!parentProtocol) {
+				console.log('Failed to find protocol by name: ' + parentProtocolName + '. Parent of ' + JSON.stringify(protocol));
+			}
 			mergeWithParentProtocols(parentProtocol, logIntendationLevel);
 
 			util.logger.trace(logIntendation + 'Merging ' + parentProtocol.name.cyan + ' => ' + protocol.name.cyan);
@@ -122,13 +126,16 @@ function processProtocolInheritance(protocols) {
 
 	Object.keys(protocols).forEach(function (protocolName) {
 		var protocol = protocols[protocolName];
+		if (!protocol) {
+			console.log('Failed to find protoocl by name: ' + protocolName);
+		}
 		var logIntendationLevel = 0;
 		mergeWithParentProtocols(protocol, logIntendationLevel);
 	});
 }
 
 /**
- * Modifiesd an existing metabase JSON object with builtins
+ * Modifies an existing metabase JSON object with builtins
  * @param  {Object}   json metabase JSON object
  * @param  {Function} callback Typical async callback function
  * @return {void}
@@ -152,7 +159,7 @@ function generateBuiltins(json, callback) {
  * @param  {Object}   json     The metabase used to generate the JS stubs
  * @param  {gencustom.ParserState}   state    [description]
  * @param  {Function} callback [description]
- * @param  {Map<string, ModuleMetadata}   includes [description]
+ * @param  {Map<string, ModuleMetadata>}   includes [description]
  * @return {void}
  */
 function generateFromJSON(name, json, state, callback, includes) {
@@ -170,8 +177,17 @@ function generateFromJSON(name, json, state, callback, includes) {
 			return callback(err);
 		}
 
+		// FIXME: Is this hack necessary? Shouldn't this go into the metabase generation for Foundation framework?
 		if (!json.classes.NSObject) {
 			json.classes.NSObject = {
+				methods: {},
+				properties: {},
+				framework: 'Foundation',
+				name: 'NSObject'
+			};
+		}
+		if (!json.protocols.NSObject) {
+			json.protocols.NSObject = {
 				methods: {},
 				properties: {},
 				framework: 'Foundation',
@@ -218,16 +234,17 @@ function generateFromJSON(name, json, state, callback, includes) {
 		// we must have a root object even those this is a protocol and
 		// handled special in objective-c
 		json.classes.NSObject.framework = 'Foundation';
+		json.protocols.NSObject.framework = 'Foundation';
 
 		// create an inverse map of custom classfiles to framework
-		var custom_frameworks = {};
+		const custom_frameworks = {};
 		if (includes) {
-			var frameworks = Object.keys(includes);
-			for (var i = 0; i < frameworks.length; i++) {
-				var name = frameworks[i];
-				var classes = Object.keys(includes[name]);
-				for (var c = 0; c < classes.length; c++) {
-					var clsfile = includes[name][classes[c]];
+			const frameworks = Object.keys(includes);
+			for (let i = 0; i < frameworks.length; i++) {
+				const name = frameworks[i];
+				const classes = Object.keys(includes[name]);
+				for (let c = 0; c < classes.length; c++) {
+					const clsfile = includes[name][classes[c]];
 					custom_frameworks[clsfile] = name;
 				}
 			}
@@ -235,7 +252,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		processProtocolInheritance(json.protocols);
 
-		var sourceSet = {
+		const sourceSet = {
 			classes: {},
 			structs: {},
 			enums: {},
@@ -255,7 +272,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 					if (isProtocolImplementedBySuperClass(json, cls, p)) {
 						return;
 					}
-					var protocol = json.protocols[p];
+					const protocol = json.protocols[p];
 					if (protocol) {
 						cls.properties = cls.properties || {};
 						cls.methods = cls.methods || {};
@@ -269,7 +286,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		// structs
 		json.structs && Object.keys(json.structs).forEach(function (k) {
-			var struct = json.structs[k];
+			const struct = json.structs[k];
 			if (/^_+/.test(k)) {
 				// if we have leading underscores for struct names, trim them
 				struct.name = struct.name.replace(/^(_)+/g, '').trim();
@@ -279,22 +296,22 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		// enums
 		json.enums && Object.keys(json.enums).forEach(function (k) {
-			var enumobj = json.enums[k];
+			const enumobj = json.enums[k];
 			sourceSet.enums[k] = genenum.generate(json, k, enumobj);
 		});
 
 		// modules
-		var modules = {};
+		const modules = {};
 		// define module based functions
 		json.functions && Object.keys(json.functions).forEach(function (k) {
-			var func = json.functions[k];
-			var mod = makeModule(modules, func, state);
+			const func = json.functions[k];
+			const mod = makeModule(modules, func, state);
 			mod && mod.functions.push(func);
 		});
 		// define module based constant variables
 		json.vars && Object.keys(json.vars).forEach(function (k) {
-			var varobj = json.vars[k];
-			var mod = makeModule(modules, varobj, state);
+			const varobj = json.vars[k];
+			const mod = makeModule(modules, varobj, state);
 			mod && mod.variables.push(varobj);
 		});
 		// define module based enums
@@ -309,12 +326,12 @@ function generateFromJSON(name, json, state, callback, includes) {
 		});
 		// define blocks
 		json.blocks && Object.keys(json.blocks).forEach(function (k) {
-			var blocks = json.blocks[k];
-			var frameworkName = k;
+			const blocks = json.blocks[k];
+			let frameworkName = k;
 			if (frameworkName[0] === '/') {
 				frameworkName = custom_frameworks[k] || k;
 			}
-			var mod = makeModule(modules, { framework: frameworkName, filename: '' }, state);
+			const mod = makeModule(modules, { framework: frameworkName, filename: '' }, state);
 			mod && blocks.forEach(function (block) {
 				block && mod.blocks.push(genblock.generateBlockWrapper(mod, json, block));
 			});
@@ -322,7 +339,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		// generate the modules
 		modules && Object.keys(modules).forEach(function (k) {
-			var moduleInfo = genmodule.generate(json, modules[k], state);
+			const moduleInfo = genmodule.generate(json, modules[k], state);
 			if (moduleInfo) {
 				sourceSet.modules[k] = moduleInfo;
 			}
@@ -337,10 +354,13 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 /**
  * parse from a buffer
+ * @param {string|Buffer} buf source code
+ * @param {string} fn filename
+ * @param {gencustom.ParserState} state parser state
  * @returns {gencustom.ParserState}
  */
 function parseBuffer(buf, fn, state) {
-	var parser = new gencustom();
+	const parser = new gencustom();
 	return parser.parse(buf, fn, state);
 }
 

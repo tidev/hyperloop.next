@@ -7,6 +7,7 @@ const exec = require('child_process').exec, // eslint-disable-line security/dete
 	semver = require('semver'),
 	chalk = require('chalk'),
 	cocoapods = require('./cocoapods'),
+	metabasegen = require('./metabase'),
 	util = require('./util');
 
 /**
@@ -45,7 +46,6 @@ class ModuleMetadata {
 		this.introducedIn = null;
 		this.umbrellaHeader = null;
 		this.usesSwift = false;
-		this.typeMap = {};
 	}
 
 	/**
@@ -90,8 +90,7 @@ class ModuleMetadata {
 			type: this.type,
 			introducedIn: this.introducedIn,
 			umbrellaHeader: this.umbrellaHeader,
-			usesSwift: this.usesSwift,
-			typeMap: this.typeMap
+			usesSwift: this.usesSwift
 		};
 	}
 
@@ -107,8 +106,23 @@ class ModuleMetadata {
 		metadata.introducedIn = json.introducedIn;
 		metadata.umbrellaHeader = json.umbrellaHeader;
 		metadata.usesSwift = json.usesSwift;
-		metadata.typeMap = json.typeMap;
 		return metadata;
+	}
+
+	// TODO Move metabase generation to this type?
+	generateMetabase(cacheDir, sdkPath, iosMinVersion) {
+		// TODO Determine cacheDir based on framework type? system frameworks could be cached in user home!
+		// TODO Should we hold sdk path in the metadata? What about min version?
+		// Looks like sdk path is baked into the path for system frameworks (it's a prefix!)
+		return new Promise((resolve, reject) => {
+			metabasegen.generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, this, (err, json) => {
+				if (err) {
+					return reject(err);
+				}
+				this._metabase = json;
+				resolve();
+			});
+		});
 	}
 }
 
@@ -121,15 +135,15 @@ class ModuleMetadata {
 /**
  * return the system frameworks mappings as JSON for a given sdkType and minVersion
  * @param {String} cacheDir absolute path to cache directory
- * @param {String} sdkType 'iphoneos' || 'iphonesimulator'
- * @param {String} minVersion i.e. '9.0'
+ * @param {String} sdkPath path to specific SDK we'll sniff for frameworks
  * @param {frameworkMapCallback} callback callback function
  * @returns {void}
  */
-function getSystemFrameworks(cacheDir, sdkType, minVersion, callback) {
-	const cacheFilename = path.join(cacheDir, 'metabase-mappings-' + sdkType + '-' + minVersion + '.json');
+function getSystemFrameworks(cacheDir, sdkPath, callback) {
+	const cacheToken = util.createHashFromString(sdkPath);
+	const cacheFilename = path.join(cacheDir, 'metabase-mappings-' + cacheToken + '.json');
 	if (!fs.existsSync(cacheDir)) {
-		fs.mkdirSync(cacheDir);
+		fs.ensureDirSync(cacheDir);
 	} else {
 		const cachedMetadata = readModulesMetadataFromCache(cacheFilename);
 		if (cachedMetadata !== null) {
@@ -137,25 +151,13 @@ function getSystemFrameworks(cacheDir, sdkType, minVersion, callback) {
 		}
 	}
 
-	getSDKPath(sdkType, function (err, sdkPath) {
+	const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
+	detectFrameworks(frameworksPath, function (err, frameworks) {
 		if (err) {
 			return callback(err);
 		}
-		// FIXME Why do we pass in min ios version? It's really unused.
-		// getSDKPath will point to a specific sdk version!
-		const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
-		detectFrameworks(frameworksPath, function (err, frameworks) {
-			if (err) {
-				return callback(err);
-			}
-			frameworks.set('$metadata', {
-				sdkType: sdkType,
-				minVersion: minVersion,
-				sdkPath: sdkPath
-			});
-			writeModulesMetadataToCache(frameworks, cacheFilename);
-			callback(null, frameworks);
-		});
+		writeModulesMetadataToCache(frameworks, cacheFilename);
+		callback(null, frameworks);
 	});
 }
 
@@ -240,10 +242,18 @@ function sniffFramework(frameworkMetadata) { // TODO Move into constructor?
 			throw new Error('Incompatible framework ' + frameworkMetadata.name + ' detected. Frameworks with Swift modules are only supported if they contain an Objective-C interface header.');
 		}
 	} else {
+		// check for a specific umbrella header
 		const umbrellaHeaderRegex = /umbrella header\s"(.+\.h)"/i;
 		const umbrellaHeaderMatch = moduleMap.match(umbrellaHeaderRegex);
 		if (umbrellaHeaderMatch !== null) {
 			frameworkMetadata.umbrellaHeader = path.join(frameworkHeadersPath, umbrellaHeaderMatch[1]);
+		} else {
+			// check for an umbrella header directory!
+			const umbrellaDirRegex = /umbrella\s"([^"]+)"/i;
+			const umbrellaDirMatch = moduleMap.match(umbrellaDirRegex);
+			if (umbrellaDirMatch !== null) {
+				frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, umbrellaDirMatch[1]);
+			}
 		}
 	}
 
@@ -266,7 +276,7 @@ function getSDKPath(sdkType, callback) {
 /**
  * @callback getSDKPathCallback
  * @param {Error} err
- * @param {string} stdout
+ * @param {string} sdkPath
  */
 
 /**
@@ -366,6 +376,9 @@ function readModulesMetadataFromCache(cachePathAndFilename) {
  *
  * @param {String} cacheDir Path to the cache directory
  * @param {Object} builder iOSBuilder instance
+ * @param {String} builder.projectDir path to project directory
+ * @param {String} builder.xcodeTarget Active configuration name, i.e. 'Debug', 'Release'
+ * @param {String} builder.xcodeTargetOS Active SDK type, i.e. 'iphone' or 'iphonesimulator'
  * @param {Object} settings sdk settings?
  * @param {frameworkMapCallback} callback Callback function
  * @returns {void}
@@ -482,6 +495,7 @@ function getBuiltProductsRootPath(basePath, configurationName, sdkType) {
  *
  * @param  {String}   cachedir Directory where a cache file may be placed to hold pods metadata for hyperloop
  * @param  {Object}   builder  iOSBuilder
+ * @param {String} builder.projectDir path to project directory
  * @param  {generateCocoaPodsCallback} callback callback function
  * @return {void}
  */
@@ -536,3 +550,4 @@ exports.ModuleMetadata = ModuleMetadata;
 exports.getSystemFrameworks = getSystemFrameworks;
 exports.generateUserFrameworksMetadata = generateUserFrameworksMetadata;
 exports.generateCocoaPods = generateCocoaPods;
+exports.getSDKPath = getSDKPath;

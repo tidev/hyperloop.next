@@ -293,9 +293,9 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 		}
 		details.args.forEach(function (arg, i) {
 			if (utillib.isObjectType(arg.type, arg.encoding)) {
-				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i + ' =', ''));
+				code.push('\t\t' + utillib.getObjCReturnResult(metabase, arg, 'arg' + i, 'id _arg' + i + ' =', ''));
 			} else {
-				code.push('\t\t' + utillib.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i + ' ='));
+				code.push('\t\t' + utillib.getObjCReturnResult(metabase, arg, 'arg' + i, 'id _arg' + i + ' ='));
 			}
 			args.push('_arg' + i);
 		});
@@ -498,7 +498,7 @@ function addMigrationHelpIfNeeded(state, node) {
 
 	var migratableMethod = traverseUpAndFindMigratableMethod(node, migrationTable);
 	if (migratableMethod !== null) {
-	 	var entryExists = state.needMigration.some(function (m) {
+		var entryExists = state.needMigration.some(function (m) {
 			return m.label === migratableMethod.label && m.line === migratableMethod.line;
 		});
 		if (!entryExists) {
@@ -559,6 +559,10 @@ function traverseUpAndFindMigratableMethod(node, migrationTable) {
 
 /**
  * parse a buf of JS into a state object
+ * @param {string|Buffer} buf source code
+ * @param {string} fn filename
+ * @param {ParserState} state parser state
+ * @return {ParserState|null}
  */
 Parser.prototype.parse = function (buf, fn, state) {
 	if (!buf || !buf.length) {
@@ -661,7 +665,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	};
 	traverse(ast, ASTWalker);
 
-	var code;
+	let code;
 	// re-generate if it changed, otherwise we can skip and use original content
 	if (mutated) {
 		code = generate(ast, {}).code;
@@ -772,8 +776,8 @@ function toJSObject(ref, node, def) {
 				return findVariableDefinition(ref, node.name, node.name);
 			}
 			case 'BinaryExpression': {
-				var left = toJSObject(ref, node.left);
-				var right = toJSObject(ref, node.right);
+				const left = toJSObject(ref, node.left);
+				const right = toJSObject(ref, node.right);
 				return left + right;
 			}
 			case 'FunctionExpression':
@@ -781,8 +785,8 @@ function toJSObject(ref, node, def) {
 				return node;
 			}
 			case 'UnaryExpression': {
-				var op = node.operator;
-				var right = toJSObject(ref, node.argument);
+				const op = node.operator;
+				const right = toJSObject(ref, node.argument);
 				switch (op) {
 					case '!': {
 						return !+right;

@@ -10,7 +10,7 @@ function getBlockAsReturnVariable (name, block) {
 	return block.substring(0, i + 2) + name + block.substring(i + 2);
 }
 
-//FIXME this needs to be refactored along with the method above
+// FIXME this needs to be refactored along with the method above
 function generateBlockCallback(state, json, block, arg, tab, define) {
 	// TODO: do we need to wrap the callback in a managed object and then
 	// JS protect/unprotect?
@@ -28,10 +28,10 @@ function generateBlockCallback(state, json, block, arg, tab, define) {
 	code.push(tab + 'KrollCallback *callback = (KrollCallback *)' + arg.name + '_;');
 	code.push(tab + returnVar + ' = ^' + '(' + arglist.join(', ') + ') {');
 	block.arguments.forEach(function (arg, i) {
-		code.push(tab + '\t' + util.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i +' ='));
+		code.push(tab + '\t' + util.getObjCReturnResult(json, arg, 'arg' + i, 'id _arg' + i + ' ='));
 	});
 	code.push(tab + '\tNSArray *args = @[' + argnames.join(', ') + '];');
-	//FIXME: move to HyperloopUtils
+	// FIXME: move to HyperloopUtils
 	code.push(tab + '\t[callback call:args thisObject:nil];');
 	code.push(tab + '};');
 	return code.join('\n');
@@ -52,7 +52,7 @@ function getType(state, json, arg, argname, obj) {
 		default:
 			if (arg.type === 'block') {
 				var block = util.findBlock(json, arg.value, obj);
-				return block.returns.value + '(^' + argname+')(' + block.arguments.map(function (arg) {
+				return block.returns.value + '(^' + argname + ')(' + block.arguments.map(function (arg) {
 					return arg.value;
 				}).join(', ') + ')';
 			}
@@ -68,10 +68,10 @@ function addImport(state, json, type, value, encoding) {
 		case 'obj_interface': {
 			if (util.isProtocol(value)) {
 				var name = util.getProtocolClass(value);
-				//TODO: need to lookup protocols
+				// TODO: need to lookup protocols
 				break;
 			}
-			value = value.replace(/\*/g,'').trim();
+			value = value.replace(/\*/g, '').trim();
 			if (value in json.classes) {
 				var cls = json.classes[value];
 				state.frameworks[cls.framework] = 1;
@@ -80,7 +80,7 @@ function addImport(state, json, type, value, encoding) {
 			break;
 		}
 		case 'struct': {
-			//TODO
+			// TODO
 			break;
 		}
 	}
@@ -88,7 +88,8 @@ function addImport(state, json, type, value, encoding) {
 
 // TODO: Move to template!
 function generateBlockWrapper(state, json, block) {
-	var code = [], argnames = [];
+	var code = [],
+		argnames = [];
 	var name = generateBlockMethodName(block.signature);
 	code.push('+ (id) ' + name + ':(KrollCallback *) callback {');
 	var args = block.arguments.map(function (arg, i) {
@@ -97,7 +98,7 @@ function generateBlockWrapper(state, json, block) {
 			addImport(state, json, arg.type, arg.value, arg.encoding);
 			return getType(state, json, arg, 'arg' + i, state);
 		}
-	}).filter(function(n) { return !!n; });
+	}).filter(function (n) { return !!n; });
 	if (args.length) {
 		code.push('\treturn [^(' + args.join(', ') + ') {');
 	} else {
@@ -108,9 +109,9 @@ function generateBlockWrapper(state, json, block) {
 	if (argnames.length) {
 		block.arguments.forEach(function (arg, i) {
 			if (util.isObjectType(arg.type, arg.encoding)) {
-				code.push('\t\t\t' + util.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i +' =', ''));
+				code.push('\t\t\t' + util.getObjCReturnResult(json, arg, 'arg' + i, 'id _arg' + i + ' =', ''));
 			} else {
-				code.push('\t\t\t' + util.getObjCReturnResult(arg, 'arg' + i, 'id _arg' + i +' ='));
+				code.push('\t\t\t' + util.getObjCReturnResult(json, arg, 'arg' + i, 'id _arg' + i + ' ='));
 			}
 		});
 		code.push('\t\t\targs = @[' + argnames.join(', ') + '];');

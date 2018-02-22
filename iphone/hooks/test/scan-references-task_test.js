@@ -19,20 +19,23 @@ const noopBunyanLogger = {
 describe('ScanReferencesTask', function () {
 	let frameworks = new Map();
 	let sdkPath;
-	let minVersion;
+	const minVersion = '9.0';
 
 	this.timeout(10000);
 
 	before(done => {
-		hm.frameworks.getSystemFrameworks(buildDir, 'iphonesimulator', '9.0', function (err, frameworkMap) {
+		hm.frameworks.getSDKPath('iphonesimulator', (err, foundSDKPath) => {
 			if (err) {
 				return done(err);
 			}
-			frameworks = frameworkMap;
-			const metadata = frameworkMap.get('$metadata');
-			sdkPath = metadata.sdkPath;
-			minVersion = metadata.minVersion;
-			done();
+			hm.frameworks.getSystemFrameworks(buildDir, foundSDKPath, function (err, frameworkMap) {
+				if (err) {
+					return done(err);
+				}
+				frameworks = frameworkMap;
+				sdkPath = foundSDKPath;
+				done();
+			});
 		});
 	});
 

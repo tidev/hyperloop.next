@@ -2,7 +2,9 @@
  * Hyperloop Metabase Generator
  * Copyright (c) 2015 by Appcelerator, Inc.
  */
-var path = require('path'),
+'use strict';
+
+const path = require('path'),
 	fs = require('fs'),
 	chalk = require('chalk'),
 	ejs = require('ejs'),
@@ -38,7 +40,7 @@ function generateTemplate (type, detail) {
 }
 
 function cleanupClassName (name) {
-	return name.replace(/\*/g,'').trim();
+	return name.replace(/\*/g, '').trim();
 }
 
 function isPrimitive(type) {
@@ -117,7 +119,7 @@ function isPointerEncoding (encoding) {
 function getStructNameFromEncoding (encoding) {
 	if (encoding && encoding.charAt(0) === '{') {
 		var i = encoding.indexOf('=');
-		return encoding.substring(1, i).replace(/^_+/,'').trim();
+		return encoding.substring(1, i).replace(/^_+/, '').trim();
 	}
 }
 
@@ -187,10 +189,10 @@ function getResultWrapper (state, json, obj, instance) {
 			} else if (cls === 'void') {
 				return '';
 			} else if (isBlock(value)) {
-				//FIXME:
+				// FIXME:
 				return '';
 			} else if (isFunctionPointer(value)) {
-				//FIXME:
+				// FIXME:
 				return '';
 			} else if (isPointerEncoding(obj.encoding)) {
 				return '';
@@ -223,7 +225,7 @@ function getResultWrapper (state, json, obj, instance) {
 					addImport(state, cls, json.classes[cls]);
 					return newPrefix(state, cls);
 				}
-				logger.warn("couldn't find class", value, JSON.stringify(obj));
+				logger.warn('couldn\'t find class', value, JSON.stringify(obj));
 				cls = 'NSObject';
 				addImport(state, cls, json.classes[cls]);
 				return newPrefix(state, cls);
@@ -243,7 +245,7 @@ function getResultWrapper (state, json, obj, instance) {
 		case 'struct': {
 			name = getStructNameFromEncoding(obj.encoding) || name;
 			if (name === '?') {
-				//TODO:
+				// TODO:
 				return '';
 			}
 			struct = json.structs[name];
@@ -254,19 +256,19 @@ function getResultWrapper (state, json, obj, instance) {
 			return '';
 		}
 		case 'union': {
-			//FIXME: not currently handled
+			// FIXME: not currently handled
 			return '';
 		}
 		case 'record': {
 			if (value.indexOf('struct ') === 0) {
-				name = value.substring(7).replace(/^_+/,'').trim();
+				name = value.substring(7).replace(/^_+/, '').trim();
 				struct = json.structs[name];
 				if (struct) {
 					// console.log('!!struct resolved to', struct);
 					addImport(state, name, struct);
 					return newPrefix(state, name);
 				} else {
-					logger.warn("Couldn't resolve struct:", value);
+					logger.warn('Couldn\'t resolve struct:', value);
 				}
 			}
 			if (value.indexOf('union ') === 0) {
@@ -286,16 +288,16 @@ function getResultWrapper (state, json, obj, instance) {
 				// console.log('!!typedef resolved to', typedef);
 				return getResultWrapper(state, json, typedef, instance);
 			} else {
-				logger.warn("Couldn't resolve typedef:", value);
+				logger.warn('Couldn\'t resolve typedef:', value);
 			}
 			break;
 		}
 		case 'block': {
-			//FIXME: not yet implemented
+			// FIXME: not yet implemented
 			return '';
 		}
 		case 'function_callback': {
-			//FIXME: not yet implemented
+			// FIXME: not yet implemented
 			return '';
 		}
 		case 'unknown': {
@@ -310,7 +312,7 @@ function getResultWrapper (state, json, obj, instance) {
 			}
 		}
 	}
-	logger.warn('Not sure how to handle: name=', name, 'type=', type, 'value=',value);
+	logger.warn('Not sure how to handle: name=', name, 'type=', type, 'value=', value);
 	return '';
 }
 
@@ -350,7 +352,7 @@ function generateMethodBody (state, json, method, preamble, instance, thisobj, a
 		end = wrapper ? ')' : '';
 		result += wrapper;
 	}
-	var arglist = generateArgList(state,json,method.arguments,'[',']','null');
+	var arglist = generateArgList(state, json, method.arguments, '[', ']', 'null');
 	if (argCallback) {
 		arglist = argCallback(arglist);
 	}
@@ -361,7 +363,7 @@ function generateMethodBody (state, json, method, preamble, instance, thisobj, a
 			var framework = method.framework;
 			var name = arg.name;
 			preamble.push('\t// convert to block: ' + block.signature);
-			preamble.push('\tvar _' + name +'Callback = function () {');
+			preamble.push('\tvar _' + name + 'Callback = function () {');
 			preamble.push('\t\tvar args = [];');
 			preamble.push('\t\t// convert arguments into local JS classes');
 			if (!block.arguments) {
@@ -369,30 +371,30 @@ function generateMethodBody (state, json, method, preamble, instance, thisobj, a
 				process.exit(1);
 			}
 			block.arguments.forEach(function (ba, i) {
-				preamble.push('\t\tif (arguments.length > ' +i + ' && arguments[' + i + '] !== null) {');
+				preamble.push('\t\tif (arguments.length > ' + i + ' && arguments[' + i + '] !== null) {');
 				var wrapper = getResultWrapper(state, json, ba, instance);
-				preamble.push('\t\t\targs.push(' +  wrapper + 'arguments[' + i + ']' + (wrapper ? ')': '') + ');');
+				preamble.push('\t\t\targs.push(' +  wrapper + 'arguments[' + i + ']' + (wrapper ? ')' : '') + ');');
 				preamble.push('\t\t} else {');
 				preamble.push('\t\t\targs.push(null);');
 				preamble.push('\t\t}');
 			});
 			preamble.push('\t\t_' + name + ' && _' + name + '.apply(_' + name + ', args);');
 			preamble.push('\t};');
-			preamble.push('\tvar _' + name + 'Block = $dispatch(Hyperloop.createProxy({ class: \'Hyperloop' + framework+'\', alloc: false, init: \'class\' }), \'' + blockName+':\', [_' + name +'Callback], false);');
+			preamble.push('\tvar _' + name + 'Block = $dispatch(Hyperloop.createProxy({ class: \'Hyperloop' + framework + '\', alloc: false, init: \'class\' }), \'' + blockName + ':\', [_' + name + 'Callback], false);');
 			var pref = instance ? 'this' : state.class.name;
 			preamble.push('\t' + pref + '.$private.' + method.name + '_' + name + ' = _' + name + ';');
 			preamble.push('\t' + pref + '.$private.' + method.name + '_' + name + 'Callback = _' + name + 'Callback;');
 			arg.blockname = name + 'Block';
 			arg.isBlock = true;
 			// re-generate the arg list with the new argument name
-			arglist = generateArgList(state,json,method.arguments,'[',']','null');
+			arglist = generateArgList(state, json, method.arguments, '[', ']', 'null');
 			if (argCallback) {
 				arglist = argCallback(arglist);
 			}
 		}
 	});
 	var fnname = method.selector || method.name;
-	var nativeCall = '\t\t\tvar result = $dispatch(' + thisobj + ', \''+ fnname + '\', ' + arglist +', ' + instance + ');';
+	var nativeCall = '\t\t\tvar result = $dispatch(' + thisobj + ', \'' + fnname + '\', ' + arglist + ', ' + instance + ');';
 	if (!wrapper) {
 		return nativeCall;
 	}
@@ -429,7 +431,7 @@ function toValue (encoding, type) {
 		case 'S':
 			return 'unsignedShortValue';
 	}
-	logger.error("Can't convert encoding: "+encoding +", type: "+type);
+	logger.error('Can\'t convert encoding: ' + encoding + ', type: ' + type);
 	process.exit(1);
 }
 
@@ -448,7 +450,7 @@ function toValueDefault(encoding, type) {
 			return '0';
 		case 'C':
 		case 'c':
-			return "'\\0'";
+			return '\'\\0\'';
 		case 'B':
 			return 'NO';
 		case '@':
@@ -457,12 +459,26 @@ function toValueDefault(encoding, type) {
 		case '^':
 			return 'nil';
 	}
-	logger.error("Can't convert encoding: "+encoding +", type: "+type);
+	logger.error('Can\'t convert encoding: ' + encoding + ', type: ' + type);
 	process.exit(1);
 }
 
-function getObjCReturnType (value) {
+/**
+ * [getObjCReturnType description]
+ * @param  {object} value [description]
+ * @param  {string} value.type [description]
+ * @param {object} json metabase
+ * @return {string}
+ */
+function getObjCReturnType(value, json) {
 	switch (value.type) {
+		case 'typedef': {
+			const typedef = json.typedefs[value.value];
+			if (!typedef) {
+				throw new Error('Unable to find typedef in metabase: ' + value.value);
+			}
+			return getObjCReturnType(typedef, json);
+		}
 		case 'unknown':
 		case 'enum':
 		case 'pointer':
@@ -476,6 +492,15 @@ function getObjCReturnType (value) {
 		case 'record': {
 			if (!value.value) {
 				return 'void *';
+			}
+			// How do we handle a case where the value is "struct CGAffineTransform"?
+			if (value.value.indexOf('struct ') === 0) {
+				const structName = value.value.substring(7).replace(/^_+/, '').trim();
+				const struct = json.structs[structName];
+				if (!struct) {
+					throw new Error('Unable to find struct in metabase: ' + structName);
+				}
+				return structName;
 			}
 			break;
 		}
@@ -496,16 +521,36 @@ function getObjCReturnType (value) {
 	if (isPrimitive(value.type)) {
 		return value.value || getPrimitiveValue(value.type);
 	}
-	console.log(value);
-	logger.error("cannot figure out objc return type", value);
-	process.exit(1);
+	throw new Error('cannot figure out objc return type: ' + JSON.stringify(value));
+	// console.log(value);
+	// logger.error('cannot figure out objc return type', value);
+	// process.exit(1);
 }
 
-function getObjCReturnResult (value, name, returns, asPointer) {
+/**
+ * [getObjCReturnResult description]
+ * @param  {object} json metabase
+ * @param  {object} value     [description]
+ * @param  {string} value.filename     [description]
+ * @param  {string} value.framework     [description]
+ * @param  {string} value.type     [description]
+ * @param  {string} value.value     [description]
+ * @param  {string} name      [description]
+ * @param  {string} returns   [description]
+ * @param  {boolean} asPointer [description]
+ * @return {string}           [description]
+ */
+function getObjCReturnResult(json, value, name, returns, asPointer) {
+	if (value.type === 'typedef') {
+		const typedef = json.typedefs[value.value];
+		if (!typedef) {
+			throw new Error('Was unable to find typedef in metabase: ' + value.value);
+		}
+		return getObjCReturnResult(json, typedef, name, returns, asPointer);
+	}
 	name = name || 'result$';
 	returns = returns || 'return';
 	asPointer = asPointer === undefined ? '&' : asPointer;
-	var fn;
 	switch (value.type) {
 		case 'unknown':
 		case 'union':
@@ -520,7 +565,7 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 		}
 		case 'struct': {
 			if (value.framework && value.filename) {
-				fn = path.basename(value.filename).replace(/\.h$/,'');
+				const fn = path.basename(value.filename).replace(/\.h$/, '');
 				return returns + ' [HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ') framework:@"' + value.framework + '" classname:@"' + fn + '"];';
 			}
 			return returns + ' [HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ')];';
@@ -529,6 +574,20 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 			if (!value.value) {
 				return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + name + ' encoding:@encode(void *)];';
 			}
+			// How do we handle a case where the value is "struct CGAffineTransform"?
+			if (value.value.indexOf('struct ') === 0) {
+				const structName = value.value.substring(7).replace(/^_+/, '').trim();
+				const struct = json.structs[structName];
+				if (!struct) {
+					throw new Error('Unable to find struct in metabase: ' + structName);
+				}
+				return getObjCReturnResult(json, {
+					filename: value.filename,
+					framework: value.framework,
+					type: 'struct',
+					value: structName
+				}, name, returns, asPointer);
+			}
 			break;
 		}
 		case 'id':
@@ -536,30 +595,26 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 		case 'obj_interface':
 		case 'objc_pointer': {
 			if (value.framework && value.filename) {
-				fn = path.basename(value.filename).replace(/\.h$/,'');
-				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name +' encoding:@encode(id) framework:@"' + value.framework + '" classname:@"' + fn + '"];';
-			} else {
-				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name +' encoding:@encode(id)];';
+				const fn = path.basename(value.filename).replace(/\.h$/, '');
+				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name + ' encoding:@encode(id) framework:@"' + value.framework + '" classname:@"' + fn + '"];';
 			}
-			break;
+			return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name + ' encoding:@encode(id)];';
 		}
 		case 'Class': {
 			if (value.framework && value.filename) {
-				fn = path.basename(value.filename).replace(/\.h$/,'');
-				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name +' encoding:@encode(Class) framework:@"' + value.framework + '" classname:@" ' + fn + '"];';
-			} else {
-				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name +' encoding:@encode(Class)];';
+				const fn = path.basename(value.filename).replace(/\.h$/, '');
+				return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name + ' encoding:@encode(Class) framework:@"' + value.framework + '" classname:@" ' + fn + '"];';
 			}
-			break;
+			return returns + ' (' + name + ' == nil || [(id)' + name + ' isEqual:[NSNull null]]) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + name + ' encoding:@encode(Class)];';
 		}
 		case 'SEL': {
-			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name +' encoding:@encode(SEL)];';
+			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name + ' encoding:@encode(SEL)];';
 		}
 		case 'void': {
 			return returns + ' nil;';
 		}
 		case 'block': {
-			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name +' encoding:"' + value.encoding + '"];';
+			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name + ' encoding:"' + value.encoding + '"];';
 		}
 	}
 	if (isPrimitive(value.type)) {
@@ -575,11 +630,11 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 			case 'q':
 				return returns + ' [NSNumber numberWithLongLong:' + name + '];';
 			case 'c':
-				return returns + ' [NSNumber numberWithChar:'+ name + '];';
+				return returns + ' [NSNumber numberWithChar:' + name + '];';
 			case 's':
 				return returns + ' [NSNumber numberWithShort:' + name + '];';
 			case 'B':
-				return returns + ' [NSNumber numberWithBool:'+ name + '];';
+				return returns + ' [NSNumber numberWithBool:' + name + '];';
 			case 'L':
 				return returns + ' [NSNumber numberWithUnsignedLong:' + name + '];';
 			case 'Q':
@@ -594,9 +649,10 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 				return returns + ' [NSString stringWithUTF8String:' + name + '];';
 		}
 	}
-	console.log(value);
-	logger.error("cannot figure out objc return result", value);
-	process.exit(1);
+	throw new Error('cannot figure out objc return result: ' + JSON.stringify(value));
+	// console.log(value);
+	// logger.error('cannot figure out objc return result', value);
+	// process.exit(1);
 }
 
 function generateImport (name, fp) {
@@ -618,10 +674,10 @@ function makeImports (json, imports) {
 			var fp = (e.framework + '/' + k).toLowerCase();
 			results.push(generateImport(k, fp));
 		} else if (e.filename) {
-			//TODO:
+			// TODO:
 			results.push(generateImport(k, e.filename));
 		} else {
-			logger.warn("Can't figure out how to import", k, e);
+			logger.warn('Can\'t figure out how to import', k, e);
 		}
 	});
 	return results.join('\n');
@@ -631,10 +687,10 @@ function generatePropGetter (state, json, prop, name) {
 	var wrapper = getResultWrapper(state, json, prop, true);
 	var endsep = wrapper ? ')' : '';
 	name = name || 'this.$native';
-	return  '\tget: function () {\n' +
-			repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
-			repeat('\t', 5) + 'return ' + wrapper + '$dispatch(' + name + ', \'' + (prop.selector || prop.name) + '\')' + endsep + ';\n' +
-			repeat('\t', 4) + '}';
+	return  '\tget: function () {\n'
+			+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
+			+ repeat('\t', 5) + 'return ' + wrapper + '$dispatch(' + name + ', \'' + (prop.selector || prop.name) + '\')' + endsep + ';\n'
+			+ repeat('\t', 4) + '}';
 }
 
 function generateSetterSelector (name) {
@@ -643,15 +699,15 @@ function generateSetterSelector (name) {
 
 function generatePropSetter (state, json, prop, name) {
 	name = name || 'this.$native';
-	return  'set: function (_' + prop.name + ') {\n' +
-			repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
-			repeat('\t', 5) + 'this.$private.'+prop.name+' = _'+prop.name+';\n' +
-			repeat('\t', 5) + '$dispatch(' + name + ', \'' + generateSetterSelector(prop.name) + '\', _' + prop.name + ');\n' +
-			repeat('\t', 4) + '}';
+	return  'set: function (_' + prop.name + ') {\n'
+			+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
+			+ repeat('\t', 5) + 'this.$private.' + prop.name + ' = _' + prop.name + ';\n'
+			+ repeat('\t', 5) + '$dispatch(' + name + ', \'' + generateSetterSelector(prop.name) + '\', _' + prop.name + ');\n'
+			+ repeat('\t', 4) + '}';
 }
 
 function generateProp (state, json, prop, readonly, name) {
-	var result = {name:prop.name};
+	var result = { name: prop.name };
 	result.getter = generatePropGetter(state, json, prop, name);
 	if (!readonly && (!prop.attributes || prop.attributes.indexOf('readonly') < 0)) {
 		var sep = repeat('\t', 4);
@@ -670,7 +726,7 @@ function generateProp (state, json, prop, readonly, name) {
  * @return {Object} View model used inside the class tempalte
  */
 function generateClassProperty(templateVariables, metabase, propertyMeta) {
-	var viewModel = {name: propertyMeta.name};
+	var viewModel = { name: propertyMeta.name };
 	viewModel.getter = generateClassPropertyGetter(templateVariables, metabase, propertyMeta);
 	if (!propertyMeta.attributes || propertyMeta.attributes.indexOf('readonly') < 0) {
 		viewModel.setter = generateClassPropertySetter(templateVariables, metabase, propertyMeta);
@@ -689,10 +745,10 @@ function generateClassProperty(templateVariables, metabase, propertyMeta) {
 function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) {
 	var wrapper = getResultWrapper(templateVariables, metabase, propertyMeta, false);
 	var endsep = wrapper ? ')' : '';
-	return '\tget: function () {\n' +
-		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
-		repeat('\t', 5) + 'return ' + wrapper + '$dispatch($class, \'' + (propertyMeta.selector || propertyMeta.name) + '\', null, true)' + endsep + ';\n' +
-		repeat('\t', 4) + '}';
+	return '\tget: function () {\n'
+		+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
+		+ repeat('\t', 5) + 'return ' + wrapper + '$dispatch($class, \'' + (propertyMeta.selector || propertyMeta.name) + '\', null, true)' + endsep + ';\n'
+		+ repeat('\t', 4) + '}';
 }
 
 /**
@@ -704,11 +760,11 @@ function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) 
  * @return {string} Code for the setter
  */
 function generateClassPropertySetter(templateVariables, metabase, propertyMeta) {
-	return repeat('\t', 4) + 'set: function (_' + propertyMeta.name + ') {\n' +
-		repeat('\t', 5) + 'if (!$init) { $initialize(); }\n' +
-		repeat('\t', 5) + 'this.$private.' + propertyMeta.name + ' = _' + propertyMeta.name + ';\n' +
-		repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(propertyMeta.name) + '\', _' + propertyMeta.name + ', true);\n' +
-		repeat('\t', 4) + '}';
+	return repeat('\t', 4) + 'set: function (_' + propertyMeta.name + ') {\n'
+		+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
+		+ repeat('\t', 5) + 'this.$private.' + propertyMeta.name + ' = _' + propertyMeta.name + ';\n'
+		+ repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(propertyMeta.name) + '\', _' + propertyMeta.name + ', true);\n'
+		+ repeat('\t', 4) + '}';
 }
 
 function createFakeFieldStruct (prop) {
@@ -732,15 +788,15 @@ function generateFieldGetter (state, json, prop, index) {
 		var code = [];
 		var indent = repeat('\t', 5);
 		code.push('get: function () {');
-		code.push(indent + 'return this.$' + prop.name +';');
+		code.push(indent + 'return this.$' + prop.name + ';');
 		code.push(repeat('\t', 4) + '}');
 		return code.join('\n');
 	} else {
 		var wrapper = getResultWrapper(state, json, prop, true);
 		var endsep = wrapper ? ')' : '';
-		return  'get: function () {\n' +
-				repeat('\t', 5) + 'return ' + wrapper + '$dispatch(this.$native, \'valueAtIndex:\', ' + index + ')' + endsep + ';\n' +
-				repeat('\t', 4) + '}';
+		return  'get: function () {\n'
+				+ repeat('\t', 5) + 'return ' + wrapper + '$dispatch(this.$native, \'valueAtIndex:\', ' + index + ')' + endsep + ';\n'
+				+ repeat('\t', 4) + '}';
 	}
 }
 
@@ -754,7 +810,7 @@ function generateFieldSetter (state, json, prop, index) {
 			// create a fake field struct
 			otherStruct = createFakeFieldStruct(prop);
 		} else {
-			subWrapper = getResultWrapper(state, json, {name:otherStruct.name, type:'struct'}, true);
+			subWrapper = getResultWrapper(state, json, { name: otherStruct.name, type: 'struct' }, true);
 		}
 		var code = [];
 		var indent = repeat('\t', 5);
@@ -766,38 +822,40 @@ function generateFieldSetter (state, json, prop, index) {
 		code.push(repeat('\t', 4) + '}');
 		return code.join('\n');
 	} else {
-		return  'set: function (_' + prop.name + ') {\n' +
-				repeat('\t', 5) + '$dispatch(this.$native, \'setValue:atIndex:\', [_' + prop.name + ', ' + index + ']);\n' +
-				repeat('\t', 4) + '}';
+		return  'set: function (_' + prop.name + ') {\n'
+				+ repeat('\t', 5) + '$dispatch(this.$native, \'setValue:atIndex:\', [_' + prop.name + ', ' + index + ']);\n'
+				+ repeat('\t', 4) + '}';
 	}
 }
 
 function generateFunction (state, json, fn) {
 	fn.selector = fn.name + ':';
-	var code = [], preamble = [];
+	var code = [],
+		preamble = [];
 
 	code.push('Object.defineProperty(' + state.class.name + ', \'' + fn.name + '\', {');
-	code.push('\tvalue: function ' + generateArgList (state,json,fn.arguments,'(',')', '()') + ' {');
+	code.push('\tvalue: function ' + generateArgList(state, json, fn.arguments, '(', ')', '()') + ' {');
 	code.push('\t\tif (!$init) { $initialize(); }');
 
-	var body = generateMethodBody(state, json, fn, preamble, false, '$class', function (arg){ return '[' + arg + ']'; });
+	var body = generateMethodBody(state, json, fn, preamble, false, '$class', function (arg) { return '[' + arg + ']'; });
 	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
 
 	code.push(body);
 	code.push('\t\t\treturn result;');
 	code.push('\t},');
-	code.push('\tenumerable: false,');  //don't show in enumeration
-	code.push('\twritable: true');  //allow to be changed
+	code.push('\tenumerable: false,');  // don't show in enumeration
+	code.push('\twritable: true');  // allow to be changed
 	code.push('});');
 
 	return code.join('\n');
 }
 
 function generateInstanceMethod (state, json, method) {
-	var code = [], preamble = [];
+	var code = [],
+		preamble = [];
 
 	code.push('\tObject.defineProperty(' + state.class.name + '.prototype, \'' + method.name + '\', {');
-	code.push('\t\tvalue: function ' + generateArgList (state,json,method.arguments,'(',')', '()') + ' {');
+	code.push('\t\tvalue: function ' + generateArgList(state, json, method.arguments, '(', ')', '()') + ' {');
 
 	var body = generateMethodBody(state, json, method, preamble, true, 'this.$native');
 	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
@@ -811,9 +869,9 @@ function generateInstanceMethod (state, json, method) {
 		prefix = 'this';
 	}
 	if (method.arguments.length) {
-		code.push('\t\t\t'+prefix+'.$private.' + method.name + ' = '+prefix+'.$private.' + method.name + ' || [];');
+		code.push('\t\t\t' + prefix + '.$private.' + method.name + ' = ' + prefix + '.$private.' + method.name + ' || [];');
 		method.arguments.forEach(function (arg, i) {
-			code.push('\t\t\t'+prefix+'.$private.' + method.name + '.push(_' + arg.name + ');');
+			code.push('\t\t\t' + prefix + '.$private.' + method.name + '.push(_' + arg.name + ');');
 		});
 	}
 
@@ -824,18 +882,19 @@ function generateInstanceMethod (state, json, method) {
 		code.push('\t\t\treturn instance;');
 	}
 	code.push('\t\t},');
-	code.push('\t\tenumerable: false,');  //don't show in enumeration
-	code.push('\t\twritable: true');  //allow to be changed
+	code.push('\t\tenumerable: false,');  // don't show in enumeration
+	code.push('\t\twritable: true');  // allow to be changed
 	code.push('\t});');
 
 	return code.join('\n');
 }
 
 function generateClassMethod (state, json, method) {
-	var code = [], preamble = [];
+	var code = [],
+		preamble = [];
 
 	code.push('Object.defineProperty(' + state.class.name + ', \'' + method.name + '\', {');
-	code.push('\tvalue: function ' + generateArgList (state,json,method.arguments,'(',')', '()') + ' {');
+	code.push('\tvalue: function ' + generateArgList(state, json, method.arguments, '(', ')', '()') + ' {');
 	code.push('\t\tif (!$init) { $initialize(); }');
 	var body = generateMethodBody(state, json, method, preamble, false, 'this.$class');
 	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
@@ -847,8 +906,8 @@ function generateClassMethod (state, json, method) {
 		code.push('\t\treturn result;');
 	}
 	code.push('\t},');
-	code.push('\tenumerable: false,');  //don't show in enumeration
-	code.push('\twritable: true');  //allow to be changed
+	code.push('\tenumerable: false,');  // don't show in enumeration
+	code.push('\twritable: true');  // allow to be changed
 	code.push('});');
 
 	return code.join('\n');
@@ -907,8 +966,8 @@ function getPrimitiveValue (type) {
 }
 
 function isCharStarPointer (obj) {
-	return obj.type === 'pointer' && obj.value === 'char *' ||
-		obj.type === 'char *';
+	return obj.type === 'pointer' && obj.value === 'char *'
+		|| obj.type === 'char *';
 }
 
 function isCharStarStarPointer (obj) {
@@ -920,7 +979,8 @@ function isObject (obj) {
 }
 
 function findBlock (json, signature, fn) {
-	var c, block, blocks = json.blocks[fn.framework];
+	var c, block,
+		blocks = json.blocks[fn.framework];
 	if (blocks && blocks.length) {
 		for (c = 0; c < blocks.length; c++) {
 			block = blocks[c];
@@ -946,7 +1006,7 @@ function findBlock (json, signature, fn) {
 			}
 		}
 	}
-	console.error("Couldn't find block with signature:", signature, "for framework:", fn.framework);
+	console.error('Couldn\'t find block with signature:', signature, 'for framework:', fn.framework);
 	process.exit(1);
 }
 
@@ -976,16 +1036,36 @@ function matchBlockSignature(signature, otherSignature) {
 	return false;
 }
 
+/**
+ * [generateObjCValue description]
+ * @param  {[type]}   state   [description]
+ * @param  {object}   json    metabase
+ * @param  {[type]} fn      [description]
+ * @param  {object}   arg     [description]
+ * @param  {string}   arg.encoding     [description]
+ * @param  {string}   arg.type     [description]
+ * @param  {string}   arg.value     [description]
+ * @param  {string}   name    [description]
+ * @param  {boolean}   define  [description]
+ * @param  {string}   tab     [description]
+ * @param  {[type]}   arglist [description]
+ * @return {string}           [description]
+ */
 function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
-	var code = [];
+	const code = [];
 	tab = tab || '';
 	arglist = arglist || [];
-	var n;
 	define = define === undefined ? true : define;
-	if (isPrimitive(arg.encoding)) {
-		var type = getPrimitiveValue(arg.type);
-		arglist.push('(' + type +') ' + name);
-		code.push('\t' + (define ? type + ' ' : '') + name + ' = [' + name + '_ isEqual:[NSNull null]] ? ' + toValueDefault(arg.encoding, arg.type) + ' : [' + name + '_ ' + toValue(arg.encoding, arg.type)+'];');
+	if (arg.type === 'typedef') {
+		const typedef = json.typedefs[arg.value];
+		if (!typedef) {
+			throw new Error(`Unable to find typedef in metabase: ${arg.value}`);
+		}
+		return generateObjCValue(state, json, fn, typedef, name, define, tab, arglist);
+	} else if (isPrimitive(arg.encoding)) {
+		const type = getPrimitiveValue(arg.type);
+		arglist.push('(' + type + ') ' + name);
+		code.push('\t' + (define ? type + ' ' : '') + name + ' = [' + name + '_ isEqual:[NSNull null]] ? ' + toValueDefault(arg.encoding, arg.type) + ' : [' + name + '_ ' + toValue(arg.encoding, arg.type) + '];');
 	} else if (arg.type === 'struct' || arg.type === 'pointer' || arg.type === 'char *') {
 		if (isCharStarPointer(arg)) {
 			code.push('\t' + (define ? arg.value + ' ' : '') + name + ' = (' + arg.value + ')[[' + name + '_ stringValue] UTF8String];');
@@ -994,91 +1074,101 @@ function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
 		} else {
 			code.push('\t' + (define ? arg.value + ' ' : '') + name + ' = *(' + arg.value + '*)[(HyperloopPointer *)' + name + '_ pointerValue];');
 		}
-		arglist.push('(' + arg.value +') ' + name);
+		arglist.push('(' + arg.value + ') ' + name);
 	} else if (arg.type === 'constant_array') {
-		var ii = arg.value.indexOf('[');
+		const ii = arg.value.indexOf('[');
+		let n;
 		if (ii < 0) {
 			n = arg.value;
-			arglist.push('(' + n + ') '+ name);
+			arglist.push('(' + n + ') ' + name);
 		} else {
 			n = arg.value.substring(0, ii).trim();
-			arglist.push('(' + n +' *) ' + name);
+			arglist.push('(' + n + ' *) ' + name);
 		}
 		code.push('\t' + (define ? n + ' *' : '') + name + ' = (' + n + '*)[(HyperloopPointer *)' + name + '_ pointerValue];');
 	} else if (arg.type === 'incomplete_array') {
-		n = 'void **';
-		arglist.push('(' + n +') ' + name);
+		const n = 'void **';
+		arglist.push('(' + n + ') ' + name);
 		code.push('\t' + (define ? n + ' *' : '') + name + ' = (' + n + '*)[(HyperloopPointer *)' + name + '_ pointerValue];');
 	} else if (arg.type === 'objc_pointer' || arg.type === 'id' || arg.type === 'objc_interface') {
-		n = arg.value;
+		const n = arg.value;
 		code.push('\t' + (define ? n + ' ' : '') + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ objectValue];');
-		arglist.push('(' + n +') ' + name);
+		arglist.push('(' + n + ') ' + name);
 	} else if (arg.type === 'Class' || arg.encoding === '#') {
-		n = arg.value;
+		const n = arg.value;
 		code.push('\t' + (define ? n + ' ' : '') + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ classValue];');
-		arglist.push('(' + n +') ' + name);
+		arglist.push('(' + n + ') ' + name);
 	} else if (arg.type === 'SEL' || arg.encoding === ':') {
-		n = arg.value;
+		const n = arg.value;
 		code.push('\t' + (define ? n + ' ' : '') + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ selectorValue];');
-		arglist.push('(' + n +') ' + name);
+		arglist.push('(' + n + ') ' + name);
 	} else if (arg.type === 'block') {
-		var block = findBlock(json, arg.value, fn);
-		var js = blockgen.generateBlockCallback(state, json, block, arg, '\t', define);
+		const block = findBlock(json, arg.value, fn);
+		const js = blockgen.generateBlockCallback(state, json, block, arg, '\t', define);
 		code.push(js);
-		arglist.push('(' + arg.value +') ' + name);
+		arglist.push('(' + arg.value + ') ' + name);
 	} else if (arg.encoding.charAt(0) === '^') {
-		n = arg.value;
-		arglist.push('(' + n +') ' + name);
+		const n = arg.value;
+		arglist.push('(' + n + ') ' + name);
 		code.push('\t' + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ pointerValue];');
 	} else {
-		var found;
+		let found = false;
 		if (arg.type === 'record') {
-			var struct = json.structs[arg.value];
-			if (struct) {
-				code.push('\t' + (define ? arg.value + ' ' : '') + name + ' = *(' + arg.value + '*)[(HyperloopPointer *)' + name + '_ pointerValue];');
-				arglist.push('(' + arg.value +') ' + name);
-				found = true;
+			let structName = arg.value;
+			if (arg.value.indexOf('struct ') === 0) {
+				structName = arg.value.substring(7).replace(/^_+/, '').trim();
 			}
+			const struct = json.structs[structName];
+			if (!struct) {
+				throw new Error(`Unable to find struct in metabase: ${structName}`);
+			}
+			// recursively call
+			return generateObjCValue(state, json, fn, {
+				encoding: arg.encoding,
+				type: 'struct',
+				value: struct.name
+			}, name, define, tab, arglist);
 		} else if (/(union|vector|unexposed)/.test(arg.type)) {
-			n = arg.value;
-			arglist.push('(' + n +') ' + name);
+			const n = arg.value;
+			arglist.push('(' + n + ') ' + name);
 			code.push('\t' + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ pointerValue];');
 			found = true;
 		}
 		if (!found) {
-			logger.error("don't know how to encode:", arg);
-			process.exit(1);
+			throw new Error(`don't know how to encode: ${JSON.stringify(arg)}`);
+			// logger.error('don\'t know how to encode:', arg);
+			// process.exit(1);
 		}
 	}
 	return code.join('\n');
 }
 
 function generateObjCArgument (state, json, fn, arg, i, arglist, tab, define) {
-	var code = [];
-	var name = arg.name || 'arg' + i;
+	const code = [];
+	const name = arg.name || 'arg' + i;
 	tab = tab || '';
 	define = define === undefined ? true : define;
 	code.push('\tid ' + name + '_ = [args objectAtIndex:' + i + '];');
 	code.push(generateObjCValue(state, json, fn, arg, name, define, tab, arglist));
-	//state, json, arg, name, define, tab, arglist
+	// state, json, arg, name, define, tab, arglist
 	return tab + code.join('\n' + tab);
 }
 
 function generateObjCResult (state, json, fn, arglist, asProperty, tab) {
-	var returnCode = '';
-	var code = [];
+	let returnCode = '';
+	const code = [];
 	tab = tab || '';
 	if (fn.returns && fn.returns.type !== 'void') {
-		var returnType = getObjCReturnType(fn.returns);
+		const returnType = getObjCReturnType(fn.returns, json);
 		returnCode =  returnType + ' result$ = (' + returnType + ')';
 	}
 	if (asProperty) {
-		code.push('\t' + returnCode + fn.name +';');
+		code.push('\t' + returnCode + fn.name + ';');
 	} else {
-		code.push('\t' + returnCode + fn.name +'(' + arglist.join(', ') +');');
+		code.push('\t' + returnCode + fn.name + '(' + arglist.join(', ') + ');');
 	}
 	if (fn.returns && fn.returns.type !== 'void') {
-		code.push('\t' + getObjCReturnResult(fn.returns, 'result$'));
+		code.push('\t' + getObjCReturnResult(json, fn.returns, 'result$'));
 	} else {
 		code.push('\treturn nil;');
 	}
@@ -1115,8 +1205,8 @@ function generateObjCFunction(state, json, fn, asProperty) {
 		});
 		if (fn.variadic) {
 			for (c = fn.arguments.length; c < MAX_TIMES; c++) {
-				//TODO: need to deal with the format specifiers like NSLog
-				//TODO: handle functions that require sentinel
+				// TODO: need to deal with the format specifiers like NSLog
+				// TODO: handle functions that require sentinel
 				var arg = {
 					type: 'id',
 					value: 'id',
@@ -1125,7 +1215,7 @@ function generateObjCFunction(state, json, fn, asProperty) {
 				};
 				code.push('\tid arg' + c + ' = nil;');
 				code.push('\tif ([args count] > ' + c + ') {');
-				code.push(generateObjCArgument(state, json, fn, arg, c, arglist,'\t', false));
+				code.push(generateObjCArgument(state, json, fn, arg, c, arglist, '\t', false));
 				code.push('\t}');
 			}
 		}
@@ -1153,12 +1243,13 @@ function flattenStruct (str) {
 	var y = str.indexOf('=');
 	if (x < 0 || y < 0) {
 		// could be just {dd}
-		return str.replace(/}/g,'').replace(/{/g,'').trim();
+		return str.replace(/}/g, '').replace(/{/g, '').trim();
 	}
-	var r = str.substring(0, x) + str.substring(y+1);
+	var r = str.substring(0, x) + str.substring(y + 1);
 	var z = r.indexOf('}');
 	if (z > 0) {
-		r[z] = '';
+		// r[z] = '';
+		r = r.slice(0, z);
 	}
 	return flattenStruct(r.trim());
 }
@@ -1187,7 +1278,7 @@ function createLogger(log, level) {
 }
 
 function setLog (logFn) {
-	['info','debug','warn','error','trace'].forEach(function (level) {
+	[ 'info', 'debug', 'warn', 'error', 'trace' ].forEach(function (level) {
 		createLogger(logFn, level);
 	});
 }
@@ -1200,7 +1291,7 @@ function camelCase (string) {
 	return string.replace(/^([A-Z])|[\s-_:](\w)/g, function (match, p1, p2, offset) {
 		if (p2) { return p2.toUpperCase(); }
 		return p1.toLowerCase();
-	}).replace(/\:/g,'');
+	}).replace(/\:/g, '');
 }
 
 /**
@@ -1215,10 +1306,10 @@ function resolveArg (metabase, imports, arg) {
 					arg.framework = struct.framework;
 					arg.filename = arg.value;
 				} else {
-					logger.warn("can't find arg struct ->", arg.value);
+					logger.warn('can\'t find arg struct ->', arg.value);
 				}
 			} else {
-				logger.warn("can't resolve arg struct ->", arg.value);
+				logger.warn('can\'t resolve arg struct ->', arg.value);
 			}
 			break;
 		}

@@ -17,7 +17,12 @@ class CodeGenerator {
 	 *
 	 * @param {Object} sourceSet Set of source info objects passed to template files
 	 * @param {Object} modules Map of module info objects
-	 * @param {Object} iosBuilder iOS bulder instance
+	 * @param {Object} iosBuilder iOS builder instance
+	 * FIXME Don't pass in builder! Need:
+	 * ParserState
+	 * metabase
+	 * references
+	 * frameworks Map
 	 */
 	constructor(sourceSet, modules, iosBuilder) {
 		this.sourceSet = sourceSet;
@@ -85,7 +90,7 @@ class CodeGenerator {
 		Object.keys(this.sourceSet.classes).forEach((className) => {
 			var classInfo = this.sourceSet.classes[className];
 
-			var classMemberLists = ['class_methods', 'class_properties', 'instance_methods', 'instance_properties'];
+			var classMemberLists = [ 'class_methods', 'class_properties', 'instance_methods', 'instance_properties' ];
 			var hasClassMembers = classMemberLists.some((memberListName) => {
 				return classInfo.class[memberListName].length > 0;
 			});
@@ -195,7 +200,7 @@ class CodeGenerator {
 			var jsCode = util.generateTemplate('module', {
 				data: moduleSourceInfo
 			});
-			var classWithSameNameExists = this.json.classes[moduleInfo.name] ? true : false;
+			var classWithSameNameExists = !!this.json.classes[moduleInfo.name];
 			if (classWithSameNameExists) {
 				var classPathAndFilename = path.join(outputPath, moduleInfo.framework.toLowerCase(), moduleInfo.name.toLowerCase() + '.js');
 				var classContent = '';
@@ -230,7 +235,7 @@ class CodeGenerator {
 				mappings: this.sourceSet.customs.mappings
 			}
 		});
-		util.generateFile(outputPath, 'custom', {framework:'Hyperloop', name:'Custom'}, code, '.m');
+		util.generateFile(outputPath, 'custom', { framework: 'Hyperloop', name: 'Custom' }, code, '.m');
 	}
 
 	/**
@@ -240,11 +245,11 @@ class CodeGenerator {
 	 * @return {Boolean} True if the native wrapper should be generated, false if not
 	 */
 	doesModuleNeedsNativeWrapper(moduleInfo) {
-		return moduleInfo.class.properties.length ||
-			moduleInfo.class.class_methods.length ||
-			moduleInfo.class.obj_class_method.length ||
-			Object.keys(moduleInfo.class.static_variables).length ||
-			moduleInfo.class.blocks.length;
+		return moduleInfo.class.properties.length
+			|| moduleInfo.class.class_methods.length
+			|| moduleInfo.class.obj_class_method.length
+			|| Object.keys(moduleInfo.class.static_variables).length
+			|| moduleInfo.class.blocks.length;
 	}
 
 	/**
