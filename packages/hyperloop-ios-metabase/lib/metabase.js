@@ -117,13 +117,14 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
 		try {
 			const json = JSON.parse(fs.readFileSync(outfile));
 			json.$includes = includes;
+			util.logger.trace('Returning cached metabase from', outfile);
 			return callback(null, json, outfile, header, true);
 		} catch (e) {
 			// fall through and re-generate again
 		}
 	}
 
-	force && util.logger.trace('forcing generation of metabase to', outfile);
+	util.logger.trace('Generating metabase to', outfile);
 	generateInputHeader(header, includes);
 
 	const args = [
@@ -147,13 +148,12 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
  * @return {void}             [description]
  */
 function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, callback) {
-	let args = [
+	const args = [
 		'-i', path.resolve(header),
 		'-o', path.resolve(outfile),
 		'-sim-sdk-path', sdkPath,
 		'-min-ios-ver', iosMinVersion
-	];
-	args = args.concat(extraArgs);
+	].concat(extraArgs);
 	util.logger.trace('running', binary, 'with', args.join(' '));
 	const ts = Date.now();
 	let triedToFixPermissions = false;
@@ -252,6 +252,7 @@ function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworks
 	let metabase = {};
 	const frameworksDone = [];
 
+	const start = Date.now();
 	async.whilst(
 		function () { return frameworksToGenerate.length > 0; },
 		function (next) {
@@ -262,12 +263,17 @@ function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworks
 			// TODO: God damn it, why do we have to keep passing cache dir, sdk path, min ios version around?
 			// Can't we just bake this into the ModuleMetadata object and be done with it?
 			generateFrameworkMetabase(cacheDir, sdkPath, minVersion, framework, function (err, json) {
+				if (err) {
+					return next(err);
+				}
+				frameworksDone.push(frameworkToGenerate);
 				// we should have a metabase just for this framework now, if we could find such a framework!
 				metabase = merge(metabase, json); // merge in to a single "metabase"
 
 				const dependentHeaders = json.metadata.dependencies;
 				// extract the frameworks from dependencies!
 				const dependentFrameworks = extractFrameworksFromDependencies(dependentHeaders);
+				util.logger.trace(`Dependencies of framework ${frameworkToGenerate}: ${Array.from(dependentFrameworks)}`);
 				dependentFrameworks.forEach(dependency => {
 					// Add to our todo list if we haven't already done it and it's not already on our todo list
 					if (!frameworksDone.includes(dependency) && !frameworksToGenerate.includes(dependency)) {
@@ -281,6 +287,7 @@ function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworks
 			if (err) {
 				return callback(err);
 			}
+			util.logger.trace(`Took ${Date.now() - start}ms to generate unified metabase from frameworks: ${JSON.stringify(frameworksDone)}`);
 			return callback(null, metabase);
 		}
 	);

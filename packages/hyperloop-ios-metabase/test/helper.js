@@ -83,7 +83,7 @@ function generate(input, output, callback, excludeSystemAPIs) {
 			child.stderr.on('data', function (buf) { // eslint-disable-line
 				// process.stderr.write(buf);
 			});
-			child.stdout.on('data', function (buf) { // eslint-disable line
+			child.stdout.on('data', function (buf) { // eslint-disable-line
 				// process.stdout.write(buf);
 			});
 			child.on('close', function (e) {

@@ -2,37 +2,44 @@
 'use strict';
 
 const should = require('should'),
+	path = require('path'),
 	helper = require('./helper'),
 	swift = require('../lib/swift'),
+	metabase = require('../lib/metabase'),
 	frameworks = require('../lib/frameworks');
 
 describe('swift', function () {
+	const minVersion = '9.0';
+	const sdkType = 'iphonesimulator';
+	const tmpdir = path.join(__dirname, 'tmp'); // Re-use same cache dir for the suite
 	let sdkdir,
 		frameworkMap;
+
+	this.timeout(10000);
 
 	before(function (done) {
 		this.timeout(20000);
 		// turn off trace logging
 		require('../lib/util').setLog({ trace: () => {} });
-		helper.getSimulatorSDK(function (err, sdk) {
+		helper.getSimulatorSDK((err, sdk) => {
 			if (err) {
 				return done(err);
 			}
 			sdkdir = sdk.sdkdir;
-			const tmpdir = helper.getTempDir();
-			frameworks.getSystemFrameworks(tmpdir, sdkdir, function (err, frameworks) {
+			frameworks.getSystemFrameworks(tmpdir, sdkdir, (err, frameworks) => {
 				if (err) {
 					return done(err);
 				}
 				frameworkMap = frameworks;
-				done();
+				// Pre-generate a unified metabase for UIKit and dependencies
+				metabase.unifiedMetabase(tmpdir, sdkdir, minVersion, frameworkMap, [ 'UIKit' ], done);
 			});
 		});
 	});
 
-	it('should generate swift class', function (done) {
+	it('should generate swift class', done => {
 		const swiftFiles = [ helper.getFixture('simple_class.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -51,9 +58,9 @@ describe('swift', function () {
 		});
 	});
 
-	it('should not generate private swift class', function (done) {
+	it('should not generate private swift class', done => {
 		const swiftFiles = [ helper.getFixture('private_class.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result.imports).be.eql([ 'UIKit' ]);
@@ -62,9 +69,9 @@ describe('swift', function () {
 		});
 	});
 
-	it('should handle syntax error', function (done) {
+	it('should handle syntax error', done => {
 		const swiftFiles = [ helper.getFixture('syntaxerror.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err) {
 			should(err).be.ok;
 			should(err.message).be.equal('Swift file at ' + helper.getFixture('syntaxerror.swift') + ' has compiler problems. Please check to make sure it compiles OK.');
 			done();
@@ -72,9 +79,9 @@ describe('swift', function () {
 	});
 
 	// FIXME: CGRectMake is explicitly unavailable
-	it.skip('should generate swift class with functions', function (done) { // eslint-disable-line
+	it('should generate swift class with functions', done => { // eslint-disable-line
 		const swiftFiles = [ helper.getFixture('class_functions.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -142,9 +149,9 @@ describe('swift', function () {
 		});
 	});
 
-	it('should generate swift class with properties', function (done) {
+	it('should generate swift class with properties', done => {
 		const swiftFiles = [ helper.getFixture('class_properties.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('classes');
@@ -178,7 +185,7 @@ describe('swift', function () {
 	it('should generate framework metabase from multiple swift files', function (done) {
 		this.timeout(30000);
 		const swiftFiles = [ helper.getFixture('simple_class.swift'), helper.getFixture('class_properties.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, helper.getTempDir(), sdkdir, '9.0', 'iphonesimulator', swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdkdir, minVersion, sdkType, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 
 			should(result).be.an.object;
