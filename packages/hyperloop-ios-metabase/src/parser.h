@@ -99,7 +99,6 @@ namespace hyperloop {
 			bool isFrameworkLocation (const std::string& location);
 			bool excludeLocation (const std::string& location);
 			inline const std::set<std::string> getDependentFrameworks() const { return dependencies; }
-			inline const std::set<std::string> getFileListing() const { return files; }
 		private:
 			std::string sdkPath;
 			std::string minVersion;
@@ -111,7 +110,6 @@ namespace hyperloop {
 			Definition* previous;
 			Definition* current;
 			std::set<std::string> dependencies;
-			std::set<std::string> files;
 	};
 
 	/**

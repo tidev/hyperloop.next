@@ -169,14 +169,6 @@ namespace hyperloop {
 			}
 		}
 
-		metadata["files"] = Json::Value(Json::arrayValue);
-		auto files = context->getFileListing();
-		if (files.size() > 0) {
-			for (auto d : files) {
-				metadata["files"].append(d);
-			}
-		}
-
 		auto t = std::time(NULL);
 		char mbstr[100];
 		if (std::strftime(mbstr, sizeof(mbstr), "%FT%TZ", std::gmtime(&t))) {
@@ -286,7 +278,6 @@ namespace hyperloop {
 	}
 
 	bool ParserContext::excludeLocation (const std::string &location) {
-		files.insert(location);
 		if (this->filterToSingleFramework()) {
 			bool isCoreFoundation = this->getFrameworkFilter().find("/CoreFoundation.framework") != std::string::npos;
 			if (isCoreFoundation) {
@@ -300,16 +291,11 @@ namespace hyperloop {
 			}
 			return !this->isFrameworkLocation(location);
 		}
-
-		return this->excludeSystemAPIs() && this->isSystemLocation(location);
+		// if we're excluding "system" apis, exclude /usr/lib, /usr/include and system framework paths
+		return this->excludeSystemAPIs() && (this->isSystemLocation(location) || location.find(this->getSDKPath()) != std::string::npos);
 	}
 
 	bool ParserContext::isSystemLocation (const std::string &location) const {
-		// SDK Path is in every system framework. Not helpful for determine if it's a non-framework system path!
-		// if (location.find(this->getSDKPath()) != std::string::npos) {
-		// 	return true;
-		// }
-
 		if (location.find("/usr/include/") != std::string::npos) {
 			return true;
 		}
