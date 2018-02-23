@@ -13,6 +13,8 @@ describe('metabase', () => {
 	const minVersion = '9.0';
 
 	before(done => {
+		// Shut the logger up!
+		require('../lib/util').setLog({ trace: function () {} });
 		frameworks.getSDKPath('iphonesimulator', (err, foundSDKPath) => {
 			if (err) {
 				return done(err);
@@ -105,24 +107,6 @@ describe('metabase', () => {
 		});
 	});
 
-	describe('#generateMetabase()', () => {
-		it('should generate metabase for a given header and all dependencies', () => {
-			// Include UIKit's "umbrella" header
-			const includes = [ path.join(sdkPath, 'System/Library/Frameworks/UIKit.framework/Headers/UIKit.h') ];
-			metabase.generateMetabase(tmpDir, 'iphonesimulator', sdkPath, minVersion, includes, false, (err, json) => {
-				should(err).not.be.ok;
-				should(json).be.ok;
-
-				// console.log(JSON.stringify(json));
-				should(json.classes).have.property('CAAnimation');
-				// FIXME This pulls in UIKit, but also other frameworks it depends upon like QuartzCore
-				// Can we generate a metabase per-framework without "polluting" it with dependencies?
-				// We could post-process to remove any entries whose framework value doesn't match
-				// But do we then need to track the framework's dependencies in some way?
-			}, true);
-		});
-	});
-
 	// Add a new method to generate a single framework's metabase on the fly!
 	describe('#generateFrameworkMetabase()', () => {
 		it('should generate metabase for a single framework', () => {
@@ -146,6 +130,20 @@ describe('metabase', () => {
 
 				json.classes.should.have.property('NSObject');
 				json.protocols.should.have.property('NSObject');
+			});
+		});
+
+		it('should include system types in CoreFoundation framework', () => {
+			metabase.generateFrameworkMetabase(tmpDir, sdkPath, minVersion, systemFrameworks.get('CoreFoundation'), (err, json) => {
+				should(err).not.be.ok;
+				should(json).be.ok;
+
+				json.typedefs.should.have.property('BOOL');
+				json.typedefs.should.have.property('Boolean');
+				json.typedefs.should.have.property('Byte');
+				json.typedefs.should.have.property('Class');
+				json.typedefs.should.have.property('Float32');
+				json.typedefs.should.have.property('Float64');
 			});
 		});
 	});

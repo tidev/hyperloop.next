@@ -6,6 +6,60 @@ const chalk = require('chalk');
 const fs = require('fs-extra');
 const path = require('path');
 const util = require('./util');
+const logger = util.logger;
+const ejs = require('ejs');
+const templates = {}; // a cache to hold "compiled" ejs templates
+
+/**
+ * [generateTemplate description]
+ * @param  {string} type   template type (matches filename on disk inside templates folder)
+ * @param  {[type]} detail [description]
+ * @return {[type]}        [description]
+ */
+function generateTemplate(type, detail) {
+	let render = templates[type];
+	if (!render) {
+		const template = path.join(__dirname, 'templates', type + '.ejs');
+		const content = fs.readFileSync(template).toString();
+		render = ejs.compile(content);
+		templates[type] = render;
+	}
+	return render(detail);
+}
+
+function generateFile(dir, name, obj, out, ext) {
+	if (!obj.framework) {
+		const sourceInfo = obj.name && obj.filename ? chalk.gray(obj.name + ' from ' + obj.filename) : '';
+		logger.trace(chalk.gray('skipping non-framework'), chalk.yellow(name), sourceInfo);
+		return;
+	}
+
+	if (!obj.name) {
+		logger.debug(obj);
+		throw new Error('Invalid object passed to generateFile(), required property "name" is missing.');
+	}
+
+	if (obj.framework.indexOf('/') >= 0) {
+		obj.framework = path.basename(obj.framework);
+	}
+	logger.info(chalk.gray('Generating ' + name), chalk.green(obj.framework + '/' + obj.name));
+	const fdir = path.join(dir, obj.framework.toLowerCase());
+	const fn = path.join(fdir, obj.name.toLowerCase() + (ext || '.js'));
+	if (!fs.existsSync(fdir)) {
+		fs.mkdirSync(fdir);
+	}
+	// don't overwrite if the same content
+	if (fs.existsSync(fn)) {
+		var buf = fs.readFileSync(fn);
+		if (buf.length === out.length) {
+			if (String(buf) === out) {
+				logger.trace(chalk.gray('Skipping, already generated ... ' + path.basename(fn)));
+				return;
+			}
+		}
+	}
+	fs.writeFileSync(fn, out);
+}
 
 /**
  * A generator for Hyperloop source code files
@@ -153,11 +207,11 @@ class CodeGenerator {
 		util.logger.trace('Generating Hyperloop JS wrappers for native classes');
 		Object.keys(this.sourceSet.classes).forEach((className) => {
 			var classInfo = this.sourceSet.classes[className];
-			var code = util.generateTemplate('class', {
+			var code = generateTemplate('class', {
 				data: classInfo
 			});
 			var classMeta = classInfo.custom === true ? classInfo : this.json.classes[className];
-			util.generateFile(outputPath, 'class', classMeta, code);
+			generateFile(outputPath, 'class', classMeta, code);
 		});
 	}
 
@@ -170,10 +224,10 @@ class CodeGenerator {
 		util.logger.trace('Generating Hyperloop JS wrappers for native structs');
 		Object.keys(this.sourceSet.structs).forEach((structName) => {
 			var structInfo = this.sourceSet.structs[structName];
-			var code = util.generateTemplate('struct', {
+			var code = generateTemplate('struct', {
 				data: structInfo
 			});
-			util.generateFile(outputPath, 'struct', this.json.structs[structName], code);
+			generateFile(outputPath, 'struct', this.json.structs[structName], code);
 		});
 	}
 
@@ -191,13 +245,13 @@ class CodeGenerator {
 
 			if (this.doesModuleNeedsNativeWrapper(moduleSourceInfo)) {
 				this.convertToUmbrellaHeaderImports(moduleSourceInfo.frameworks);
-				var nativeCode = util.generateTemplate('module.m', {
+				var nativeCode = generateTemplate('module.m', {
 					data: moduleSourceInfo
 				});
-				util.generateFile(outputPath, moduleInfo.name, moduleInfo, nativeCode, '.m');
+				generateFile(outputPath, moduleInfo.name, moduleInfo, nativeCode, '.m');
 			}
 
-			var jsCode = util.generateTemplate('module', {
+			var jsCode = generateTemplate('module', {
 				data: moduleSourceInfo
 			});
 			var classWithSameNameExists = !!this.json.classes[moduleInfo.name];
@@ -210,7 +264,7 @@ class CodeGenerator {
 				classContent += jsCode;
 				fs.writeFileSync(classPathAndFilename, classContent);
 			} else {
-				util.generateFile(outputPath, moduleInfo.name, moduleInfo, jsCode);
+				generateFile(outputPath, moduleInfo.name, moduleInfo, jsCode);
 			}
 		});
 	}
@@ -228,14 +282,14 @@ class CodeGenerator {
 		this.fixCustomImports(this.state.imports);
 
 		util.logger.trace('Generating Hyperloop native helpers for custom classes');
-		var code = util.generateTemplate('custom.m', {
+		var code = generateTemplate('custom.m', {
 			data: {
 				code: this.state.gencode.join('\n'),
 				imports: this.state.imports,
 				mappings: this.sourceSet.customs.mappings
 			}
 		});
-		util.generateFile(outputPath, 'custom', { framework: 'Hyperloop', name: 'Custom' }, code, '.m');
+		generateFile(outputPath, 'custom', { framework: 'Hyperloop', name: 'Custom' }, code, '.m');
 	}
 
 	/**

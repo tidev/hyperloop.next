@@ -4,7 +4,13 @@
  */
 'use strict';
 
-function makeEnum(json, name, enumObj) {
+/**
+ * Generates the source template data for an enum file
+ * @param {string} name enum name
+ * @param {object} enumObj enum object extracted from metabase?
+ * @return {object}
+ */
+function makeEnum(name, enumObj) {
 	const entry = {
 		enumObj: {
 			name: name,
@@ -13,19 +19,13 @@ function makeEnum(json, name, enumObj) {
 		framework: enumObj.framework,
 		filename: enumObj.filename
 	};
-	Object.keys(enumObj.values).forEach(function (valueName) {
+	// Take the values and slice the enum's name prefix off it
+	Object.keys(enumObj.values).forEach(valueName => {
 		const shortened = valueName.slice(name.length);
-		entry.enumObj.values[valueName] = enumObj.values[valueName];
+		entry.enumObj.values[shortened] = enumObj.values[valueName];
 	});
 
 	return entry;
 }
 
-/**
- * Generates the source template data for an enum file
- */
-function generate(json, name, enumObj) {
-	return makeEnum(json, name, enumObj);
-}
-
-exports.generate = generate;
+exports.generate = makeEnum;

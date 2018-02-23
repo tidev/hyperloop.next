@@ -11,14 +11,51 @@ const deasync = require('deasync');
 const requireRegexp = /[\w_/\-\\.]+/ig;
 
 /**
+ * Determines whether the module required/imported is obviously not a native
+ * type reference (so we can avoid looking for a matching framework from it)
+ * @param  {String} moduleName module name from a require call/import statement
+ * @return {boolean}
+ */
+function shouldSkip(moduleName) {
+	return moduleName.startsWith('alloy/') || moduleName.charAt(0) === '.' || moduleName.charAt(0) === '/';
+}
+
+/**
+ * Is the reference to a "builtin"?
+ * TODO: Delegate to code in generate library where we handle builtins?
+ * @param  {String} frameworkName possible framework name
+ * @return {boolean}
+ */
+function isBuiltin(frameworkName) {
+	return frameworkName === 'Titanium';
+}
+
+/**
+ * Appends a value to the existing array of values for a given key in a Map.
+ * If no existing array, put the value inside an array and insert it into the Map.
+ * @param  {Map<string, string[]>} refs map of references to insert value into
+ * @param  {string} key key we're inserting value under
+ * @param  {string} value value to insert (in an array) in the map
+ */
+function appendReference(refs, key, value) {
+	if (refs.has(key)) {
+		const existing = refs.get(key);
+		existing.push(value);
+		refs.set(key, existing);
+	} else {
+		refs.set(key, [ value ]);
+	}
+}
+
+/**
  * [scanForReferences description]
  * @param  {String} contents source code of the file
  * @param  {String} filename path to the file
  * @param  {Map<string, ModuleMetadata>} frameworks [description]
- * @param  {String} cacheDir   [description]
- * @param  {String} sdkPath    [description]
- * @param  {String} minVersion [description]
- * @param  {Object} logger     [description]
+ * @param  {String} cacheDir   directory to read/write metabase cache files
+ * @param  {String} sdkPath    path to SDK to use (to generate metabase)
+ * @param  {String} minVersion minimum iOS version , i.e. '9.0'
+ * @param  {Object} logger     logger to use
  * @return {Object} Object holding 'references' key with value of
  * Map<string, string[]> (framework name -> types used), 'replacedContent' key
  * with value of updated source code after requires are replaced.
@@ -37,40 +74,7 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, mi
 	// Need to make deasync so babel AST visitor can run in sync fashion!
 	const typeExistsInFramework = deasync(asyncTypeExistsInFramework);
 
-	/**
-	 * [shouldSkip description]
-	 * @param  {String} moduleName [description]
-	 * @return {boolean}            [description]
-	 */
-	function shouldSkip(moduleName) {
-		return moduleName.startsWith('alloy/') || moduleName.charAt(0) === '.' || moduleName.charAt(0) === '/';
-	}
-
-	/**
-	 * [isBuiltin description]
-	 * @param  {String} frameworkName [description]
-	 * @return {boolean}            [description]
-	 */
-	function isBuiltin(frameworkName) {
-		return frameworkName === 'Titanium';
-	}
-
-	/**
-	 * Appends a value to the existing array of values for a given key in a Map
-	 * @param  {Map<string, string[]>} refs  [description]
-	 * @param  {string} key   [description]
-	 * @param  {string} value [description]
-	 */
-	function appendReference(refs, key, value) {
-		if (refs.has(key)) {
-			const existing = refs.get(key);
-			existing.push(value);
-			refs.set(key, existing);
-		} else {
-			refs.set(key, [ value ]);
-		}
-	}
-
+	let modified = false; // track if we made changes, so we can avoid generating new code if we didn't
 	const HyperloopVisitor = {
 		// ES5-style require calls
 		CallExpression: function (p) {
@@ -93,6 +97,7 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, mi
 
 					// replace the require to point to our generated file path
 					p.replaceWith(t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ]));
+					modified = true;
 					return;
 				}
 
@@ -136,6 +141,7 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, mi
 				// replace the require to point to our generated file path
 				const ref = 'hyperloop/' + pkg.toLowerCase() + '/' + className.toLowerCase();
 				p.replaceWith(t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ]));
+				modified = true;
 			}
 		},
 		// ES6+-style imports
@@ -197,11 +203,13 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, mi
 				});
 
 				// Apply replacements
-				if (replacements.length === 1) {
-					p.replaceWith(replacements[0]);
-				} else {
-					//
-					p.replaceWithMultiple(replacements);
+				if (replacements.length > 0) {
+					if (replacements.length === 1) {
+						p.replaceWith(replacements[0]);
+					} else {
+						p.replaceWithMultiple(replacements);
+					}
+					modified = true;
 				}
 			}
 		}
@@ -209,7 +217,8 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, mi
 
 	const ast = babylon.parse(contents, { sourceFilename: filename, sourceType: 'module' });
 	traverse(ast, HyperloopVisitor);
-	const newContents = generate(ast, {}).code;
+	// Avoid generating if we never replaced anything!
+	const newContents = modified ? generate(ast, {}).code : contents;
 
 	return {
 		references: references, // Map<string, string[]>: framework name -> types

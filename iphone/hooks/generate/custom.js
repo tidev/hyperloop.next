@@ -10,6 +10,7 @@ const babylon = require('babylon');
 const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
+const logger = utillib.logger;
 
 function Parser() {
 }
@@ -242,6 +243,46 @@ function generateIdentifier(selector, instance, cls) {
 	return utillib.generateSafeSymbol(cls.name + '_' + selector + '_' + (instance ? '1' : '0'));
 }
 
+/**
+ * attempt to resolve an argument into it's framework if possible
+ * @param {object} metabase Metabase
+ * @param {object} imports $imports
+ * @param {object} arg argument
+ */
+function resolveArg(metabase, imports, arg) {
+	switch (arg.type) {
+		case 'struct': {
+			if (arg.value in metabase.structs) {
+				const struct = metabase.structs[arg.value];
+				if (struct) {
+					arg.framework = struct.framework;
+					arg.filename = arg.value;
+				} else {
+					logger.warn('can\'t find arg struct ->', arg.value);
+				}
+			} else {
+				logger.warn('can\'t resolve arg struct ->', arg.value);
+			}
+			break;
+		}
+		case 'class':
+		case 'Class':
+		case 'id':
+		case 'objc_pointer':
+		case 'obj_interface':
+		case 'objc_interface': {
+			const name = utillib.cleanupClassName(arg.value);
+			if (name in metabase.classes) {
+				const cls = metabase.classes[name];
+				if (cls) {
+					arg.framework = cls.framework;
+					arg.filename = cls.filename || name;
+				}
+			}
+		}
+	}
+}
+
 // FIXME: Move this out to a template?
 function generateMethod(state, metabase, imports, cls, classDef, selector, encoding, instance, body) {
 	var details = parseEncoding(state, metabase, imports, encoding),
@@ -277,7 +318,7 @@ function generateMethod(state, metabase, imports, cls, classDef, selector, encod
 			arg.name = argnames[index];
 			cls.methods[methodName].arguments.push(arg);
 		}
-		utillib.resolveArg(metabase, imports, arg);
+		resolveArg(metabase, imports, arg);
 	});
 
 	if (body) {

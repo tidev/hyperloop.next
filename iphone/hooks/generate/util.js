@@ -7,9 +7,7 @@
 const path = require('path'),
 	fs = require('fs'),
 	chalk = require('chalk'),
-	ejs = require('ejs'),
 	blockgen = require('./block'),
-	templates = {},
 	logger = {
 		info: function () {
 			console.log.apply(console, arguments);
@@ -27,21 +25,6 @@ const path = require('path'),
 			console.error.apply(console, arguments);
 		}
 	};
-
-function generateTemplate (type, detail) {
-	var render = templates[type];
-	if (!render) {
-		var template = path.join(__dirname, 'templates', type + '.ejs');
-		var content = fs.readFileSync(template).toString();
-		render = ejs.compile(content);
-		templates[type] = render;
-	}
-	return render(detail);
-}
-
-function cleanupClassName (name) {
-	return name.replace(/\*/g, '').trim();
-}
 
 function isPrimitive(type) {
 	switch (type) {
@@ -116,6 +99,7 @@ function isPointerEncoding (encoding) {
 	return encoding && ((encoding.charAt(0) === '(' && encoding.indexOf('^') > 0) || encoding.charAt(0) === '^');
 }
 
+// used by util.getResultWrapper()
 function getStructNameFromEncoding (encoding) {
 	if (encoding && encoding.charAt(0) === '{') {
 		var i = encoding.indexOf('=');
@@ -145,7 +129,11 @@ function newPrefix (state, cls, noimport) {
 	}
 }
 
-function getResultWrapper (state, json, obj, instance) {
+function cleanupClassName(name) {
+	return name.replace(/\*/g, '').trim();
+}
+
+function getResultWrapper(state, json, obj, instance) {
 	var type = obj.type && obj.type.type || obj.type,
 		value = obj.type && obj.type.value || obj.value || type,
 		name = obj.name || value,
@@ -162,7 +150,7 @@ function getResultWrapper (state, json, obj, instance) {
 				return newPrefix(state, 'this.constructor', true);
 			}
 			if (cls === 'instancetype' || cls === state.class.name) {
-				var varname = 'this';
+				let varname = 'this';
 				if (instance) {
 					varname += '.constructor';
 				}
@@ -230,7 +218,6 @@ function getResultWrapper (state, json, obj, instance) {
 				addImport(state, cls, json.classes[cls]);
 				return newPrefix(state, cls);
 			}
-			break;
 		}
 		case 'id': {
 			addImport(state, 'NSObject', json.classes.NSObject);
@@ -316,11 +303,17 @@ function getResultWrapper (state, json, obj, instance) {
 	return '';
 }
 
-function repeat (ch, n) {
+/**
+ * Repeats a given character n times and returns the generated string
+ * @param  {string} ch character (or string) to repeat
+ * @param  {number} n  number of times to repeat
+ * @return {string}
+ */
+function repeat(ch, n) {
 	return new Array(n).join(ch);
 }
 
-function generateArgList (state, json, args, startParens, endParens, def) {
+function generateArgList(state, json, args, startParens, endParens, def) {
 	if (args && args.length) {
 		var result = startParens;
 		var found = {};
@@ -337,69 +330,6 @@ function generateArgList (state, json, args, startParens, endParens, def) {
 		return result + endParens;
 	}
 	return def;
-}
-
-function generateMethodBody (state, json, method, preamble, instance, thisobj, argCallback) {
-	// allow special overrides in method generation
-	if (method.impl) {
-		return method.impl(state, json, method, instance, thisobj);
-	}
-	var result = '';
-	var end = '';
-	var wrapper = null;
-	if (method.returns.type !== 'void') {
-		wrapper = getResultWrapper(state, json, method.returns, instance);
-		end = wrapper ? ')' : '';
-		result += wrapper;
-	}
-	var arglist = generateArgList(state, json, method.arguments, '[', ']', 'null');
-	if (argCallback) {
-		arglist = argCallback(arglist);
-	}
-	method.arguments.forEach(function (arg, i) {
-		if (arg.type === 'block') {
-			var block = findBlock(json, arg.value, method);
-			var blockName = blockgen.generateBlockMethodName(block.signature);
-			var framework = method.framework;
-			var name = arg.name;
-			preamble.push('\t// convert to block: ' + block.signature);
-			preamble.push('\tvar _' + name + 'Callback = function () {');
-			preamble.push('\t\tvar args = [];');
-			preamble.push('\t\t// convert arguments into local JS classes');
-			if (!block.arguments) {
-				console.error(block);
-				process.exit(1);
-			}
-			block.arguments.forEach(function (ba, i) {
-				preamble.push('\t\tif (arguments.length > ' + i + ' && arguments[' + i + '] !== null) {');
-				var wrapper = getResultWrapper(state, json, ba, instance);
-				preamble.push('\t\t\targs.push(' +  wrapper + 'arguments[' + i + ']' + (wrapper ? ')' : '') + ');');
-				preamble.push('\t\t} else {');
-				preamble.push('\t\t\targs.push(null);');
-				preamble.push('\t\t}');
-			});
-			preamble.push('\t\t_' + name + ' && _' + name + '.apply(_' + name + ', args);');
-			preamble.push('\t};');
-			preamble.push('\tvar _' + name + 'Block = $dispatch(Hyperloop.createProxy({ class: \'Hyperloop' + framework + '\', alloc: false, init: \'class\' }), \'' + blockName + ':\', [_' + name + 'Callback], false);');
-			var pref = instance ? 'this' : state.class.name;
-			preamble.push('\t' + pref + '.$private.' + method.name + '_' + name + ' = _' + name + ';');
-			preamble.push('\t' + pref + '.$private.' + method.name + '_' + name + 'Callback = _' + name + 'Callback;');
-			arg.blockname = name + 'Block';
-			arg.isBlock = true;
-			// re-generate the arg list with the new argument name
-			arglist = generateArgList(state, json, method.arguments, '[', ']', 'null');
-			if (argCallback) {
-				arglist = argCallback(arglist);
-			}
-		}
-	});
-	var fnname = method.selector || method.name;
-	var nativeCall = '\t\t\tvar result = $dispatch(' + thisobj + ', \'' + fnname + '\', ' + arglist + ', ' + instance + ');';
-	if (!wrapper) {
-		return nativeCall;
-	}
-	var lastChance = '\n\t\t\tif (result === undefined || result === null) return result;\n';
-	return nativeCall + lastChance + '\t\t\tresult = ' + result + 'result' + end + ';';
 }
 
 function toValue (encoding, type) {
@@ -461,70 +391,6 @@ function toValueDefault(encoding, type) {
 	}
 	logger.error('Can\'t convert encoding: ' + encoding + ', type: ' + type);
 	process.exit(1);
-}
-
-/**
- * [getObjCReturnType description]
- * @param  {object} value [description]
- * @param  {string} value.type [description]
- * @param {object} json metabase
- * @return {string}
- */
-function getObjCReturnType(value, json) {
-	switch (value.type) {
-		case 'typedef': {
-			const typedef = json.typedefs[value.value];
-			if (!typedef) {
-				throw new Error('Unable to find typedef in metabase: ' + value.value);
-			}
-			return getObjCReturnType(typedef, json);
-		}
-		case 'unknown':
-		case 'enum':
-		case 'pointer':
-		case 'union':
-		case 'unexposed':
-		case 'vector':
-		case 'incomplete_array':
-		case 'struct': {
-			return value.value || 'void *';
-		}
-		case 'record': {
-			if (!value.value) {
-				return 'void *';
-			}
-			// How do we handle a case where the value is "struct CGAffineTransform"?
-			if (value.value.indexOf('struct ') === 0) {
-				const structName = value.value.substring(7).replace(/^_+/, '').trim();
-				const struct = json.structs[structName];
-				if (!struct) {
-					throw new Error('Unable to find struct in metabase: ' + structName);
-				}
-				return structName;
-			}
-			break;
-		}
-		case 'id':
-		case 'obj_interface':
-		case 'objc_pointer': {
-			return 'id';
-		}
-		case 'class':
-		case 'Class': {
-			return 'Class';
-		}
-		case 'selector':
-		case 'SEL': {
-			return 'SEL';
-		}
-	}
-	if (isPrimitive(value.type)) {
-		return value.value || getPrimitiveValue(value.type);
-	}
-	throw new Error('cannot figure out objc return type: ' + JSON.stringify(value));
-	// console.log(value);
-	// logger.error('cannot figure out objc return type', value);
-	// process.exit(1);
 }
 
 /**
@@ -655,34 +521,6 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 	// process.exit(1);
 }
 
-function generateImport (name, fp) {
-	return '\t$imports.' + name + ' = require(\'/hyperloop/' + fp.toLowerCase() + '\');';
-}
-
-function makeImports (json, imports) {
-	var results = [];
-	Object.keys(imports).forEach(function (k) {
-		var e = imports[k];
-		if (k === 'NSObject' && e && !e.framework) {
-			e.framework = 'Foundation';
-		}
-		if (!e) {
-			// console.error("Can't find", k, " with entry:", e);
-			return;
-		}
-		if (e.framework) {
-			var fp = (e.framework + '/' + k).toLowerCase();
-			results.push(generateImport(k, fp));
-		} else if (e.filename) {
-			// TODO:
-			results.push(generateImport(k, e.filename));
-		} else {
-			logger.warn('Can\'t figure out how to import', k, e);
-		}
-	});
-	return results.join('\n');
-}
-
 function generatePropGetter (state, json, prop, name) {
 	var wrapper = getResultWrapper(state, json, prop, true);
 	var endsep = wrapper ? ')' : '';
@@ -714,235 +552,6 @@ function generateProp (state, json, prop, readonly, name) {
 		result.setter = '\n' + sep + generatePropSetter(state, json, prop, name);
 	}
 	return result;
-}
-
-/**
- * Generates a view model used in the class template to generate soure
- * code for class level properties
- *
- * @param {Object} templateVariables Holds all variable later used in the template
- * @param {Object} metabase The complete metabase object
- * @param {Object} propertyMeta Meta info for the current property
- * @return {Object} View model used inside the class tempalte
- */
-function generateClassProperty(templateVariables, metabase, propertyMeta) {
-	var viewModel = { name: propertyMeta.name };
-	viewModel.getter = generateClassPropertyGetter(templateVariables, metabase, propertyMeta);
-	if (!propertyMeta.attributes || propertyMeta.attributes.indexOf('readonly') < 0) {
-		viewModel.setter = generateClassPropertySetter(templateVariables, metabase, propertyMeta);
-	}
-	return viewModel;
-}
-
-/**
- * Generates the code for a class property getter
- *
- * @param {Object} templateVariables Holds all variable later used in the template
- * @param {Object} metabase The complete metabase object
- * @param {Object} propertyMeta Meta info for the current property
- * @return {string} Code for the getter
- */
-function generateClassPropertyGetter(templateVariables, metabase, propertyMeta) {
-	var wrapper = getResultWrapper(templateVariables, metabase, propertyMeta, false);
-	var endsep = wrapper ? ')' : '';
-	return '\tget: function () {\n'
-		+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
-		+ repeat('\t', 5) + 'return ' + wrapper + '$dispatch($class, \'' + (propertyMeta.selector || propertyMeta.name) + '\', null, true)' + endsep + ';\n'
-		+ repeat('\t', 4) + '}';
-}
-
-/**
- * Generates the code for a class property setter
- *
- * @param {Object} templateVariables Holds all variable later used in the template
- * @param {Object} metabase The complete metabase object
- * @param {Object} propertyMeta Meta info for the current property
- * @return {string} Code for the setter
- */
-function generateClassPropertySetter(templateVariables, metabase, propertyMeta) {
-	return repeat('\t', 4) + 'set: function (_' + propertyMeta.name + ') {\n'
-		+ repeat('\t', 5) + 'if (!$init) { $initialize(); }\n'
-		+ repeat('\t', 5) + 'this.$private.' + propertyMeta.name + ' = _' + propertyMeta.name + ';\n'
-		+ repeat('\t', 5) + '$dispatch($class, \'' + generateSetterSelector(propertyMeta.name) + '\', _' + propertyMeta.name + ', true);\n'
-		+ repeat('\t', 4) + '}';
-}
-
-function createFakeFieldStruct (prop) {
-	var otherStruct = {
-		name: prop.name,
-		fields: []
-	};
-	// create a fake field struct
-	var structenc = flattenStruct(prop.encoding);
-	for (var c = 0; c < structenc.length; c++) {
-		otherStruct.fields[c] = {
-			encoding: structenc[c],
-			name: 'f' + c
-		};
-	}
-	return otherStruct;
-}
-
-function generateFieldGetter (state, json, prop, index) {
-	if (prop.type === 'struct') {
-		var code = [];
-		var indent = repeat('\t', 5);
-		code.push('get: function () {');
-		code.push(indent + 'return this.$' + prop.name + ';');
-		code.push(repeat('\t', 4) + '}');
-		return code.join('\n');
-	} else {
-		var wrapper = getResultWrapper(state, json, prop, true);
-		var endsep = wrapper ? ')' : '';
-		return  'get: function () {\n'
-				+ repeat('\t', 5) + 'return ' + wrapper + '$dispatch(this.$native, \'valueAtIndex:\', ' + index + ')' + endsep + ';\n'
-				+ repeat('\t', 4) + '}';
-	}
-}
-
-function generateFieldSetter (state, json, prop, index) {
-	if (prop.type === 'struct') {
-		var name = getStructNameFromEncoding(prop.encoding);
-		var otherStruct = json.structs[name];
-		var subWrapper;
-		if (!otherStruct) {
-			subWrapper = '(';
-			// create a fake field struct
-			otherStruct = createFakeFieldStruct(prop);
-		} else {
-			subWrapper = getResultWrapper(state, json, { name: otherStruct.name, type: 'struct' }, true);
-		}
-		var code = [];
-		var indent = repeat('\t', 5);
-		prop.otherStruct = otherStruct;
-		code.push('set: function (_' + prop.name + ') {');
-		otherStruct.fields.forEach(function (field, i) {
-			code.push(indent + 'this.$' + prop.name + '.' + field.name + ' = _' + prop.name + '.' + field.name + ';');
-		});
-		code.push(repeat('\t', 4) + '}');
-		return code.join('\n');
-	} else {
-		return  'set: function (_' + prop.name + ') {\n'
-				+ repeat('\t', 5) + '$dispatch(this.$native, \'setValue:atIndex:\', [_' + prop.name + ', ' + index + ']);\n'
-				+ repeat('\t', 4) + '}';
-	}
-}
-
-function generateFunction (state, json, fn) {
-	fn.selector = fn.name + ':';
-	var code = [],
-		preamble = [];
-
-	code.push('Object.defineProperty(' + state.class.name + ', \'' + fn.name + '\', {');
-	code.push('\tvalue: function ' + generateArgList(state, json, fn.arguments, '(', ')', '()') + ' {');
-	code.push('\t\tif (!$init) { $initialize(); }');
-
-	var body = generateMethodBody(state, json, fn, preamble, false, '$class', function (arg) { return '[' + arg + ']'; });
-	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
-
-	code.push(body);
-	code.push('\t\t\treturn result;');
-	code.push('\t},');
-	code.push('\tenumerable: false,');  // don't show in enumeration
-	code.push('\twritable: true');  // allow to be changed
-	code.push('});');
-
-	return code.join('\n');
-}
-
-function generateInstanceMethod (state, json, method) {
-	var code = [],
-		preamble = [];
-
-	code.push('\tObject.defineProperty(' + state.class.name + '.prototype, \'' + method.name + '\', {');
-	code.push('\t\tvalue: function ' + generateArgList(state, json, method.arguments, '(', ')', '()') + ' {');
-
-	var body = generateMethodBody(state, json, method, preamble, true, 'this.$native');
-	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
-	var returnsObject = (body.indexOf('new') !== -1) && (body.indexOf('.constructor(') !== -1);
-	var prefix;
-	if (returnsObject) {
-		code.push(body);
-		code.push('\t\t\tvar instance = result;');
-		prefix = 'instance';
-	} else {
-		prefix = 'this';
-	}
-	if (method.arguments.length) {
-		code.push('\t\t\t' + prefix + '.$private.' + method.name + ' = ' + prefix + '.$private.' + method.name + ' || [];');
-		method.arguments.forEach(function (arg, i) {
-			code.push('\t\t\t' + prefix + '.$private.' + method.name + '.push(_' + arg.name + ');');
-		});
-	}
-
-	if (!returnsObject) {
-		code.push(body);
-		code.push('\t\t\treturn result;');
-	} else {
-		code.push('\t\t\treturn instance;');
-	}
-	code.push('\t\t},');
-	code.push('\t\tenumerable: false,');  // don't show in enumeration
-	code.push('\t\twritable: true');  // allow to be changed
-	code.push('\t});');
-
-	return code.join('\n');
-}
-
-function generateClassMethod (state, json, method) {
-	var code = [],
-		preamble = [];
-
-	code.push('Object.defineProperty(' + state.class.name + ', \'' + method.name + '\', {');
-	code.push('\tvalue: function ' + generateArgList(state, json, method.arguments, '(', ')', '()') + ' {');
-	code.push('\t\tif (!$init) { $initialize(); }');
-	var body = generateMethodBody(state, json, method, preamble, false, 'this.$class');
-	preamble.length && (code.push('\t\t' + preamble.join('\n\t\t')));
-
-	if (method.impl) {
-		code.push('\t\treturn ' + body);
-	} else {
-		code.push(body);
-		code.push('\t\treturn result;');
-	}
-	code.push('\t},');
-	code.push('\tenumerable: false,');  // don't show in enumeration
-	code.push('\twritable: true');  // allow to be changed
-	code.push('});');
-
-	return code.join('\n');
-}
-
-function generateFile (dir, name, obj, out, ext) {
-	if (!obj.framework) {
-		var sourceInfo = obj.name && obj.filename ? chalk.gray(obj.name + ' from ' + obj.filename) : '';
-		logger.trace(chalk.gray('skipping non-framework'), chalk.yellow(name), sourceInfo);
-		return;
-	}
-	if (!obj.name) {
-		logger.debug(obj);
-		throw new Error('Invalid object passed to generateFile(), required property "name" is missing.');
-	}
-	if (obj.framework.indexOf('/') >= 0) {
-		obj.framework = path.basename(obj.framework);
-	}
-	logger.info(chalk.gray('Generating ' + name), chalk.green(obj.framework + '/' + obj.name));
-	var fdir = path.join(dir, obj.framework.toLowerCase());
-	var fn = path.join(fdir, obj.name.toLowerCase() + (ext || '.js'));
-	if (!fs.existsSync(fdir)) {
-		fs.mkdirSync(fdir);
-	}
-	// don't overwrite if the same content
-	if (fs.existsSync(fn)) {
-		var buf = fs.readFileSync(fn);
-		if (buf.length === out.length) {
-			if (String(buf) === out) {
-				logger.trace(chalk.gray('Skipping, already generated ... ' + path.basename(fn)));
-				return;
-			}
-		}
-	}
-	fs.writeFileSync(fn, out);
 }
 
 function getPrimitiveValue (type) {
@@ -978,64 +587,6 @@ function isObject (obj) {
 	return obj.type === 'objc_pointer' || obj.type === 'obj_interface' || obj.type === 'id';
 }
 
-function findBlock (json, signature, fn) {
-	var c, block,
-		blocks = json.blocks[fn.framework];
-	if (blocks && blocks.length) {
-		for (c = 0; c < blocks.length; c++) {
-			block = blocks[c];
-			if (block && matchBlockSignature(block.signature, signature)) {
-				return block;
-			}
-		}
-	}
-	// the block signature could actually be a typedef
-	if (signature in json.typedefs) {
-		return findBlock(json, json.typedefs[signature].value, fn);
-	}
-	// search through other packages in case it's not defined in the same framework
-	var packages = Object.keys(json.blocks);
-	for (c = 0; c < packages.length; c++) {
-		blocks = json.blocks[packages[c]];
-		if (blocks && blocks.length) {
-			for (var f = 0; f < blocks.length; f++) {
-				block = blocks[f];
-				if (block && matchBlockSignature(block.signature, signature)) {
-					return block;
-				}
-			}
-		}
-	}
-	console.error('Couldn\'t find block with signature:', signature, 'for framework:', fn.framework);
-	process.exit(1);
-}
-
-/**
- * Matches two block signatures against each other to see if they are the same.
- *
- * Sometimes the metabase generator outputs slightly different signatures which
- * describe the same block, e.g. void (^)(_Bool) and void (^)(BOOL). This
- * function tries to normalize both signatures and then matches them again if
- * a direct comparison yields no match.
- *
- * @param {String} signature Block signature
- * @param {String} otherSignature Other block signature to match against
- * @return {Boolean} True if both signatures match, false if not
- */
-function matchBlockSignature(signature, otherSignature) {
-	if (signature === otherSignature) {
-		return true;
-	}
-
-	var normalizedSignature = signature.replace(/_Bool|bool/, 'BOOL');
-	var normalizedOtherSignature = otherSignature.replace(/_Bool|bool/, 'BOOL');
-	if (normalizedSignature === normalizedOtherSignature) {
-		return true;
-	}
-
-	return false;
-}
-
 /**
  * [generateObjCValue description]
  * @param  {[type]}   state   [description]
@@ -1051,7 +602,10 @@ function matchBlockSignature(signature, otherSignature) {
  * @param  {[type]}   arglist [description]
  * @return {string}           [description]
  */
-function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
+// Calls itself recursively
+// Called by util.generateObjCArgument()
+// Called by custom.generateMethod()
+function generateObjCValue(state, json, fn, arg, name, define, tab, arglist) {
 	const code = [];
 	tab = tab || '';
 	arglist = arglist || [];
@@ -1103,7 +657,7 @@ function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
 		code.push('\t' + (define ? n + ' ' : '') + name + ' = (' + n + ')[(HyperloopPointer *)' + name + '_ selectorValue];');
 		arglist.push('(' + n + ') ' + name);
 	} else if (arg.type === 'block') {
-		const block = findBlock(json, arg.value, fn);
+		const block = blockgen.findBlock(json, arg.value, fn.framework);
 		const js = blockgen.generateBlockCallback(state, json, block, arg, '\t', define);
 		code.push(js);
 		arglist.push('(' + arg.value + ') ' + name);
@@ -1143,117 +697,6 @@ function generateObjCValue (state, json, fn, arg, name, define, tab, arglist) {
 	return code.join('\n');
 }
 
-function generateObjCArgument (state, json, fn, arg, i, arglist, tab, define) {
-	const code = [];
-	const name = arg.name || 'arg' + i;
-	tab = tab || '';
-	define = define === undefined ? true : define;
-	code.push('\tid ' + name + '_ = [args objectAtIndex:' + i + '];');
-	code.push(generateObjCValue(state, json, fn, arg, name, define, tab, arglist));
-	// state, json, arg, name, define, tab, arglist
-	return tab + code.join('\n' + tab);
-}
-
-function generateObjCResult (state, json, fn, arglist, asProperty, tab) {
-	let returnCode = '';
-	const code = [];
-	tab = tab || '';
-	if (fn.returns && fn.returns.type !== 'void') {
-		const returnType = getObjCReturnType(fn.returns, json);
-		returnCode =  returnType + ' result$ = (' + returnType + ')';
-	}
-	if (asProperty) {
-		code.push('\t' + returnCode + fn.name + ';');
-	} else {
-		code.push('\t' + returnCode + fn.name + '(' + arglist.join(', ') + ');');
-	}
-	if (fn.returns && fn.returns.type !== 'void') {
-		code.push('\t' + getObjCReturnResult(json, fn.returns, 'result$'));
-	} else {
-		code.push('\treturn nil;');
-	}
-	return tab + code.join('\n' + tab);
-}
-
-function generateObjCFunction(state, json, fn, asProperty) {
-	// console.log(state.class.name + ' ' + fn.name);
-	var code = [];
-	if (asProperty) {
-		code.push('+(id)' + fn.name + ' {');
-	} else {
-		code.push('+(id)' + fn.name + ':(NSArray *)args {');
-	}
-	var MAX_TIMES = 10;
-	var arglist = [];
-	var c;
-	if (!asProperty) {
-		if (!fn.variadic) {
-			code.push('#ifdef TARGET_IPHONE_SIMULATOR');
-			code.push('\tif ([args count] != ' + fn.arguments.length + ') {');
-			code.push('\t\t@throw [NSException exceptionWithName:@"InvalidArgument" reason:[NSString stringWithFormat:@"' + fn.name + ' requires ' + fn.arguments.length + ' arguments but only %lu passed", (unsigned long)[args count]] userInfo:nil];');
-			code.push('\t}');
-			code.push('#endif');
-		} else {
-			code.push('#ifdef TARGET_IPHONE_SIMULATOR');
-			code.push('\tif ([args count] < ' + (fn.arguments.length + 1) + ') {');
-			code.push('\t\t@throw [NSException exceptionWithName:@"InvalidArgument" reason:[NSString stringWithFormat:@"' + fn.name + ' requires at least ' + (fn.arguments.length + 1) + ' arguments but only %lu passed", (unsigned long)[args count]] userInfo:nil];');
-			code.push('\t}');
-			code.push('#endif');
-		}
-		fn.arguments.forEach(function (arg, i) {
-			code.push(generateObjCArgument(state, json, fn, arg, i, arglist));
-		});
-		if (fn.variadic) {
-			for (c = fn.arguments.length; c < MAX_TIMES; c++) {
-				// TODO: need to deal with the format specifiers like NSLog
-				// TODO: handle functions that require sentinel
-				var arg = {
-					type: 'id',
-					value: 'id',
-					encoding: '@',
-					name: 'arg' + c
-				};
-				code.push('\tid arg' + c + ' = nil;');
-				code.push('\tif ([args count] > ' + c + ') {');
-				code.push(generateObjCArgument(state, json, fn, arg, c, arglist, '\t', false));
-				code.push('\t}');
-			}
-		}
-	}
-	if (fn.variadic) {
-		var isVoid = fn.returns.type === 'void';
-		code.push('\tswitch ([args count]) {');
-		for (c = fn.arguments.length + 1; c <= MAX_TIMES; c++) {
-			code.push('\t\tcase ' + c + ': {');
-			code.push(generateObjCResult(state, json, fn, arglist.slice(0, c), asProperty, '\t\t'));
-			!isVoid && code.push('\t\t\tbreak;');
-			code.push('\t\t}');
-		}
-		code.push('\t\tdefault: ' + (isVoid ? 'break;' : 'return nil;'));
-		code.push('\t}');
-	} else {
-		code.push(generateObjCResult(state, json, fn, arglist, asProperty));
-	}
-	code.push('}');
-	return code.join('\n');
-}
-
-function flattenStruct (str) {
-	var x = str.indexOf('{');
-	var y = str.indexOf('=');
-	if (x < 0 || y < 0) {
-		// could be just {dd}
-		return str.replace(/}/g, '').replace(/{/g, '').trim();
-	}
-	var r = str.substring(0, x) + str.substring(y + 1);
-	var z = r.indexOf('}');
-	if (z > 0) {
-		// r[z] = '';
-		r = r.slice(0, z);
-	}
-	return flattenStruct(r.trim());
-}
-
 function isObjectType (type, encoding) {
 	switch (type) {
 		case 'obj_interface':
@@ -1284,51 +727,16 @@ function setLog (logFn) {
 }
 
 function generateSafeSymbol(signature) {
-	return signature.replace(/[\s\^\(\)\\<\\>\*\:\+,]/g, '_');
+	return signature.replace(/[\s^()\\<\\>*:+,]/g, '_');
 }
 
 function camelCase (string) {
-	return string.replace(/^([A-Z])|[\s-_:](\w)/g, function (match, p1, p2, offset) {
-		if (p2) { return p2.toUpperCase(); }
+	return string.replace(/^([A-Z])|[\s-_:](\w)/g, function (match, p1, p2) {
+		if (p2) {
+			return p2.toUpperCase();
+		}
 		return p1.toLowerCase();
-	}).replace(/\:/g, '');
-}
-
-/**
- * attempt to resolve an argument into it's framework if possible
- */
-function resolveArg (metabase, imports, arg) {
-	switch (arg.type) {
-		case 'struct': {
-			if (arg.value in metabase.structs) {
-				var struct = metabase.structs[arg.value];
-				if (struct) {
-					arg.framework = struct.framework;
-					arg.filename = arg.value;
-				} else {
-					logger.warn('can\'t find arg struct ->', arg.value);
-				}
-			} else {
-				logger.warn('can\'t resolve arg struct ->', arg.value);
-			}
-			break;
-		}
-		case 'class':
-		case 'Class':
-		case 'id':
-		case 'objc_pointer':
-		case 'obj_interface':
-		case 'objc_interface': {
-			var name = cleanupClassName(arg.value);
-			if (name in metabase.classes) {
-				var cls = metabase.classes[name];
-				if (cls) {
-					arg.framework = cls.framework;
-					arg.filename = cls.filename || name;
-				}
-			}
-		}
-	}
+	}).replace(/:/g, '');
 }
 
 /**
@@ -1367,31 +775,23 @@ function getMethodTableForMigration() {
 }
 
 exports.repeat = repeat;
-exports.generateTemplate = generateTemplate;
-exports.makeImports = makeImports;
-exports.generateFile = generateFile;
-exports.generateFunction = generateFunction;
-exports.generateObjCFunction = generateObjCFunction;
-exports.generateObjCResult = generateObjCResult;
-exports.generateFieldGetter = generateFieldGetter;
-exports.generateFieldSetter = generateFieldSetter;
 exports.generateProp = generateProp;
-exports.generateClassProperty = generateClassProperty;
-exports.generateInstanceMethod = generateInstanceMethod;
-exports.generateClassMethod = generateClassMethod;
+exports.generateSetterSelector = generateSetterSelector;
+exports.generateArgList = generateArgList;
 exports.setLog = setLog;
 exports.getObjCReturnResult = getObjCReturnResult;
 exports.getProtocolClass = getProtocolClass;
 exports.isProtocol = isProtocol;
 exports.isObjectType = isObjectType;
-exports.findBlock = findBlock;
 exports.generateSafeSymbol = generateSafeSymbol;
 exports.generateObjCValue = generateObjCValue;
 exports.camelCase = camelCase;
-exports.resolveArg = resolveArg;
 exports.toValueDefault = toValueDefault;
 exports.isPrimitive = isPrimitive;
+exports.getPrimitiveValue = getPrimitiveValue;
 exports.getMethodTableForMigration = getMethodTableForMigration;
+exports.getResultWrapper = getResultWrapper;
+exports.getStructNameFromEncoding = getStructNameFromEncoding;
 
 Object.defineProperty(exports, 'logger', {
 	get: function () {

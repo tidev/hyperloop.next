@@ -1,9 +1,17 @@
-module.exports = function(json, callback) {
-	// if we have no usage of Hyperloop, just return
+'use strict';
+
+/**
+ * [description]
+ * @param  {[type]}   json     metabase
+ * @param  {Function} callback async callback function
+ * @return {void}
+ */
+module.exports = function (json, callback) {
+	// if we have no usage of hyperloop just return
 	if (!json) {
 		return callback();
 	}
-
+	// map in our TiApp file
 	json.classes.TiApp = {
 		framework: 'Titanium',
 		name: 'TiApp',
@@ -51,7 +59,7 @@ module.exports = function(json, callback) {
 				instance: true,
 				name: 'showModalController',
 				selector: 'showModalController:animated:',
-				arguments: [{
+				arguments: [ {
 					type: 'obj_interface',
 					encoding: '@',
 					value: 'UIViewController *',
@@ -61,7 +69,7 @@ module.exports = function(json, callback) {
 					encoding: 'B',
 					value: 'BOOL',
 					name: 'animated'
-				}],
+				} ],
 				returns: {
 					type: 'void',
 					encoding: 'v',
@@ -72,7 +80,7 @@ module.exports = function(json, callback) {
 				instance: true,
 				name: 'hideModalController',
 				selector: 'hideModalController:animated:',
-				arguments: [{
+				arguments: [ {
 					type: 'obj_interface',
 					encoding: '@',
 					value: 'UIViewController *',
@@ -82,7 +90,7 @@ module.exports = function(json, callback) {
 					encoding: 'B',
 					value: 'BOOL',
 					name: 'animated'
-				}],
+				} ],
 				returns: {
 					type: 'void',
 					encoding: 'v',
@@ -93,11 +101,11 @@ module.exports = function(json, callback) {
 				instance: true,
 				name: 'showModalError',
 				selector: 'showModalError:',
-				arguments: [{
+				arguments: [ {
 					type: 'obj_interface',
 					encoding: '@',
 					value: 'NSString *'
-				}],
+				} ],
 				returns: {
 					type: 'void',
 					encoding: 'v',
@@ -130,12 +138,12 @@ module.exports = function(json, callback) {
 				instance: true,
 				name: 'registerApplicationDelegate',
 				selector: 'registerApplicationDelegate',
-				arguments: [{
+				arguments: [ {
 					type: 'id',
 					encoding: '@',
 					value: 'id',
 					name: 'delegate'
-				}],
+				} ],
 				returns: {
 					type: 'void',
 					encoding: 'v',
@@ -146,12 +154,12 @@ module.exports = function(json, callback) {
 				instance: true,
 				name: 'unregisterApplicationDelegate',
 				selector: 'unregisterApplicationDelegate',
-				arguments: [{
+				arguments: [ {
 					type: 'id',
 					encoding: '@',
 					value: 'id',
 					name: 'delegate'
-				}],
+				} ],
 				returns: {
 					type: 'void',
 					encoding: 'v',
@@ -206,7 +214,7 @@ module.exports = function(json, callback) {
 		properties: {
 			userAgent: {
 				name: 'userAgent',
-				attributes: ['readonly'],
+				attributes: [ 'readonly' ],
 				type: {
 					type: 'obj_interface',
 					encoding: '@',
@@ -215,7 +223,7 @@ module.exports = function(json, callback) {
 			},
 			window: {
 				name: 'window',
-				attributes: ['readonly'],
+				attributes: [ 'readonly' ],
 				type: {
 					type: 'obj_interface',
 					encoding: '@',
@@ -224,7 +232,7 @@ module.exports = function(json, callback) {
 			},
 			remoteNotification: {
 				name: 'remoteNotification',
-				attributes: ['readonly'],
+				attributes: [ 'readonly' ],
 				type: {
 					type: 'obj_interface',
 					encoding: '@',
@@ -233,22 +241,14 @@ module.exports = function(json, callback) {
 			},
 			localNotification: {
 				name: 'localNotification',
-				attributes: ['readonly'],
+				attributes: [ 'readonly' ],
 				type: {
 					type: 'obj_interface',
 					encoding: '@',
 					value: 'NSDictionary *'
 				}
-			},
-			userAgent: {
-				name: 'userAgent',
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
-				}
 			}
 		}
 	};
 	callback();
-}
+};

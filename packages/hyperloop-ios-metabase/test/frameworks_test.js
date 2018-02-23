@@ -9,7 +9,7 @@ describe('frameworks', function () {
 	const tmpDir = path.join(__dirname, 'tmp');
 
 	describe('#getSystemFrameworks()', function () {
-		it('should do something', function (done) {
+		it('should detect common System Frameworks like Foundation and UIKit', function (done) {
 			// Shut the logger up!
 			require('../lib/util').setLog({ trace: function () {} });
 			frameworks.getSDKPath('iphonesimulator', (err, sdkPath) => {
@@ -20,7 +20,7 @@ describe('frameworks', function () {
 
 					map.has('UIKit').should.be.true;
 					map.has('Foundation').should.be.true;
-					// TODO Verify frameworks has.... Foundation? UIKit? Some basic stuff?
+					// TODO Verify metadata gathered?
 					done();
 				});
 			});

@@ -1,12 +1,12 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
 const util = require('./util');
 
-function getBlockAsReturnVariable (name, block) {
-	var i = block.indexOf('(^)');
+function getBlockAsReturnVariable(name, block) {
+	const i = block.indexOf('(^)');
 	return block.substring(0, i + 2) + name + block.substring(i + 2);
 }
 
@@ -26,7 +26,7 @@ function generateBlockCallback(state, json, block, arg, tab, define) {
 	code.push(tab + '\t@throw [NSException exceptionWithName:@"InvalidArgument" reason:@"callback must be a function type" userInfo:nil];');
 	code.push(tab + '}');
 	code.push(tab + 'KrollCallback *callback = (KrollCallback *)' + arg.name + '_;');
-	code.push(tab + returnVar + ' = ^' + '(' + arglist.join(', ') + ') {');
+	code.push(tab + returnVar + ' = ^(' + arglist.join(', ') + ') {');
 	block.arguments.forEach(function (arg, i) {
 		code.push(tab + '\t' + util.getObjCReturnResult(json, arg, 'arg' + i, 'id _arg' + i + ' ='));
 	});
@@ -38,7 +38,9 @@ function generateBlockCallback(state, json, block, arg, tab, define) {
 }
 
 /**
- * return a suitable (and unique )method name for a block signature
+ * return a suitable (and unique) method name for a block signature
+ * @param {string} signature a string from metabase like: "BOOL (^)(KeyType, ObjectType, BOOL *)"
+ * @return {string}
  */
 function generateBlockMethodName(signature) {
 	return 'Block_' + util.generateSafeSymbol(signature);
@@ -51,7 +53,7 @@ function getType(state, json, arg, argname, obj) {
 			return 'id ' + argname;
 		default:
 			if (arg.type === 'block') {
-				var block = util.findBlock(json, arg.value, obj);
+				const block = findBlock(json, arg.value, obj.framework);
 				return block.returns.value + '(^' + argname + ')(' + block.arguments.map(function (arg) {
 					return arg.value;
 				}).join(', ') + ')';
@@ -64,16 +66,15 @@ function addImport(state, json, type, value, encoding) {
 	switch (type) {
 		case 'id':
 		case 'objc_pointer':
-		case 'obj_interface':
 		case 'obj_interface': {
 			if (util.isProtocol(value)) {
-				var name = util.getProtocolClass(value);
+				const name = util.getProtocolClass(value);
 				// TODO: need to lookup protocols
 				break;
 			}
 			value = value.replace(/\*/g, '').trim();
 			if (value in json.classes) {
-				var cls = json.classes[value];
+				const cls = json.classes[value];
 				state.frameworks[cls.framework] = 1;
 				break;
 			}
@@ -86,13 +87,19 @@ function addImport(state, json, type, value, encoding) {
 	}
 }
 
-// TODO: Move to template!
+/**
+ * [generateBlockWrapper description]
+ * @param  {[type]} state [description]
+ * @param  {object} json  metabase
+ * @param  {object} block block extracted from metabase
+ * @return {string}
+ */
 function generateBlockWrapper(state, json, block) {
-	var code = [],
+	const code = [],
 		argnames = [];
-	var name = generateBlockMethodName(block.signature);
+	const name = generateBlockMethodName(block.signature);
 	code.push('+ (id) ' + name + ':(KrollCallback *) callback {');
-	var args = block.arguments.map(function (arg, i) {
+	const args = block.arguments.map(function (arg, i) {
 		if (arg.type !== 'void') {
 			argnames.push('_arg' + i);
 			addImport(state, json, arg.type, arg.value, arg.encoding);
@@ -128,6 +135,76 @@ function generateBlockWrapper(state, json, block) {
 	return code.join('\n');
 }
 
-exports.generateBlockCallback = generateBlockCallback;
-exports.generateBlockMethodName = generateBlockMethodName;
+/**
+ * Find a block "shallow": search metabase's blocks for a given framework name
+ * for matching signature.
+ * @param  {object}   json      metabase
+ * @param  {string}   signature block signature
+ * @param  {string} frameworkName        [description]
+ * @return {object}
+ */
+function shallowFindBlock(json, signature, frameworkName) {
+	const blocks = json.blocks[frameworkName];
+	return blocks.find(block => {
+		return block && matchBlockSignature(block.signature, signature);
+	});
+}
+
+/**
+ * Attempt to find a block "deeply" (i.e. fall back to checking typedefs or all blocks for matching signature)
+ * @param  {object}   json      metabase
+ * @param  {string}   signature block signature
+ * @param  {string} frameworkName        [description]
+ * @return {object}
+ */
+function findBlock(json, signature, frameworkName) {
+	let found = shallowFindBlock(json, signature, frameworkName);
+	if (found) {
+		return found;
+	}
+	// the block signature could actually be a typedef
+	if (signature in json.typedefs) {
+		return findBlock(json, json.typedefs[signature].value, frameworkName);
+	}
+	// search through other packages in case it's not defined in the same framework
+	const packages = Object.keys(json.blocks);
+	packages.find(p => {
+		found = shallowFindBlock(json, signature, p); // record match because find will return the package it was found in
+		return found; // stop as soon as we find match
+	});
+	if (found) {
+		return found;
+	}
+	throw new Error(`Couldn't find block with signature: ${signature} for framework: ${frameworkName}`);
+}
+
+/**
+ * Matches two block signatures against each other to see if they are the same.
+ *
+ * Sometimes the metabase generator outputs slightly different signatures which
+ * describe the same block, e.g. void (^)(_Bool) and void (^)(BOOL). This
+ * function tries to normalize both signatures and then matches them again if
+ * a direct comparison yields no match.
+ *
+ * @param {String} signature Block signature
+ * @param {String} otherSignature Other block signature to match against
+ * @return {Boolean} True if both signatures match, false if not
+ */
+function matchBlockSignature(signature, otherSignature) {
+	if (signature === otherSignature) {
+		return true;
+	}
+
+	const normalizedSignature = signature.replace(/_Bool|bool/, 'BOOL');
+	const normalizedOtherSignature = otherSignature.replace(/_Bool|bool/, 'BOOL');
+	if (normalizedSignature === normalizedOtherSignature) {
+		return true;
+	}
+
+	return false;
+}
+
+exports.generateBlockCallback = generateBlockCallback; // used in util.generateObjCValue()
+exports.generateBlockMethodName = generateBlockMethodName; // used in method.generateMethodBody()
 exports.generateBlockWrapper = generateBlockWrapper;
+exports.findBlock = findBlock;

@@ -297,7 +297,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 		// enums
 		json.enums && Object.keys(json.enums).forEach(function (k) {
 			const enumobj = json.enums[k];
-			sourceSet.enums[k] = genenum.generate(json, k, enumobj);
+			sourceSet.enums[k] = genenum.generate(k, enumobj);
 		});
 
 		// modules

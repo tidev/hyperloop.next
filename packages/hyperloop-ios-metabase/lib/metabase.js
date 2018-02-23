@@ -29,80 +29,6 @@ function generateInputHeader(file, includes) {
 }
 
 /**
- * generate a metabase
- *
- * @param {String} cacheDir cache directory to write the metabase file
- * @param {String} sdk the sdk type such as iphonesimulator
- * @param {String} sdkPath path the path to the SDK
- * @param {String} iosMinVersion the min version such as 9.0
- * @param {Array} includes array of header paths (should be absolute paths)
- * @param {Boolean} excludeSystem if true, will exclude any system libraries in the generated output
- * @param {generateMetabaseCallback} callback function to receive the result which will be (err, json, json_file, header_file)
- * @param {Boolean} force if true, will not use cache
- * @param {Array} extraHeaders Array of extra header search paths passed to the metabase parser
- * @param {Array} extraFrameworks Array of extra framework search paths passed to the metabase parser
- * @returns {void}
- * @deprecated Moving to generateFrameworkMetabase per-framework!
- */
-function generateMetabase(cacheDir, sdk, sdkPath, iosMinVersion, includes, excludeSystem, callback, force, extraHeaders, extraFrameworks) {
-	const cacheToken = util.createHashFromString(sdkPath + iosMinVersion + excludeSystem + JSON.stringify(includes));
-	const prefix = 'metabase-' + iosMinVersion + '-' + sdk + '-' + cacheToken;
-	const header = path.resolve(path.join(cacheDir, prefix + '.h'));
-	const outfile = path.resolve(path.join(cacheDir, prefix + '.json'));
-
-	// Foundation header always needs to be included
-	const absoluteFoundationHeaderRegex = /Foundation\.framework\/Headers\/Foundation\.h$/;
-	const systemFoundationHeaderRegex = /^[<"]Foundation\/Foundation\.h[>"]$/;
-	const isFoundationIncluded = includes.some(function (header) {
-		return systemFoundationHeaderRegex.test(header) || absoluteFoundationHeaderRegex.test(header);
-	});
-	if (!isFoundationIncluded) {
-		includes.unshift(path.join(sdkPath, 'System/Library/Frameworks/Foundation.framework/Headers/Foundation.h'));
-	}
-
-	// check for cached version and attempt to return if found
-	if (!force && fs.existsSync(header) && fs.existsSync(outfile)) {
-		try {
-			const json = JSON.parse(fs.readFileSync(outfile));
-			json.$includes = includes;
-			return callback(null, json, outfile, header, true);
-		} catch (e) {
-			// fall through and re-generate again
-		}
-	}
-
-	force && util.logger.trace('forcing generation of metabase to', outfile);
-	generateInputHeader(header, includes);
-
-	const args = [
-		'-pretty'
-	];
-	if (excludeSystem) {
-		args.push('-x');
-	}
-	if (extraHeaders && extraHeaders.length > 0) {
-		args.push('-hsp');
-		args.push('"' + extraHeaders.join(',') + '"');
-	}
-	if (extraFrameworks && extraFrameworks.length > 0) {
-		args.push('-fsp');
-		args.push('"' + extraFrameworks.join(',') + '"');
-	}
-	runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, args, function (err, json) {
-		json.$includes = includes;
-		return callback(null, json, outfile, header, false);
-	});
-}
-/**
- * @callback generateMetabaseCallback
- * @param {Error} err
- * @param {Object} json
- * @param {String} outfile
- * @param {String} header
- * @param {boolean} fromCache whether we grabbed from cache or generated
- */
-
-/**
  * [recursiveReadDir description]
  * @param  {string} dir path to directory to traverse
  * @param  {string[]} result accumulator for recursive calls
@@ -156,6 +82,15 @@ function collectFrameworkHeaders(frameworkHeadersPath) {
 	}
 	return [];
 }
+
+/**
+ * @callback generateMetabaseCallback
+ * @param {Error} err
+ * @param {Object} json
+ * @param {String} outfile
+ * @param {String} header
+ * @param {boolean} fromCache whether we grabbed from cache or generated
+ */
 
 /**
  * [generateFrameworkMetabase description]
@@ -354,5 +289,4 @@ function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworks
 // public API
 exports.merge = merge;
 exports.generateFrameworkMetabase = generateFrameworkMetabase;
-exports.generateMetabase = generateMetabase; // TODO: Remove!
 exports.unifiedMetabase = unifiedMetabase;
