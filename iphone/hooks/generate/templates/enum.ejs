@@ -10,7 +10,7 @@ var <%= data.enumObj.name %> = {};
 <% if (data.enumObj.values && Object.keys(data.enumObj.values).length) { -%>
 // value
 Object.defineProperties(<%= data.enumObj.name %>, {
-<% var keys = Object.keys(data.enumObj.value);
+<% var keys = Object.keys(data.enumObj.values);
 keys.forEach(function (k, index) { %>
 	<%=k%>: {
 		value: <%=data.enumObj.values[k] %>,

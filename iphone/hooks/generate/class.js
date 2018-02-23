@@ -233,6 +233,13 @@ function generateInstanceMethod(state, json, method) {
 	return code.join('\n');
 }
 
+/**
+ * [generateClassMethod description]
+ * @param  {object} state  [description]
+ * @param  {object} json   metabase
+ * @param  {object} method [description]
+ * @return {string}        [description]
+ */
 function generateClassMethod(state, json, method) {
 	var code = [],
 		preamble = [];

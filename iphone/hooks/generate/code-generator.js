@@ -104,6 +104,7 @@ class CodeGenerator {
 		this.generateStructs(outputPath);
 		this.generateModules(outputPath);
 		this.generateCustoms(outputPath);
+		this.generateEnums(outputPath);
 	}
 
 	/**
@@ -290,6 +291,24 @@ class CodeGenerator {
 			}
 		});
 		generateFile(outputPath, 'custom', { framework: 'Hyperloop', name: 'Custom' }, code, '.m');
+	}
+
+	/**
+	 * Generates the source code files of Hyperloop JS wrappers for enums.
+	 *
+	 * @param {String} outputPath Path where to save source code files to
+	 */
+	generateEnums(outputPath) {
+		util.logger.trace('Generating Hyperloop JS wrappers for native enums');
+		Object.keys(this.sourceSet.enums).forEach(enumName => {
+			const enumInfo = this.sourceSet.enums[enumName];
+			const code = generateTemplate('enum', {
+				data: enumInfo
+			});
+			const enumObj = this.json.enums[enumName];
+			enumObj.name = enumInfo.enumObj.name;
+			generateFile(outputPath, 'enum', enumObj, code);
+		});
 	}
 
 	/**

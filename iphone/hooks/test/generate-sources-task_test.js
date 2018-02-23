@@ -6,7 +6,6 @@ const should = require('should'),
 	gencustom = require('../generate/custom'),
 	fs = require('fs-extra'),
 	hm = require('hyperloop-metabase'),
-	generator = require('../generate/index'),
 	util = require('../generate/util'),
 	nodePath = require('path'),
 	buildDir = nodePath.join(__dirname, '..', 'tmp', 'hyperloop');
@@ -71,7 +70,7 @@ describe('GenerateSourcesTask', function () {
 	function generateStub(frameworkName, className, cb) {
 		hm.frameworks.getSDKPath('iphonesimulator', (err, sdkPath) => {
 			// FIXME This should really test the same workflow we use in the hook!
-			hm.frameworks.getSystemFrameworks(buildDir, sdkPath, function (err, frameworkMap) {
+			hm.frameworks.getSystemFrameworks(buildDir, sdkPath, (err, frameworkMap) => {
 				should(err).not.be.ok;
 				should(frameworkMap).be.ok;
 				frameworkMap.has('$metadata').should.be.false;
@@ -89,13 +88,13 @@ describe('GenerateSourcesTask', function () {
 		});
 	}
 
-	afterEach(function () {
+	afterEach(() => {
 		Hyperloop.$invocations = null;
 		delete global.Hyperloop;
 		delete global.HyperloopObject;
 	});
 
-	beforeEach(function () {
+	beforeEach(() => {
 		global.Hyperloop = Hyperloop;
 		global.HyperloopObject = HyperloopObject;
 
@@ -193,8 +192,8 @@ describe('GenerateSourcesTask', function () {
 		};
 	});
 
-	it('should generate UIView', function (done) {
-		generateStub('UIKit', 'UIView', function (err) {
+	it('should generate UIView', done => {
+		generateStub('UIKit', 'UIView', err => {
 			should(err).not.be.ok;
 			const UIView = require(nodePath.join(buildDir, 'uikit/uiview.js'));
 			should(UIView).be.a.function;
@@ -208,8 +207,8 @@ describe('GenerateSourcesTask', function () {
 		});
 	});
 
-	it('should generate NSString', function (done) {
-		generateStub('Foundation', 'NSString', function (err) {
+	it('should generate NSString', done => {
+		generateStub('Foundation', 'NSString', err => {
 			should(err).not.be.ok;
 			const NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
 			should(NSString).be.a.function;
@@ -223,8 +222,8 @@ describe('GenerateSourcesTask', function () {
 		});
 	});
 
-	it('should generate UILabel', function (done) {
-		generateStub('UIKit', 'UILabel', function (err) {
+	it('should generate UILabel', done => {
+		generateStub('UIKit', 'UILabel', err => {
 			should(err).not.be.ok;
 			const UILabel = require(nodePath.join(buildDir, 'uikit/uilabel.js'));
 			should(UILabel).be.a.function;
@@ -248,30 +247,46 @@ describe('GenerateSourcesTask', function () {
 		});
 	});
 
-	// it('should always generate Foundation', function (done) {
-	// 	const includes = [
-	// 		'<Intents/INPreferences.h>'
-	// 	];
-	// 	generateStub(includes, 'Intents/INPreferences', function (err) {
-	// 		should(err).not.be.ok;
-	// 		// Check some Foundation basics...
-	// 		const Foundation = require(nodePath.join(buildDir, 'foundation/foundation.js'));
-	// 		should(Foundation).be.a.function;
-	// 		should(Foundation.NSUTF8StringEncoding).be.a.number;
-	// 		const NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
-	// 		should(NSString).be.a.function;
-	// 		should(NSString.name).be.equal('NSString');
-	// 		const instance = new NSString();
-	// 		should(instance).be.an.object;
-	// 		should(instance.className).be.equal('NSString');
-	// 		should(instance.$native).be.an.object;
-	//
-	// 		// ... and if INPreferences is generated correctly, which does not work without
-	// 		// explicitly including Foundation framework
-	// 		const INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
-	// 		should(INPreferences).be.a.function;
-	// 		should(INPreferences.siriAuthorizationStatus).be.a.function;
-	// 		done();
-	// 	});
-	// });
+	it('should generate UIControlState (enum)', done => {
+		generateStub('UIKit', 'UIControlState', err => {
+			should(err).not.be.ok;
+			const UIControlState = require(nodePath.join(buildDir, 'uikit/uicontrolstate.js'));
+			should(UIControlState).be.an.object;
+			should(UIControlState.Normal).be.a.number;
+			should(UIControlState.Normal).eql(0);
+			should(UIControlState.Highlighted).be.a.number;
+			should(UIControlState.Highlighted).eql(1);
+			should(UIControlState.Disabled).be.a.number;
+			should(UIControlState.Disabled).eql(2);
+			should(UIControlState.Selected).be.a.number;
+			should(UIControlState.Selected).eql(4);
+			should(UIControlState.Focused).be.a.number;
+			should(UIControlState.Focused).eql(8);
+			done();
+		});
+	});
+
+	it('should always generate Foundation', done => {
+		generateStub('Intents', 'INPreferences', err => {
+			should(err).not.be.ok;
+			// Check some Foundation basics...
+			const Foundation = require(nodePath.join(buildDir, 'foundation/foundation.js'));
+			should(Foundation).be.a.function;
+			should(Foundation.NSUTF8StringEncoding).be.a.number;
+			const NSString = require(nodePath.join(buildDir, 'foundation/nsstring.js'));
+			should(NSString).be.a.function;
+			should(NSString.name).be.equal('NSString');
+			const instance = new NSString();
+			should(instance).be.an.object;
+			should(instance.className).be.equal('NSString');
+			should(instance.$native).be.an.object;
+
+			// ... and if INPreferences is generated correctly, which does not work without
+			// explicitly including Foundation framework
+			const INPreferences = require(nodePath.join(buildDir, 'intents/inpreferences.js'));
+			should(INPreferences).be.a.function;
+			should(INPreferences.siriAuthorizationStatus).be.a.function;
+			done();
+		});
+	});
 });
