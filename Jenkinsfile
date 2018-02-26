@@ -2,7 +2,8 @@
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '8.9.0'
+def nodeVersion = '8.9.0' // Must set up Jenkins with a given version first. Contact Chris/Alan to do so
+def npmVersion = '5.7.1' // so we can do npm ci
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
 def sdkVersion = '7.1.1.v20180329185637' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
@@ -31,9 +32,9 @@ node {
 		packageVersion = packageJSON['version']
 
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh 'npm i -g npm' // install latest npm
+			sh "npm i -g npm@${npmVersion}" // install latest npm
 			// Now do top-level linting
-			sh 'npm install'
+			sh 'npm ci'
 			sh 'npm test'
 
 			// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
