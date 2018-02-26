@@ -32,7 +32,7 @@ node {
 		packageVersion = packageJSON['version']
 
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh "npm i -g npm@${npmVersion}" // install latest npm
+			ensureNPM(npmVersion) // ensure we have a specific npm version installed
 			// Now do top-level linting
 			sh 'npm ci'
 			sh 'npm test'
@@ -51,6 +51,7 @@ stage('Build') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					ensureNPM(npmVersion)
 					appc.install()
 					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
@@ -73,23 +74,11 @@ stage('Build') {
 						}
 
 						dir('android') {
-							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
-
-							writeFile file: 'build.properties', text: """
-titanium.platform=${activeSDKPath}/android
-android.platform=${androidSDK}/platforms/android-${androidAPILevel}
-google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
-"""
-							// FIXME We should have a module clean command!
-							// manually clean
-							sh 'rm -rf build/'
-							sh 'rm -rf dist/'
-							sh 'rm -rf libs/'
-
+							echo 'Testing Android hook...'
 							// Run hook tests and then prune to production deps
+							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 							dir('hooks') {
-								sh 'npm install'
+								sh 'npm install' // TODO Use npm ci?
 								try {
 									sh 'npm test'
 								} finally {
@@ -102,8 +91,21 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 									}
 									sh 'npm prune --production'
 								}
-								sh 'npm prune --production'
-							}
+							} // dir('hooks')
+
+							// Now do the main native module build
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							writeFile file: 'build.properties', text: """
+titanium.platform=${activeSDKPath}/android
+android.platform=${androidSDK}/platforms/android-${androidAPILevel}
+google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
+"""
+
+							// FIXME When we use SDK 7.2+, we can do appc ti clean -p android
+							// manually clean
+							sh 'rm -rf build/'
+							sh 'rm -rf dist/'
+							sh 'rm -rf libs/'
 
 							appc.loggedIn {
 								// Even setting config needs login, ugh
@@ -140,6 +142,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						} // dir
 					} // withEnv
 				} // nodejs
+				deleteDir() // wipe workspace
 			} // node
 		},
 		'iOS': {
@@ -147,12 +150,13 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					ensureNPM(npmVersion)
 					appc.install()
 					appc.installAndSelectSDK(sdkVersion)
 
 					echo 'Testing iOS metabase generator...'
 					dir('packages/hyperloop-ios-metabase') {
-						sh 'npm install'
+						sh 'npm install' // TODO Use npm ci?
 						try {
 							sh 'npm test'
 						} finally {
@@ -164,17 +168,17 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
 							}
 							sh 'rm -rf node_modules' // wipe the node modules for now?
+							sh 'npm prune --production'
 						}
 					}
 
-					echo 'Building iOS module...'
-					dir('iphone') {
-						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 
+					dir('iphone') {
+						echo 'Testing iOS hook...'
 						// Run hook tests
+						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 						dir('hooks') {
-							sh 'npm install'
+							sh 'npm install' // TODO Use npm ci?
 							try {
 								sh 'npm test'
 							} finally {
@@ -188,6 +192,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								sh 'npm prune --production'
 							}
 						}
+
+						echo 'Building iOS module...'
+						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 
 						// Check if xcpretty gem is installed? Used by shell scripts when building
 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
@@ -223,6 +230,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
 					} // dir
 				} // nodejs
+				deleteDir() // wipe workspace
 			} // node
 		},
 		// 'windows': {
