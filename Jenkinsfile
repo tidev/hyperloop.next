@@ -285,8 +285,8 @@ stage('Package') {
 		unstash 'iphone-zip'
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
-		unstash 'windows-zip'
-		sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
+		// unstash 'windows-zip'
+		// sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
 
 		unstash 'android-zip'
 
@@ -296,8 +296,8 @@ stage('Package') {
 			sh "rm -f hyperloop-android-${packageVersion}.zip"
 			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
-			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
-			sh "rm -f hyperloop-windows-${packageVersion}.zip"
+			// sh "unzip -o hyperloop-windows-${packageVersion}.zip"
+			// sh "rm -f hyperloop-windows-${packageVersion}.zip"
 			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
 		}
