@@ -12,10 +12,10 @@ module.exports = function (grunt) {
 				globals: [ 'Hyperloop', 'HyperloopObject' ],
 				reportFormats: [ 'lcov', 'cobertura' ],
 				check: {
-					statements: 22,
-					branches: 17,
-					functions: 21,
-					lines: 22
+					statements: 58,
+					branches: 47,
+					functions: 55,
+					lines: 58
 				}
 			},
 			src: [ 'test/**/*_test.js' ]
