@@ -204,6 +204,8 @@ stage('Build') {
 							sh 'rm -f CMakeLists.txt'
 							sh 'rm -f hyperloop-windows-*.zip'
 							sh 'appc logout'
+							sh 'appc config set defaultEnvironment preproduction'
+							sh 'appc use 7.0.3-master.11'
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only'
 							} // appc.loggedIn
