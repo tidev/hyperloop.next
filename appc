@@ -1,0 +1,225 @@
+#!/usr/bin/env node
+/**
+ * This code is closed source and Confidential and Proprietary to
+ * Appcelerator, Inc. All Rights Reserved.  This code MUST not be
+ * modified, copied or otherwise redistributed without express
+ * written permission of Appcelerator. This file is licensed as
+ * part of the Appcelerator Platform and governed under the terms
+ * of the Appcelerator license agreement.
+ */
+
+process.setMaxListeners(100);
+
+process.on('uncaughtException', uncaughtException);
+var killSignals = [ 'SIGTERM', 'SIGINT', 'SIGQUIT', 'SIGABRT', 'exit' ];
+killSignals.forEach(function (signal) {
+	process.on(signal, handleExit);
+});
+
+var chalk = require('chalk'),
+	fs = require('a'),
+	path = require('path'),
+	pkg = require('../package.json');
+
+var appc = require('..'),
+	program = appc.commander,
+	logger = appc.log;
+
+// Disable commander's built-in "version" command, which we'll re-define in our own way shortly.
+var _version = program.version;
+program.version = undefined;
+
+// Do some minor processing of our args.
+var progressArgs = process.argv.slice(0);
+if (progressArgs[2] === 'help' && progressArgs.length >= 3) {
+	// This turns "appc help new" to "appc new --help".
+	progressArgs.splice(2, 1);
+	progressArgs.push('--help');
+}
+
+if ([ 'ti', 'titanium' ].indexOf(progressArgs[2]) === -1) {
+	program.option('--dashboard <dashboard>', 'the dashboard url to use for logins');
+}
+
+// Set up our global CLI options.
+program
+	.usage('cmd [options]')
+
+	.option('-l, --log-level <level>', 'change log level')
+	.option('-o, --output <format>', 'format output [only "json" is supported]')
+	.option('-v, --version', 'output the version of the cli [if -o "json", the version of npm will also be output]')
+	.option('-q, --quiet', 'reduce the amount of text output to the console')
+
+	.option('--no-banner', 'disable banner')
+	.option('--no-colors', 'disable colors')
+	.option('--no-services', 'disable services')
+	.option('--no-progress, --no-progress-bars', 'disable progress bars')
+	.option('--no-prompt', 'disable prompt')
+
+	.option('--prompt-port <promptPort>', 'port to use socket-based prompting')
+	.option('--prompt-type <promptType>', 'prompt type ["cli","socket","socket-bundle"], defaults to "cli"')
+
+	.option('--username <username>', 'username for login')
+	.option('--password <password>', 'password for login')
+
+	.option('-e, --env <environment>', 'environment such as production, preproduction, development, etc')
+	.option('-O, --org-id <orgId>', 'organization id for logins')
+	.option('-P, --plugin-paths <pluginPaths>', 'comma-separated search paths for plugins')
+	.option('-r, --registry <registry>', 'the registry server url to use')
+	.option('--vpc-env <vpcEnv>', 'vpc environment for logins')
+
+	.allowUnknownOption(true)
+	.parseOptions(program.normalize(progressArgs.slice(2)));
+
+// Set up our logger.
+if (!program.logLevel) {
+	program.logLevel = 'info';
+}
+logger.level(program.logLevel);
+logger.setColorization();
+// If we're running in trace or debug, enable the prefix so that timestamps show up.
+if (program.logLevel === 'trace' || program.logLevel === 'debug') {
+	logger.setPrefix(true);
+}
+
+// Clear the terminal (in case we piped with a spinner running).
+if (process.stdout.isTTY) {
+	process.stdout.write('\u001b[2K');
+}
+
+// Override some of the options based on other options.
+if (progressArgs.indexOf('appcd') !== -1 || program.output === 'json' || program.quiet) {
+	program.banner = false;
+	program.progress = false;
+}
+if (!program.progress) {
+	process.env.APPC_SUPPRESS_PROGRESS = true;
+}
+if (program.version) {
+	program.banner = false;
+	var skip = false;
+	process.argv.forEach(function (arg) {
+		if ({
+			titanium: 1,
+			ti: 1,
+			alloy: 1,
+			cloud: 1,
+			acs: 1,
+			appcd: 1
+		}[arg]) {
+			skip = true;
+		}
+	});
+	if (!skip) {
+		if (program.output === 'json') {
+			console.log(JSON.stringify({
+				NPM: process.env.APPC_NPM_VERSION,
+				CLI: pkg.version
+			}));
+		} else {
+			console.log(pkg.version);
+		}
+		process.exit();
+	}
+}
+program.version = _version;
+
+if (program.banner) {
+	console.log(chalk.cyan('Appcelerator Command-Line Interface') + ', version ' + pkg.version);
+	console.log('Copyright (c) 2014-' + (new Date().getFullYear()) + ', Appcelerator, Inc.  All Rights Reserved.');
+	console.log('');
+
+	// check that we are using min appcelerator npm version configured in package.json
+	var minAppcVersion = pkg['min-appc-version'];
+	if (process.env.APPC_NPM_VERSION && appc.semver.lt(process.env.APPC_NPM_VERSION, minAppcVersion)) {
+		console.log(chalk.yellow('AppC CLI requires appcelerator@' + minAppcVersion + ' or newer.'));
+		console.log(chalk.yellow('To install the latest version:'), chalk.green('[sudo] npm install appcelerator@' + minAppcVersion + ' -g\n'));
+	}
+
+} else {
+	process.env.APPC_SUPPRESS_BANNER = true;
+	process.env.APPC_NO_BANNER = true;
+}
+
+// Prevent Commander from exiting directly after a help; we want to emit help asynchronously in some cases.
+var _exit = process.exit,
+	didExit = false;
+/**
+ * Notes that an exit was requested.
+ */
+process.exit = function () {
+	didExit = program.exited = true;
+};
+
+require('./commands/_index').define(appc, program);
+
+program
+	.command('*')
+	.hideFromHelp()
+	.action(function (commandName) {
+		console.error('"' + commandName + '" is not a valid command name!');
+		program.outputHelp();
+		process.exit = _exit;
+		process.exit(1);
+	});
+
+// Now, parse our args so that our newly wired commands will get called!
+var parseResult = program.parse(progressArgs);
+
+// Restore the default exit method.
+process.exit = _exit;
+
+// If nothing was given to use, then we need to show help.
+if (!didExit && !parseResult.args.length) {
+	program.help();
+}
+
+/**
+ * When an uncaught exception is handled, we can show additional information.
+ * @param err
+ */
+function uncaughtException(err) {
+	logger && logger.error('An uncaught exception was thrown!');
+	if (err) {
+		console.error(err.message);
+		logger && logger.error(err.message);
+		logger && logger.trace(err.stack);
+	}
+	process.exit(1);
+}
+
+/**
+ * When we exit, we need to make sure we signal any running sub-commands, and we need to do some manipulation to
+ * the log files.
+ */
+function handleExit(exit) {
+	// we need to wait to exit to give our potential commands a chance to
+	// run their own process.on handlers to do their own cleanup (and prevent orphaning
+	// child processes).  we unref the timer such that if there are no other callbacks, it
+	// not prevent a natural exit of the process
+	(setTimeout(function () {
+		// ensure that our sub-process also exits when we (the parent) exits
+		if (program.runningCommand) {
+			program.runningCommand.kill();
+		}
+
+		var fs = require('fs'),
+			fn = path.join(process.cwd(), 'appc-problem-' + process.pid + '.log');
+
+		if (fs.existsSync(fn)) {
+			var files = fs.readdirSync(process.cwd()).filter(function (f) {
+				return /^appc-(.*).log$/.test(f) && f !== path.basename(fn);
+			});
+			if (files.length === 1) {
+				// we found a subprocess file, use it
+				fs.renameSync(files[0], 'appc-problem.log');
+			} else if (files.length === 0) {
+				// we didn't find a subprocess file, rename our own
+				fs.renameSync(fn, 'appc-problem.log');
+			}
+			fs.existsSync(fn) && fs.unlinkSync(fn);
+		}
+		process.exit(exit);
+
+	}, 500)).unref();
+}

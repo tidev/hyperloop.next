@@ -185,9 +185,8 @@ stage('Build') {
 					unstash 'source'
 
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						sh 'cp ./appc C:/Users/build/.appcelerator/install/7.0.2/package/bin'
 						sh 'appc logout'
-						sh 'appc config set defaultEnvironment preproduction'
-						sh 'appc use 7.0.3-master.11'
 						// appc.install()
 						// def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
