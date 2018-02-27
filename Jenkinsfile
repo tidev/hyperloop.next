@@ -185,8 +185,11 @@ stage('Build') {
 					unstash 'source'
 
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-						appc.install()
-						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+						sh 'appc logout'
+						sh 'appc config set defaultEnvironment preproduction'
+						sh 'appc use 7.0.3-master.11'
+						// appc.install()
+						// def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
 						echo 'Building Windows module...'
 						// FIXME How the hell is Windows OK with these shell commands?
@@ -203,12 +206,10 @@ stage('Build') {
 							sh 'rm -rf WindowsStore.Win32/'
 							sh 'rm -f CMakeLists.txt'
 							sh 'rm -f hyperloop-windows-*.zip'
-							sh 'appc logout'
-							sh 'appc config set defaultEnvironment preproduction'
-							sh 'appc use 7.0.3-master.11'
-							appc.loggedIn {
-								sh 'appc run -p windows --build-only'
-							} // appc.loggedIn
+							sh 'appc run -p windows --build-only'
+							// appc.loggedIn {
+							// 	sh 'appc run -p windows --build-only'
+							// } // appc.loggedIn
 
 							sh 'rm -rf zip/'
 							sh 'mkdir zip/'
