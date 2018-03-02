@@ -702,7 +702,9 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	tasks.push(function(next) {
 		async.each(frameworkSearchPaths, function(frameworkSearchPath, done) {
 			frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', settings.PODS_ROOT);
-			frameworkSearchPath = frameworkSearchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', cocoaPodsConfigurationBuildDir);
+			// TIMOB-25829: CocoaPods < 1.4.0 uses $PODS_CONFIGURATION_BUILD_DIR, 1.4.0+ uses ${PODS_CONFIGURATION_BUILD_DIR}
+			// Remove regex once we bump the minimum version to 1.4.0+
+			frameworkSearchPath = frameworkSearchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, cocoaPodsConfigurationBuildDir);
 			frameworkSearchPath = frameworkSearchPath.replace(/"/g, '');
 			if (!fs.existsSync(frameworkSearchPath)) {
 				return done();
