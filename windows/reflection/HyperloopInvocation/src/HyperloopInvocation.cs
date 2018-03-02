@@ -2,9 +2,57 @@
 using System.Reflection;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Collections.Generic;
+using Windows.Foundation;
 
 namespace HyperloopInvocation
 {
+    public sealed class AsyncEvent
+    {
+        public event TypedEventHandler<object, AsyncStatus> Completed;
+        public void OnCompleted(object sender, AsyncStatus args)
+        {
+            Completed?.Invoke(sender, args);
+        }
+
+    }
+
+    public sealed class AsyncSupport
+    {
+        public static bool IsAsyncAction(Type t)
+        {
+            return t == typeof(IAsyncAction);
+        }
+        public static bool IsAsyncActionWithProgress(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncActionWithProgress<>);
+        }
+        public static bool IsAsyncOperation(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncOperation<>);
+        }
+        public static bool IsAsyncOperationWithProgress(Type t)
+        {
+            return t.GetGenericTypeDefinition() == typeof(IAsyncOperationWithProgress<,>);
+        }
+
+        public static void AddCompletedHandler(Type t, object asyncOperation, AsyncEvent handler)
+        {
+            PropertyInfo completed = t.GetRuntimeProperty("Completed");
+            Type[] completedArgs = { typeof(object), typeof(AsyncStatus) };
+            MethodInfo onCompleted = typeof(AsyncEvent).GetRuntimeMethod("OnCompleted", completedArgs);
+
+            Delegate d = onCompleted.CreateDelegate(completed.PropertyType, handler);
+            completed.SetValue(asyncOperation, d);
+        }
+
+        // Get results from IAsyncOperation and IAsyncOperationWithProgress
+        public static object GetResults(Type t, object obj)
+        { 
+            Method method = Method.GetMethod(t, "GetResults", new Type[0]);
+            return method.Invoke(obj);
+        }
+    }
+
     /*
      * Encapsulate native object because some types can't get through WinRT boundary
      */
@@ -18,6 +66,14 @@ namespace HyperloopInvocation
             NativeType   = t;
             NativeObject = o;
         }
+        public bool IsVoid()
+        {
+            return NativeObject == null;
+        }
+        public bool IsAsync()
+        {
+            return NativeObject is IAsyncInfo;
+        }
         public bool IsString()
         {
             return NativeType == typeof(System.String);
@@ -28,18 +84,24 @@ namespace HyperloopInvocation
         }
         public bool IsNumber()
         {
-            return (NativeType == typeof(System.Double) ||
-                NativeType == typeof(System.Single) ||
-                NativeType == typeof(System.Decimal) ||
-                NativeType == typeof(System.Int64) ||
-                NativeType == typeof(System.Int32) ||
-                NativeType == typeof(System.Int16) ||
-                NativeType == typeof(System.UInt64) ||
-                NativeType == typeof(System.UInt32) ||
-                NativeType == typeof(System.UInt16) ||
-                NativeType == typeof(System.SByte) ||
-                NativeType == typeof(System.Byte));
+            return CanConvertToNumber(NativeType);
         }
+
+        public static bool CanConvertToNumber(Type type)
+        {
+            return (type == typeof(System.Double) ||
+                type == typeof(System.Single) ||
+                type == typeof(System.Decimal) ||
+                type == typeof(System.Int64) ||
+                type == typeof(System.Int32) ||
+                type == typeof(System.Int16) ||
+                type == typeof(System.UInt64) ||
+                type == typeof(System.UInt32) ||
+                type == typeof(System.UInt16) ||
+                type == typeof(System.SByte) ||
+                type == typeof(System.Byte));
+        }
+
         public bool IsObject()
         {
             return NativeObject is object;
@@ -48,9 +110,17 @@ namespace HyperloopInvocation
         {
             return NativeObject == null;
         }
+
         public static object ConvertNumber(Type nativeType, double number)
         {
-            return System.Convert.ChangeType(number, nativeType);
+            if (CanConvertToNumber(nativeType))
+            {
+                return System.Convert.ChangeType(number, nativeType);
+            }
+            else
+            {
+                return System.Convert.ChangeType(number, typeof(System.Double));
+            }
         }
 
         public object addEventListener(string name, object target, Type helper)
@@ -127,8 +197,6 @@ namespace HyperloopInvocation
      */
     public sealed class Method
     {
-        public static int HitCount { get; set;  }
-        public static int MissedCount { get; set; }
         public static int CacheCount { get { return methodCache.Size(); } }
         private static LRUCache<Type, LRUCache<string, LRUCache<int, IList<Method>>>> methodCache;
         public string Name { get; set; }
@@ -142,6 +210,15 @@ namespace HyperloopInvocation
         {
             Name = name;
         }
+
+        //
+        // Shorthand for invoking method with no arguments
+        //
+        public object Invoke(object instanceObj)
+        {
+            return methodInfo.Invoke(instanceObj, null);
+        }
+
         public Instance Invoke(Instance instance, [ReadOnlyArray()] Instance[] arguments)
         {
             object instanceObj = null;
@@ -152,6 +229,10 @@ namespace HyperloopInvocation
             if (arguments == null)
             {
                 object obj = methodInfo.Invoke(instanceObj, null);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
             else
@@ -162,6 +243,10 @@ namespace HyperloopInvocation
                     args[i] = arguments[i].NativeObject;
                 }
                 object obj = methodInfo.Invoke(instanceObj, args);
+                if (obj == null)
+                {
+                    return new HyperloopInvocation.Instance(typeof(void), null);
+                }
                 return new HyperloopInvocation.Instance(obj.GetType(), obj);
             }
         }
@@ -179,19 +264,50 @@ namespace HyperloopInvocation
         {
             try
             {
+                var paramCount = parameters == null ? 0 : parameters.Length;
+
+                IList<Method> methods;
+                if (TryGetCachedMethod(type, name, paramCount, out methods))
+                {
+                    if (methods != null && methods.Count > 0)
+                    {
+                        return methods[0];
+                    }
+                }
+
                 MethodInfo methodInfo = type.GetRuntimeMethod(name, parameters == null ? new Type[0] : parameters);
                 if (methodInfo == null)
                 {
-                    return null;
+#if UWP_PORTABLE
+                    /*
+                     * UWP 8.1 Portable doesn't support GetInterfaces
+                     */
+#else
+                    Type[] interfaces = type.GetInterfaces();
+                    foreach (Type i in interfaces)
+                    {
+                        Method m = GetMethod(i, name, parameters);
+                        if (m != null)
+                        {
+                            UpdateCache(type, name, paramCount, m);
+                            return m;
+                        }
+                    }
+#endif
                 }
-                Method method = new Method(name);
-                method.methodInfo = methodInfo;
-                return method;
+                else
+                {
+                    Method method = new Method(name);
+                    method.methodInfo = methodInfo;
+                    UpdateCache(type, name, paramCount, method);
+                    return method;
+                }
             }
             catch
             {
-                return null;
+                // Do nothing
             }
+            return null;
         }
         private static bool TryGetCachedMethod(Type type, string name, int expectedCount, out IList<Method> cachedMethods)
         {
@@ -202,7 +318,6 @@ namespace HyperloopInvocation
                 LRUCache<int, IList<Method>> cachedParams;
                 if (cachedNames.TryGetValue(name, out cachedParams))
                 {
-                    HitCount++;
                     if (cachedParams == null)
                     {
                         // cachedParams can be null when we know there's no such method
@@ -217,9 +332,14 @@ namespace HyperloopInvocation
                     }
                 }
             }
-            MissedCount++;
             cachedMethods = null;
             return false;
+        }
+        private static void UpdateCache(Type type, string name, int expectedCount, Method method)
+        {
+            IList<Method> methodList = new List<Method>();
+            methodList.Add(method);
+            UpdateCache(type, name, expectedCount, methodList);
         }
         private static void UpdateCache(Type type, string name, int expectedCount, IList<Method> methodList)
         {
@@ -266,6 +386,21 @@ namespace HyperloopInvocation
                 }
             }
 
+#if UWP_PORTABLE
+            /*
+             * UWP 8.1 Portable doesn't support GetInterfaces
+             */
+#else
+            var interfaces = type.GetInterfaces();
+            foreach (Type i in interfaces)
+            {
+                var iMethods = GetMethods(i, name, expectedCount);
+                foreach(Method m in iMethods)
+                {
+                    methodList.Add(m);
+                }
+            }
+#endif
             UpdateCache(type, name, expectedCount, methodList);
 
             return methodList;
@@ -295,6 +430,20 @@ namespace HyperloopInvocation
                 }
             }
 
+#if UWP_PORTABLE
+            /*
+             * UWP 8.1 Portable doesn't support GetInterfaces
+             */
+#else
+            var interfaces = type.GetInterfaces();
+            foreach (Type i in interfaces)
+            {
+                if (HasMethod(i, name))
+                {
+                    return true;
+                }
+            }
+#endif
             // We can't find the method, then we marks it as "not available"
             if (cached == null)
             {
@@ -312,7 +461,10 @@ namespace HyperloopInvocation
     public sealed class Property
     {
         public string Name { get; set; }
+        public int Index { get; set; }
+        public bool IsIndexer { get; set;  }
         private PropertyInfo propertyInfo;
+        private FieldInfo fieldInfo;
         public Property(string name)
         {
             Name = name;
@@ -324,16 +476,71 @@ namespace HyperloopInvocation
             {
                 obj = instance.NativeObject;
             }
-            object value = propertyInfo.GetValue(obj);
-            return new Instance(propertyInfo.PropertyType, value);
+
+            if (IsIndexer)
+            {
+                Type[] indexParams = { typeof(Int32) };
+                Instance[] indexArgs = { new Instance(indexParams[0], Index) };
+                Method m = Method.GetMethod(propertyInfo.DeclaringType, "get_" + Name, indexParams);
+                if (m != null)
+                {
+                    return m.Invoke(instance, indexArgs);
+                }
+            }
+
+            if (propertyInfo != null)
+            {
+                object value = propertyInfo.GetValue(obj);
+                return new Instance(propertyInfo.PropertyType, value);
+            }
+            else if (fieldInfo != null)
+            {
+                object value = fieldInfo.GetValue(null);
+                return new Instance(fieldInfo.FieldType, value);
+            }
+
+            return null;
         }
         public void SetValue(Instance instance, Instance value)
         {
-            propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+            if (propertyInfo != null)
+            {
+                // Array-style property access such as object[0]
+                if (IsIndexer)
+                {
+                    Type[] indexParams = { typeof(Int32), value.NativeType };
+                    Instance[] indexArgs = { new Instance(indexParams[0], Index), value };
+                    Method m = Method.GetMethod(propertyInfo.DeclaringType, "set_" + Name, indexParams);
+                    if (m != null)
+                    {
+                        m.Invoke(instance, indexArgs);
+                    }
+                } else
+                {
+                    if (instance != null)
+                    {
+                        // instance property
+                        propertyInfo.SetValue(instance.NativeObject, value.NativeObject);
+                    }
+                    else
+                    {
+                        // static property
+                        propertyInfo.SetValue(null, value.NativeObject);
+                    }
+                }
+            }
         }
         public Type GetPropertyType()
         {
-            return propertyInfo.PropertyType;
+            if (propertyInfo != null)
+            {
+                return propertyInfo.PropertyType;
+            }
+            else if (fieldInfo != null)
+            {
+                return fieldInfo.FieldType;
+            }
+            return null;
         }
 
         public static Property GetProperty(Type type, string name)
@@ -345,6 +552,50 @@ namespace HyperloopInvocation
                 property.propertyInfo = propertyInfo;
                 return property;
             }
+
+            // Array-style property access such as object[0]
+            int index = 0;
+            if (Int32.TryParse(name, out index))
+            {
+                var properties = type.GetRuntimeProperties();
+                foreach (var prop in properties)
+                {
+                    if (prop.GetIndexParameters().Length > 0)
+                    {
+                        Property property = new Property(prop.Name);
+                        property.propertyInfo = prop;
+                        property.Index = index;
+                        property.IsIndexer = true;
+                        return property;
+                    }
+                }
+            }
+
+            // Enum
+            FieldInfo fieldInfo = type.GetRuntimeField(name);
+            if (fieldInfo != null)
+            {
+                Property property = new Property(name);
+                property.fieldInfo = fieldInfo;
+                return property;
+            }
+
+#if UWP_PORTABLE
+/*
+ * UWP 8.1 Portable doesn't support GetInterfaces
+ */
+#else
+            // Interfaces
+            Type[] interfaces = type.GetInterfaces();
+            foreach(Type i in interfaces)
+            {
+                Property property = GetProperty(i, name);
+                if (property != null)
+                {
+                    return property;
+                }
+            }
+#endif
             return null;
         }
         public static bool HasProperty(Type type, string name)

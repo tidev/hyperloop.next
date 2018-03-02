@@ -3,12 +3,11 @@
  * Copyright (c) 2015 by Appcelerator, Inc. All Rights Reserved.
  */
 var path = require('path'),
-	fs = require('fs'),
+	fs = require('fs-extra'),
 	async = require('async'),
 	http = require('http'),
 	request = require('request'),
 	colors = require('colors'),
-	wrench = require('wrench'),
 	temp = require('temp'),
 	appc = require('node-appc'),
 	exec = require('child_process').exec,
@@ -30,7 +29,8 @@ function downloadURL(url, callback) {
 
 	var tempName = temp.path({ suffix: '.zip' }),
 		tempDir = path.dirname(tempName);
-	fs.existsSync(tempDir) || wrench.mkdirSyncRecursive(tempDir);
+
+	fs.ensureDirSync(tempDir);
 
 	var tempStream = fs.createWriteStream(tempName),
 		req = request({ url: url });
@@ -382,7 +382,7 @@ function writeiOSManifest(next) {
  * write the updated android plugin package.json if neccesary
  */
 function writeAndroidPluginPackage (next) {
-	var fn = path.join(__dirname, '..', 'android', 'plugins', 'hyperloop', 'package.json'),
+	var fn = path.join(__dirname, '..', 'android', 'plugins', 'hyperloop', 'hooks', 'android', 'package.json'),
 		pkg = require(path.join(__dirname, '..', 'package.json')),
 		fnc = require(fn);
 
@@ -413,10 +413,7 @@ function build(branch, callback) {
 
 	async.series([
 		function (next) {
-			if (fs.existsSync(buildTempDir)) {
-				wrench.rmdirSyncRecursive(buildTempDir);
-			}
-			wrench.mkdirSyncRecursive(buildTempDir);
+			fs.emptyDirSync(buildTempDir);
 			next();
 		},
 		// Install latest Titanium SDK
@@ -510,7 +507,7 @@ function build(branch, callback) {
 		writeAndroidPluginPackage,
 		runBuildScript,
 		function (next) {
-			wrench.rmdirSyncRecursive(buildTempDir);
+			fs.removeSync(buildTempDir);
 			next();
 		},
 		// TODO Remove the Titanium SDK we installed to avoid cluttering up HDD?
@@ -536,7 +533,7 @@ if (module.id === ".") {
 		program
 			.version(packageJson.version)
 			// TODO Allow choosing a URL or zipfile as SDK to install!
-			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', 'master')
+			.option('-b, --branch [branchName]', 'Install a specific branch of the SDK to test with', '6_2_X')
 			.option('-P, --no-progress-bars', 'disable progress bars')
 			.parse(process.argv);
 

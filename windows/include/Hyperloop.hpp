@@ -13,6 +13,8 @@
 #include "Titanium/detail/TiBase.hpp"
 #include "Titanium/Module.hpp"
 #include <collection.h>
+#include <ppltasks.h>
+#include <unordered_map>
 
 using namespace HAL;
 
@@ -47,6 +49,38 @@ namespace TitaniumWindows
 		::Platform::Object^ native_object__{ nullptr };
 	};
 }
+
+class HYPERLOOP_EXPORT HyperloopPromiseCallback : public JSExportObject, public JSExport<HyperloopPromiseCallback>
+{
+public:
+	HyperloopPromiseCallback(const JSContext& ctx) TITANIUM_NOEXCEPT;
+
+	virtual ~HyperloopPromiseCallback() = default;
+	HyperloopPromiseCallback(const HyperloopPromiseCallback&) = default;
+	HyperloopPromiseCallback& operator=(const HyperloopPromiseCallback&) = default;
+#ifdef TITANIUM_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
+	HyperloopPromiseCallback(HyperloopPromiseCallback&&) = default;
+	HyperloopPromiseCallback& operator=(HyperloopPromiseCallback&&) = default;
+#endif
+
+	static void JSExportInitialize();
+	JSValue CallAsFunction(const std::vector<JSValue>&, const JSObject& this_object);
+
+	void set_native_object(::Platform::Object^ obj)
+	{
+		native_object__ = obj;
+	}
+
+	void set_generic_type(Windows::UI::Xaml::Interop::TypeName type)
+	{
+		generic_type__ = type;
+	}
+
+protected:
+	::Platform::Object^ native_object__{ nullptr };
+	Windows::UI::Xaml::Interop::TypeName generic_type__;
+	HyperloopInvocation::AsyncEvent^ completed_handler__;
+};
 
 class HYPERLOOP_EXPORT HyperloopBase : public TitaniumWindows::Platform_Object, public JSExport<HyperloopBase>
 {
@@ -128,7 +162,7 @@ public:
 	virtual void postCallAsConstructor(const JSContext& js_context, const std::vector<JSValue>& arguments) override;
 
 	bool HasProperty(const JSString& property_name) const;
-	JSValue GetProperty(const JSString& property_name) const;
+	JSValue GetProperty(const JSString& property_name);
 	bool SetProperty(const JSString& property_name, const JSValue&);
 
 	virtual ~HyperloopInstance();
@@ -148,6 +182,11 @@ public:
 private:
 	Windows::Foundation::Collections::IMap<::Platform::String^, Windows::Foundation::EventRegistrationToken>^ tokens;
 	Windows::Foundation::Collections::IMap<::Platform::String^, TitaniumWindows_Hyperloop::Event^>^ events;
+#pragma warning(push)
+#pragma warning(disable : 4251)
+	std::unordered_map<std::string, JSValue> methods__;
+	std::unordered_map<std::string, HyperloopInvocation::Property^> properties__;
+#pragma warning(pop)
 };
 
 class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExport<HyperloopModule>
@@ -168,7 +207,8 @@ class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExpor
 		static JSValue Convert(const JSContext&, HyperloopInvocation::Instance^);
 		static HyperloopInvocation::Instance^ Convert(const JSValue&, const Windows::UI::Xaml::Interop::TypeName);
 		static JSObject CreateObject(const JSContext&, HyperloopInvocation::Instance^);
-		
+		static JSObject CreatePromise(const JSContext&, HyperloopInvocation::Instance^, const Windows::UI::Xaml::Interop::TypeName);
+
 		TITANIUM_PROPERTY_IMPL_DEF(bool, debug);
 
 		TITANIUM_PROPERTY_DEF(debug);

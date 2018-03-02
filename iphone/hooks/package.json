@@ -1,0 +1,27 @@
+{
+	"name": "hyperloop",
+	"version": "0.0.0-PLACEHOLDER",
+	"description": "Provides direct native API access from Titanium",
+	"keywords": [
+		"appcelerator",
+		"titanium",
+		"hyperloop"
+	],
+	"author": "Pedro Enrique",
+	"private": true,
+	"contributors": [
+		{
+			"name": "Pedro Enrique"
+		},
+		{
+			"name": "Dawson Toth"
+		},
+		{
+			"name": "Jeff Haynie"
+		}
+	],
+	"dependencies": {
+		"findit": "^2.0.0",
+		"fs-extra": "^4.0.2"
+	}
+}

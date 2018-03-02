@@ -1,15 +1,14 @@
 .DS_Store
 build/
 node_modules
-android/plugins/hyperloop/metabase/hyperloop/
-android/plugins/hyperloop/hooks/hyperloop.js
-android/LICENSE.md
+android/hooks/hyperloop-init.js
+android/LICENSE
 android/libs/
 android/documentation/
 android/assets/
 android/example/
 android/bin
-android/LICENSE
+android/java-sources.txt
 dist/
 xcuserdata
 project.xcworkspace
@@ -17,4 +16,9 @@ project.xcworkspace
 *.zip
 *.bak
 npm-debug.log
-metabase/ios/bin/metabase
+packages/hyperloop-ios-metabase/bin/metabase
+windows/hooks/hyperloop-init.js
+
+# Coverage directory and nyc output
+coverage
+.nyc_output

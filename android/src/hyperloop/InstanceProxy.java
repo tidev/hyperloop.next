@@ -7,6 +7,7 @@
 
 package hyperloop;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Map;
 
@@ -174,7 +175,7 @@ public class InstanceProxy extends BaseProxy {
     }
 
     @Override
-    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) {
+    protected Object invokeMethod(Method m, Object receiver, Object[] convertedArgs) throws InvocationTargetException {
         if (receiver != null && isSuper) {
             // let the handler know this call is explicitly to super!
             HyperloopInvocationHandler hih = (HyperloopInvocationHandler) ProxyBuilder.getInvocationHandler(receiver);

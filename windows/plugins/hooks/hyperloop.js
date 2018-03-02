@@ -5,12 +5,19 @@ var spawn = require('child_process').spawn,
     ejs  = require('ejs'),
     appc = require('node-appc');
 
+function isVS2017(data) {
+    if (data.windowsInfo && data.windowsInfo.selectedVisualStudio) {
+        return /^Visual Studio \w+ 2017/.test(data.windowsInfo.selectedVisualStudio.version);
+    }
+    return false;
+}
+
 exports.cliVersion = ">=3.2";
 exports.init = function(logger, config, cli, nodeappc) {
     /*
      * CLI Hook for Hyperloop build dependencies
      */
-    cli.on('build.module.pre.compile', function (data, callback) {
+    cli.on('build.module.pre.construct', function (data, callback) {
         var tasks = [
             function(next) {
                 generateCMakeList(data, next);
@@ -21,19 +28,22 @@ exports.init = function(logger, config, cli, nodeappc) {
             function(next) {
                 runCmake(data, 'WindowsStore', 'ARM', '10.0', next);
             },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'Win32', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsPhone', 'ARM', '8.1', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '8.1', next);
-            },
         ];
 
+        data.projectDir = cli.argv['project-dir'];
+        data.manifest = cli.manifest;
+
+        async.series(tasks, function(err) {
+            callback(err, data);
+        });
+    });
+
+    cli.on('build.module.pre.compile', function (data, callback) {
+        var tasks = [];
+        var archs = ['win10'];
+
         var csharp_dest = path.join(data.projectDir, 'reflection', 'HyperloopInvocation');
-        ['phone', 'store', 'win10'].forEach(function(platform) {
+        archs.forEach(function(platform) {
             ['Debug', 'Release'].forEach(function(buildConfig) {
                 tasks.push(
                     function(next) {
@@ -48,12 +58,14 @@ exports.init = function(logger, config, cli, nodeappc) {
         });
 
     });
-    
+
     /*
      * Copy dependencies
      */
     cli.on('build.module.pre.package', function (data, callback) {
-        ['phone', 'store', 'win10'].forEach(function(platform){
+        var archs = ['win10'];
+
+        archs.forEach(function(platform){
             ['ARM', 'x86'].forEach(function(arch){
                 var from = path.join(data.projectDir, 'reflection', 'HyperloopInvocation', 'bin', platform, 'Release'),
                     to = path.join(data.projectDir, 'build', 'Hyperloop', data.manifest.version, platform, arch);
@@ -62,9 +74,18 @@ exports.init = function(logger, config, cli, nodeappc) {
                     for (var i = 0; i < files.length; i++) {
                         fs.createReadStream(path.join(from, files[i])).pipe(fs.createWriteStream(path.join(to, files[i])));
                     }
+                    // Don't copy TitaniumWindows_Hyperloop.winmd
+                    var exclude_file = path.join(to, 'TitaniumWindows_Hyperloop.winmd');
+                    fs.existsSync(exclude_file) && fs.unlinkSync(exclude_file);
                 }
             });
         });
+
+        var sharedInitHook = path.join(data.projectDir, '..', 'hooks', 'hyperloop-init.js');
+        if (fs.existsSync(sharedInitHook)) {
+          fs.createReadStream(sharedInitHook).pipe(fs.createWriteStream(path.join(data.projectDir, 'hooks', 'hyperloop-init.js')));
+        }
+
         callback(null, data);
     });
 };
@@ -76,11 +97,16 @@ function generateCMakeList(data, next) {
         windowsSrcDir = path.join(data.titaniumSdkPath, 'windows'),
         version = data.manifest.version;
 
+    // Workaround for TIMOB-25433: Add '--run-cmake' when CMakeLists.txt is not found
+    if (!fs.existsSync(cmakelist)) {
+        data.cli.argv['run-cmake'] = '';
+    }
+
     data.logger.debug('Updating CMakeLists.txt...');
 
     fs.readFile(template, 'utf8', function (err, data) {
         if (err) throw err;
-        data = ejs.render(data, { 
+        data = ejs.render(data, {
             version: appc.version.format(version, 4, 4, true),
             windowsSrcDir: windowsSrcDir.replace(/\\/g, '/').replace(' ', '\\ ')
         }, {});
@@ -94,7 +120,7 @@ function generateCMakeList(data, next) {
 
 function runCmake(data, platform, arch, sdkVersion, next) {
     var logger = data.logger,
-        generatorName = 'Visual Studio 14 2015' + (arch==='ARM' ? ' ARM' : ''),
+        generatorName = (isVS2017(data) ? 'Visual Studio 15 2017' : 'Visual Studio 14 2015')  + (arch==='ARM' ? ' ARM' : ''),
         cmakeProjectName = (sdkVersion === '10.0' ? 'Windows10' : platform) + '.' + arch,
         cmakeWorkDir = path.resolve(__dirname,'..','..',cmakeProjectName);
 
@@ -169,7 +195,7 @@ function runNuGet(data, slnFile, callback) {
 }
 
 function runMSBuild(data, slnFile, buildConfig, callback) {
-    var logger = data.logger, 
+    var logger = data.logger,
         windowsInfo = data.windowsInfo,
         vsInfo  = windowsInfo.selectedVisualStudio;
 
@@ -181,9 +207,9 @@ function runMSBuild(data, slnFile, buildConfig, callback) {
     logger.debug('Running MSBuild on solution: ' + slnFile);
 
     // Use spawn directly so we can pipe output as we go
-    var p = spawn(vsInfo.vcvarsall, [
-        '&&', 'MSBuild', '/p:Platform=Any CPU', '/p:Configuration=' + buildConfig, slnFile
-    ]);
+    var p = spawn((process.env.comspec || 'cmd.exe'), ['/S', '/C', '"', vsInfo.vsDevCmd.replace(/[ \(\)\&]/g, '^$&') +
+        ' && MSBuild /p:Platform="Any CPU" /p:Configuration=' + buildConfig + ' ' + slnFile + '"'
+    ], {windowsVerbatimArguments: true});
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
