@@ -601,7 +601,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 				}
 
 				var searchPath = path.replace('${PODS_ROOT}', cocoaPodsRoot);
-				searchPath = searchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', cocoaPodsConfigurationBuildDir);
+				searchPath = searchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, cocoaPodsConfigurationBuildDir);
 				searchPath = searchPath.replace(/"/g, '');
 
 				target.push(searchPath);
