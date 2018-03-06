@@ -45,148 +45,150 @@ node {
 
 stage('Build') {
 	parallel(
-		'android': {
-			node('android-sdk && android-ndk && osx') { // FIXME Support linux or windows!
-				unstash 'source'
+// 		'android': {
+// 			node('android-sdk && android-ndk && osx') { // FIXME Support linux or windows!
+// 				unstash 'source'
 
-				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					appc.install()
-					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+// 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+// 					appc.install()
+// 					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
-					echo 'Building Android module...'
-					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
+// 					echo 'Building Android module...'
+// 					sh 'mkdir -p assets' // node-based android build fails if this doesn't exist
 
-					// We have to hack to make sure we pick up correct ANDROID_SDK/NDK values from the node that's currently running this section of the build.
-					def androidSDK = env.ANDROID_SDK // default to what's in env (may have come from jenkins env vars set on initial node)
-					def androidNDK = env.ANDROID_NDK
-					withEnv(['ANDROID_SDK=', 'ANDROID_NDK=']) {
-						try {
-							androidSDK = sh(returnStdout: true, script: 'printenv ANDROID_SDK')
-						} catch (e) {
-							// squash, env var not set at OS-level
-						}
-						try {
-							androidNDK = sh(returnStdout: true, script: 'printenv ANDROID_NDK')
-						} catch (e) {
-							// squash, env var not set at OS-level
-						}
+// 					// We have to hack to make sure we pick up correct ANDROID_SDK/NDK values from the node that's currently running this section of the build.
+// 					def androidSDK = env.ANDROID_SDK // default to what's in env (may have come from jenkins env vars set on initial node)
+// 					def androidNDK = env.ANDROID_NDK
+// 					withEnv(['ANDROID_SDK=', 'ANDROID_NDK=']) {
+// 						try {
+// 							androidSDK = sh(returnStdout: true, script: 'printenv ANDROID_SDK')
+// 						} catch (e) {
+// 							// squash, env var not set at OS-level
+// 						}
+// 						try {
+// 							androidNDK = sh(returnStdout: true, script: 'printenv ANDROID_NDK')
+// 						} catch (e) {
+// 							// squash, env var not set at OS-level
+// 						}
 
-						dir('android') {
-							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+// 						dir('android') {
+// 							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+// 							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 
-							writeFile file: 'build.properties', text: """
-titanium.platform=${activeSDKPath}/android
-android.platform=${androidSDK}/platforms/android-${androidAPILevel}
-google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
-"""
-							// FIXME We should have a module clean command!
-							// manually clean
-							sh 'rm -rf build/'
-							sh 'rm -rf dist/'
-							sh 'rm -rf libs/'
+// 							writeFile file: 'build.properties', text: """
+// titanium.platform=${activeSDKPath}/android
+// android.platform=${androidSDK}/platforms/android-${androidAPILevel}
+// google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
+// """
+// 							// FIXME We should have a module clean command!
+// 							// manually clean
+// 							sh 'rm -rf build/'
+// 							sh 'rm -rf dist/'
+// 							sh 'rm -rf libs/'
 
-							// Run hook tests and then prune to production deps
-							dir('hooks') {
-								sh 'npm install'
-								sh 'npm test'
-								sh 'npm prune --production'
-							}
+// 							// Run hook tests and then prune to production deps
+// 							dir('hooks') {
+// 								sh 'npm install'
+// 								sh 'npm test'
+// 								sh 'npm prune --production'
+// 							}
 
-							appc.loggedIn {
-								// Even setting config needs login, ugh
-								sh "appc ti config android.sdkPath ${androidSDK}"
-								sh "appc ti config android.ndkPath ${androidNDK}"
-								sh 'appc run -p android --build-only'
-							} // appc.loggedIn
+// 							appc.loggedIn {
+// 								// Even setting config needs login, ugh
+// 								sh "appc ti config android.sdkPath ${androidSDK}"
+// 								sh "appc ti config android.ndkPath ${androidNDK}"
+// 								sh 'appc run -p android --build-only'
+// 							} // appc.loggedIn
 
-							// Clean dist zip
-							dir('dist') {
-								sh 'rm -f hyperloop-android.jar'
-								sh "unzip hyperloop-android-${packageVersion}.zip"
-								sh "rm -rf hyperloop-android-${packageVersion}.zip"
+// 							// Clean dist zip
+// 							dir('dist') {
+// 								sh 'rm -f hyperloop-android.jar'
+// 								sh "unzip hyperloop-android-${packageVersion}.zip"
+// 								sh "rm -rf hyperloop-android-${packageVersion}.zip"
 
-								dir ("modules/android/hyperloop/${packageVersion}/hooks") {
-									sh 'rm -rf coverage'
-									sh 'rm -f junit_report.xml'
-									sh 'rm -f package.json.bak'
-									sh 'rm -f package-lock.json'
-									sh 'rm -rf test'
-								}
+// 								dir ("modules/android/hyperloop/${packageVersion}/hooks") {
+// 									sh 'rm -rf coverage'
+// 									sh 'rm -f junit_report.xml'
+// 									sh 'rm -f package.json.bak'
+// 									sh 'rm -f package-lock.json'
+// 									sh 'rm -rf test'
+// 								}
 
-								// Remove bogus dir created by previous dir operation
-								sh "rm -rf modules/android/hyperloop/${packageVersion}/hooks@tmp"
+// 								// Remove bogus dir created by previous dir operation
+// 								sh "rm -rf modules/android/hyperloop/${packageVersion}/hooks@tmp"
 
-								// Remove docs and examples
-								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
-								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
+// 								// Remove docs and examples
+// 								sh "rm -rf modules/android/hyperloop/${packageVersion}/example"
+// 								sh "rm -rf modules/android/hyperloop/${packageVersion}/documentation"
 
-								// Now zip it back up
-								sh "zip -r hyperloop-android-${packageVersion}.zip ."
-							}
-							stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
-						} // dir
-					} // withEnv
-				} // nodejs
-			} // node
-		},
-		'iOS': {
-			node('osx && xcode') {
-				unstash 'source'
+// 								// Now zip it back up
+// 								sh "zip -r hyperloop-android-${packageVersion}.zip ."
+// 							}
+// 							stash includes: 'dist/hyperloop-android-*.zip', name: 'android-zip'
+// 						} // dir
+// 					} // withEnv
+// 				} // nodejs
+// 			} // node
+// 		},
+// 		'iOS': {
+// 			node('osx && xcode') {
+// 				unstash 'source'
 
-				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-					appc.install()
-					appc.installAndSelectSDK(sdkVersion)
+// 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+// 					appc.install()
+// 					appc.installAndSelectSDK(sdkVersion)
 
-					echo 'Building iOS module...'
-					dir('iphone') {
-						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+// 					echo 'Building iOS module...'
+// 					dir('iphone') {
+// 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+// 						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 
-						// Check if xcpretty gem is installed
-						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
-						// 	// FIXME Typically need sudo rights to do this!
-						// 	sh 'gem install xcpretty'
-						// }
+// 						// Check if xcpretty gem is installed
+// 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
+// 						// 	// FIXME Typically need sudo rights to do this!
+// 						// 	sh 'gem install xcpretty'
+// 						// }
 
-						sh 'rm -rf build'
-						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
+// 						sh 'rm -rf build'
+// 						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
 
-						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
-						// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
-						// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// 	// Building for TiCore
-						// 	echo "Building for TiCore ..."
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
-						//
-						// 	// Building for JSCore
-						// 	echo "Building for JSCore ..."
-						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
-						//
-						// 	// Add a fake libhyperloop.a file
-						// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
+// 						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
+// 						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
+// 						// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
+// 						// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
+// 						// 	// Building for TiCore
+// 						// 	echo "Building for TiCore ..."
+// 						// 	sh 'appc ti build --build-only'
+// 						// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
+// 						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
+// 						//
+// 						// 	// Building for JSCore
+// 						// 	echo "Building for JSCore ..."
+// 						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
+// 						// 	sh 'appc ti build --build-only'
+// 						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
+// 						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
+// 						//
+// 						// 	// Add a fake libhyperloop.a file
+// 						// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
 
-						// THEN we need to combine all the plugins stuff!
-						// And build and package the metabase shit!
-						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
-					} // dir
-				} // nodejs
-			} // node
-		},
+// 						// THEN we need to combine all the plugins stuff!
+// 						// And build and package the metabase shit!
+// 						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
+// 					} // dir
+// 				} // nodejs
+// 			} // node
+// 		},
 		'windows': {
-			node('windows && (vs2015 || vs2017)') {
+			node('batali-win10') {
 				ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
 					unstash 'source'
 
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-						appc.install()
-						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+						sh 'cp ./appc C:/Users/build/.appcelerator/install/7.0.2/package/bin'
+						sh 'appc logout'
+						// appc.install()
+						// def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
 						echo 'Building Windows module...'
 						// FIXME How the hell is Windows OK with these shell commands?
@@ -203,9 +205,10 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf WindowsStore.Win32/'
 							sh 'rm -f CMakeLists.txt'
 							sh 'rm -f hyperloop-windows-*.zip'
-							appc.loggedIn {
-								sh 'appc run -p windows --build-only'
-							} // appc.loggedIn
+							sh 'appc run -p windows --build-only'
+							// appc.loggedIn {
+							// 	sh 'appc run -p windows --build-only'
+							// } // appc.loggedIn
 
 							sh 'rm -rf zip/'
 							sh 'mkdir zip/'
