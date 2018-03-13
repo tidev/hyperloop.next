@@ -143,6 +143,7 @@ function resolveType(filename, metabase, value) {
  */
 function extractImports(buf) {
 	// FIXME This doesn't handle specifying the type of the import. May not support UIKit.UITableViewController style either?
+	// See https://robots.thoughtbot.com/swift-imports
 	return (buf.match(/import\s*(\w+)/g) || []).map(function (m) {
 		return m.substring(6).replace(/;$/, '').trim();
 	});
