@@ -13,6 +13,8 @@ module.exports = HyperloopiOSBuilder;
 const IOS_MIN = '8.0';
 // set this to enforce a minimum Titanium SDK
 const TI_MIN = '7.0.0';
+// Min SDK to use the newer build.ios.compileJsFile hook
+const COMPILE_JS_FILE_HOOK_SDK_MIN = '7.1.0';
 // set the iOS SDK minium
 const IOS_SDK_MIN = '9.0';
 // enum for ios javascript core
@@ -83,16 +85,56 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.cocoaPodsProducts = [];
 	this.headers = null;
 	this.needMigration = {};
+	this.useCopyResourceHook = false; // boolean flag to determine which CLi hook to use based on SDK version
 
 	// set our CLI logger
 	hm.util.setLog(builder.logger);
 }
 
 /**
+ * called for each resource to process them
+ */
+HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
+	try {
+		// Use this variant of the hook on SDK 7.0.2 and lower
+		if (!this.useCopyResourceHook) {
+			return callback();
+		}
+		const from = builder.args[0];
+		const to = builder.args[1];
+		const contents = fs.readFileSync(to).toString();
+		const obj = {
+			contents: contents,
+			original: contents
+		};
+
+		this.patchJSFile(obj, from, to, function (err) {
+			if (err) {
+				return callback(err);
+			}
+
+			// Only write if contents changed
+			if (contents !== obj.contents) {
+				fs.writeFile(to, obj.contents, callback);
+			} else {
+				callback();
+			}
+		});
+	} catch (e) {
+		callback(e);
+	}
+};
+
+/**
  * called for each JS resource to process them
  */
 HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 	try {
+		// use this variant of the hook on SDK 7.1+
+		if (this.useCopyResourceHook) {
+			return callback();
+		}
+
 		const obj = builder.args[0];
 		const from = builder.args[1];
 		const to = builder.args[2];
@@ -207,6 +249,10 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
 	fs.ensureDirSync(this.hyperloopBuildDir);
 
+	if (!this.appc.version.gte(this.builder.titaniumSdkVersion, COMPILE_JS_FILE_HOOK_SDK_MIN)) {
+		this.useCopyResourceHook = true;
+	}
+
 	// update to use the correct libhyperloop based on which JS engine is configured
 	this.builder.nativeLibModules.some(function (mod) {
 		if (mod.id === 'hyperloop') {
@@ -290,7 +336,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 	function arrayifyAndResolve(it) {
 		if (it) {
-			return (Array.isArray(it) ? it : [it]).map(function (name) {
+			return (Array.isArray(it) ? it : [ it ]).map(function (name) {
 				return path.resolve(projectDir, name);
 			});
 		}
@@ -307,7 +353,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			return next();
 		}
 
-		hm.metabase.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function(err, modules) {
+		hm.metabase.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function (err, modules) {
 			if (err) {
 				return next(err);
 			}
@@ -430,7 +476,7 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
  * @param {Function} cb - callback function
  */
 HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFilename, destinationFilename, cb) {
-	var contents = obj.contents;
+	const contents = obj.contents;
 	// skip empty content
 	if (!contents.length) {
 		return cb();
@@ -456,12 +502,12 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 	const self = this;
 	const HyperloopVisitor = {
 		// ES5-style require calls
-		CallExpression: function(p) {
+		CallExpression: function (p) {
 			const theString = p.node.arguments[0];
 			let requireMatch;
-			if (p.get('callee').isIdentifier({name: 'require'}) && // Is this a require call?
-				theString && t.isStringLiteral(theString) &&     // Is the 1st param a literal string?
-				(requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
+			if (p.get('callee').isIdentifier({ name: 'require' }) // Is this a require call?
+				&& theString && t.isStringLiteral(theString)     // Is the 1st param a literal string?
+				&& (requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
 			) {
 				// hyperloop includes will always have a slash
 				const tok = requireMatch[0].split('/');
@@ -489,8 +535,8 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					});
 
 					if (maybes.length) {
-						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
-							maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use '
+							+ maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
 					}
 					// don't inject anything
 					return;
@@ -511,7 +557,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 						}
 
 						if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
-							throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
+							throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath + ')');
 						}
 					}, self);
 
@@ -528,17 +574,17 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 
 				// replace the require to point to our generated file path
 				p.replaceWith(
-					t.callExpression(p.node.callee, [t.stringLiteral('/' + ref)])
+					t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ])
 				);
 			}
 		},
 		// ES6+-style imports
-		ImportDeclaration: function(p) {
+		ImportDeclaration: function (p) {
 			const theString = p.node.source;
 			const replacements = [];
 			let requireMatch;
-			if (theString && t.isStringLiteral(theString) &&   // module name is a string literal
-				(requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
+			if (theString && t.isStringLiteral(theString)   // module name is a string literal
+				&& (requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
 			) {
 				// hyperloop includes will always have a slash
 				const tok = requireMatch[0].split('/');
@@ -559,8 +605,8 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					});
 
 					if (maybes.length) {
-						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use ' +
-							maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
+						self.logger.warn('The iOS framework "' + pkg + '" could not be found. Are you trying to use '
+							+ maybes.map(function (s) { return '"' + s + '"'; }).join(' or ') + ' instead? (' + relPath + ')');
 					}
 					// don't inject anything
 					return;
@@ -592,7 +638,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 							}
 
 							if (soundEx(frameworkMetadata.name) === classNameSoundEx) {
-								throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath+ ')');
+								throw new Error('The iOS class "' + className + '" could not be found in the framework "' + pkg + '". Are you trying to use "' + frameworkMetadata.name + '" instead? (' + relPath + ')');
 							}
 						}, self);
 
@@ -608,7 +654,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					}
 
 					// replace the import to point to our generated file path
-					replacements.push(t.importDeclaration([t.importDefaultSpecifier(spec.local)], t.stringLiteral('/' + ref)));
+					replacements.push(t.importDeclaration([ t.importDefaultSpecifier(spec.local) ], t.stringLiteral('/' + ref)));
 				});
 
 				// Apply replacements
@@ -632,7 +678,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 	if (needMigration.length > 0) {
 		this.needMigration[sourceFilename] = needMigration;
 
-		needMigration.forEach(function(token) {
+		needMigration.forEach(function (token) {
 			newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
 		});
 	}
@@ -724,7 +770,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
 			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
 			var paths = source.split(' ');
-			paths.forEach(function(path) {
+			paths.forEach(function (path) {
 				if (path === '$(inherited)') {
 					return;
 				}
@@ -745,10 +791,10 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 4.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
 
 		this.headers = [];
-		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function(frameworkName) {
+		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function (frameworkName) {
 			var thirdPartyFrameworkConfig = this.hyperloopConfig.ios.thirdparty[frameworkName];
-			var headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [thirdPartyFrameworkConfig.header];
-			headerPaths.forEach(function(headerPath) {
+			var headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [ thirdPartyFrameworkConfig.header ];
+			headerPaths.forEach(function (headerPath) {
 				var searchPath = path.resolve(this.builder.projectDir, headerPath);
 				extraHeaderSearchPaths.push(searchPath);
 				extraFrameworkSearchPaths.push(searchPath);
@@ -757,7 +803,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}, this);
 	}
 	if (this.builder.frameworks) {
-		Object.keys(this.builder.frameworks).forEach(function(frameworkName) {
+		Object.keys(this.builder.frameworks).forEach(function (frameworkName) {
 			var frameworkInfo = this.builder.frameworks[frameworkName];
 			extraFrameworkSearchPaths.push(path.dirname(frameworkInfo.path));
 		}, this);
@@ -851,8 +897,8 @@ HyperloopiOSBuilder.prototype.normalizeFrameworks = function normalizeFrameworks
 			if (entryName[0] === '/' && headerToFrameworkMap[entryName]) {
 				var normalizedFrameworkName = headerToFrameworkMap[entryName];
 				var frameworkBlocks = this.metabase.blocks[normalizedFrameworkName] || [];
-				frameworkBlocks = frameworkBlocks.concat(this.metabase.blocks[entryName].filter(function(block) {
-					return frameworkBlocks.every(function(existingBlock) {
+				frameworkBlocks = frameworkBlocks.concat(this.metabase.blocks[entryName].filter(function (block) {
+					return frameworkBlocks.every(function (existingBlock) {
 						return existingBlock.signature !== block.signature;
 					});
 				}));
@@ -1064,6 +1110,12 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 		pre: this.hookUpdateXcodeProject.bind(this)
 	});
 
+	// To be removed once we no longer support SDK < 7.1
+	this.cli.on('build.ios.copyResource', {
+		pre: this.copyResource.bind(this)
+	});
+
+	// For SDK 7.1+
 	this.cli.on('build.ios.compileJsFile', {
 		pre: this.compileJsFile.bind(this)
 	});
@@ -1105,7 +1157,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	var thirdPartyFrameworksUsed = false;
 	if (this.hyperloopConfig.ios.thirdparty) {
 		var usedFrameworkNames = Array.from(this.usedFrameworks.keys());
-		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function(thirdPartyFramework) {
+		thirdPartyFrameworksUsed = Object.keys(this.hyperloopConfig.ios.thirdparty).some(function (thirdPartyFramework) {
 			return usedFrameworkNames.some(function (usedFrameworkName) {
 				return usedFrameworkName === thirdPartyFramework;
 			}, this);
@@ -1197,7 +1249,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			fileRef_comment: frameworkPackageName
 		};
 		if (!frameworkMetadata.isAvailable(this.sdkInfo.minVersion)) {
-			xobjs.PBXBuildFile[buildFileUuid].settings = {ATTRIBUTES: ['Weak']};
+			xobjs.PBXBuildFile[buildFileUuid].settings = { ATTRIBUTES: [ 'Weak' ] };
 		}
 		xobjs.PBXBuildFile[buildFileUuid + '_comment'] = frameworkPackageName + ' in Frameworks';
 
@@ -1242,7 +1294,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			}
 
 			if (!Array.isArray(source)) {
-				source = [source];
+				source = [ source ];
 			}
 
 			groups[framework] || (groups[framework] = {});
@@ -1375,7 +1427,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 				isa: 'PBXBuildFile',
 				fileRef: fileRefUuid,
 				fileRef_comment: name,
-				settings: {COMPILER_FLAGS : '"-fobjc-arc"' }
+				settings: { COMPILER_FLAGS: '"-fobjc-arc"' }
 			};
 			xobjs.PBXBuildFile[buildFileUuid + '_comment'] = name + ' in Sources';
 
@@ -1421,7 +1473,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	}
 
 	if (this.hasCustomShellScriptBuildPhases()) {
-		this.hyperloopConfig.ios.xcodebuild.scripts.forEach(function(buildPhaseOptions) {
+		this.hyperloopConfig.ios.xcodebuild.scripts.forEach(function (buildPhaseOptions) {
 			if (!buildPhaseOptions.name || !buildPhaseOptions.shellScript) {
 				throw new Error('Your appc.js contains an invalid shell script build phase. Please specify at least a "name" and the "shellScript" to run.');
 			}
@@ -1528,7 +1580,7 @@ HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
 	}
 	if (this.hasCocoaPods) {
 		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
-		this.cocoaPodsProducts.forEach(function(product) {
+		this.cocoaPodsProducts.forEach(function (product) {
 			this.builder.unmarkBuildDirFiles(path.join(productsDirectory, product));
 		}.bind(this));
 	}
@@ -1544,7 +1596,8 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	var substrRegExp = /(?:[^\s"]+|"[^"]*")+/g;
 
 	function splitValue(value) {
-		var part, parts = [];
+		var part,
+			parts = [];
 		while ((part = substrRegExp.exec(value)) !== null) {
 			parts.push(part[0].replace(quotesRegExp, '$1'));
 		}
@@ -1610,9 +1663,8 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 			addParam('HEADER_SEARCH_PATHS', header);
 			addParam('FRAMEWORK_SEARCH_PATHS', header);
 		});
-		//For some reason, when using ticore and having custom headers, the original header search path goes missing.
-		//FIX ME
-		if(!this.builder.tiapp.ios['use-jscore-framework']) {
+		// FIXME: For some reason, when using ticore and having custom headers, the original header search path goes missing.
+		if (!this.builder.tiapp.ios['use-jscore-framework']) {
 			addParam('HEADER_SEARCH_PATHS', 'headers');
 		}
 	}
