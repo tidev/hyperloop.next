@@ -91,6 +91,10 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 
 /**
  * called for each resource to process them
+ * @param {Object} builder builder
+ * @param {Array} builder.args arguments to hook
+ * @param {Function} callback callback function
+ * @returns {void}
  */
 HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
 	try {
@@ -128,6 +132,7 @@ HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
  * @param {Object} builder builder
  * @param {Array} builder.args arguments to hook
  * @param {Function} callback callback function
+ * @returns {void}
  */
 HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 	try {
@@ -135,7 +140,6 @@ HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 		if (this.useCopyResourceHook) {
 			return callback();
 		}
-
 		const obj = builder.args[0];
 		const from = builder.args[1];
 		const to = builder.args[2];
