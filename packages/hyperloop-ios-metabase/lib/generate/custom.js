@@ -756,7 +756,8 @@ function toJSObject (ref, node, def) {
 				var right = toJSObject(ref, node.right);
 				return left + right;
 			}
-			case 'FunctionExpression': {
+			case 'FunctionExpression':
+			case 'ArrowFunctionExpression': {
 				return node;
 			}
 			case 'UnaryExpression': {
@@ -770,7 +771,7 @@ function toJSObject (ref, node, def) {
 				return eval (op + right);
 			}
 		}
-		throw new JSParseError("not sure what to do with this node", node);
+		throw new JSParseError("Not sure what to do with this node: " + node.type, node);
 	} else {
 		return def;
 	}
