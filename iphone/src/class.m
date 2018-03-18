@@ -13,6 +13,15 @@
 
 @synthesize nativeObject = _nativeObject;
 
+- (NSString *)description
+{
+	if (![self.className isKindOfClass:[NSString class]]) {
+		return NSStringFromClass(self.class);
+	}
+	// Return the object description like in native iOS, e.g. <NSMutableArray: 0x608000072c80>
+	return [NSString stringWithFormat:@"<%@: %p>", self.className, self];
+}
+
 -(instancetype)initWithClassName: (NSString *)className alloc:(BOOL)alloc init:(SEL)init args:(NSArray*)args {
 	if (self = [self init]) {
 		Class c = NSClassFromString(className);
@@ -34,6 +43,7 @@
 			target = [nativeObject classValue];
 		}
 		self.nativeObject = target;
+		self.className = className;
 	}
 	REMEMBER(self);
 	return self;
@@ -47,6 +57,7 @@
 -(void)destroy:(id)args {
 	RELEASE_AND_CHECK(self.nativeObject);
 	RELEASE_AND_CHECK(self.customClass);
+	RELEASE_AND_CHECK(self.className);
 }
 
 -(id)target {
