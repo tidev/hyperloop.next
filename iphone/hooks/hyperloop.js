@@ -1112,7 +1112,7 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 
 	// To be removed once we no longer support SDK < 7.1
 	this.cli.on('build.ios.copyResource', {
-		pre: this.copyResource.bind(this)
+		post: this.copyResource.bind(this)
 	});
 
 	// For SDK 7.1+
