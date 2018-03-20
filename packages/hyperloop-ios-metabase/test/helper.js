@@ -1,37 +1,11 @@
 'use strict';
 
 const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
-const plist = require('simple-plist');
 const path = require('path');
 const fs = require('fs-extra');
+const SDKEnvironment = require('../lib/sdk').SDKEnvironment;
 
 let tmpdirs = [];
-let settings;
-
-function getSimulatorSDK(callback) {
-	if (settings) {
-		return callback(null, settings);
-	}
-
-	const child = spawn('xcode-select', [ '-print-path' ]);
-	child.stdout.on('data', buf => {
-		const dir = buf.toString().replace(/\n$/, ''),
-			sdkdir = path.join(dir, 'Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk'),
-			sdkSettings = path.join(sdkdir, 'SDKSettings.plist');
-		if (!fs.existsSync(sdkSettings)) {
-			return callback(new Error('iOS SDK not found'));
-		}
-
-		const val = plist.parse(fs.readFileSync(sdkSettings));
-		settings = {
-			basedir: dir,
-			sdkdir: sdkdir,
-			version: val.DefaultDeploymentTarget || val.version
-		};
-		return callback(null, settings);
-	});
-	child.on('error', callback);
-}
 
 function getBinary(callback) {
 	const bin = path.join(__dirname, '..', 'bin', 'metabase');
@@ -60,52 +34,52 @@ function getBinary(callback) {
 }
 
 function generate(input, output, callback, excludeSystemAPIs) {
-	getSimulatorSDK(function (err, sdk) {
-		if (err) {
-			return callback(err);
-		}
-		getBinary(function (err, bin) {
-			if (err) {
-				return callback(err);
-			}
-			const args = [
-				'-i', input,
-				'-o', output,
-				'-sim-sdk-path', sdk.sdkdir,
-				'-min-ios-ver', sdk.version,
-				'-pretty'
-			];
-			if (excludeSystemAPIs) {
-				args.push('-x');
-			}
-			const child = spawn(bin, args);
-			// if we don't hook these events, for whatever reason it may hang on some tests
-			child.stderr.on('data', function (buf) { // eslint-disable-line
-				// process.stderr.write(buf);
-			});
-			child.stdout.on('data', function (buf) { // eslint-disable-line
-				// process.stdout.write(buf);
-			});
-			child.on('close', function (e) {
-				if (e !== 0) {
-					return callback(new Error('metabase generation failed'));
+	SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0').then(
+		sdk => {
+			getBinary(function (err, bin) {
+				if (err) {
+					return callback(err);
 				}
-				if (!fs.existsSync(output)) {
-					return callback(new Error('metabase generation failed to generate output file'));
+				const args = [
+					'-i', input,
+					'-o', output,
+					'-sim-sdk-path', sdk.sdkPath,
+					'-min-ios-ver', sdk.minVersion,
+					'-pretty'
+				];
+				if (excludeSystemAPIs) {
+					args.push('-x');
 				}
+				const child = spawn(bin, args);
+				// if we don't hook these events, for whatever reason it may hang on some tests
+				child.stderr.on('data', function (buf) { // eslint-disable-line
+					// process.stderr.write(buf);
+				});
+				child.stdout.on('data', function (buf) { // eslint-disable-line
+					// process.stdout.write(buf);
+				});
+				child.on('close', function (e) {
+					if (e !== 0) {
+						return callback(new Error('metabase generation failed'));
+					}
+					if (!fs.existsSync(output)) {
+						return callback(new Error('metabase generation failed to generate output file'));
+					}
 
-				try {
-					const buf = fs.readFileSync(output);
-					// console.log(buf.toString());
-					const json = JSON.parse(buf);
-					callback(null, json, sdk);
-				} catch (E) {
-					return callback(new Error('Error parsing generated output file. ' + E.message));
-				}
+					try {
+						const buf = fs.readFileSync(output);
+						// console.log(buf.toString());
+						const json = JSON.parse(buf);
+						callback(null, json, sdk);
+					} catch (E) {
+						return callback(new Error('Error parsing generated output file. ' + E.message));
+					}
+				});
+				child.on('error', callback);
 			});
-			child.on('error', callback);
-		});
-	});
+		},
+		err => callback(err)
+	);
 }
 
 function getTempDir() {
@@ -135,7 +109,6 @@ process.on('exit', function () {
 });
 
 exports.generate = generate;
-exports.getSimulatorSDK = getSimulatorSDK;
 exports.getTempDir = getTempDir;
 exports.getFixture = getFixture;
 exports.getTempFile = getTempFile;

@@ -125,6 +125,9 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
 	}
 
 	util.logger.trace('Generating metabase to', outfile);
+	if (!fs.existsSync(cacheDir)) {
+		fs.ensureDirSync(cacheDir);
+	}
 	generateInputHeader(header, includes);
 
 	const args = [
@@ -143,7 +146,7 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
  * @param  {String}   outfile output file (JSON) absolute path
  * @param  {String}   sdkPath path to iOS SDK to use
  * @param  {String}   iosMinVersion i.e. '9.0'
- * @param  {String[]} extraArgs extra command lien arguments to pass to binary
+ * @param  {String[]} extraArgs extra command line arguments to pass to binary
  * @param  {runMetabaseBinaryCallback} callback  [description]
  * @return {void}             [description]
  */

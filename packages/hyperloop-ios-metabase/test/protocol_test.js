@@ -21,8 +21,8 @@ describe('protocol', function () {
 			should(json).not.have.property('vars');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -67,8 +67,8 @@ describe('protocol', function () {
 			should(json).not.have.property('vars');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -114,8 +114,8 @@ describe('protocol', function () {
 			should(json).not.have.property('vars');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -160,8 +160,8 @@ describe('protocol', function () {
 			should(json).not.have.property('vars');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -206,8 +206,8 @@ describe('protocol', function () {
 			should(json).not.have.property('vars');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();

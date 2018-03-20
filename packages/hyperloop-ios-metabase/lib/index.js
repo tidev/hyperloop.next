@@ -10,3 +10,4 @@ exports.util = require('./util');
 exports.frameworks = require('./frameworks');
 exports.cocoapods = require('./cocoapods');
 exports.resources = require('./resources');
+exports.SDKEnvironment = require('./sdk').SDKEnvironment;

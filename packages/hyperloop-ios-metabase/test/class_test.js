@@ -3,18 +3,19 @@
 
 const should = require('should'),
 	helper = require('./helper'),
-	path = require('path');
+	path = require('path'),
+	SDKEnvironment = require('../lib/sdk').SDKEnvironment;
 
 describe('class', function () {
 	let sdkDir;
 	before(function (done) {
-		helper.getSimulatorSDK(function (err, settings) {
-			if (err) {
-				return done(err);
-			}
-			sdkDir = settings.sdkdir;
-			done();
-		});
+		SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0').then(
+			sdk => {
+				sdkDir = sdk.sdkPath;
+				done();
+			},
+			err => done(err)
+		);
 	});
 
 	function foundationFile(filename) {
@@ -37,8 +38,8 @@ describe('class', function () {
 			should(json).not.have.property('functions');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -61,8 +62,8 @@ describe('class', function () {
 			should(json).not.have.property('functions');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -90,8 +91,8 @@ describe('class', function () {
 			should(json.vars).not.be.empty;
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			should(json.classes).have.property('NSString');
@@ -146,8 +147,8 @@ describe('class', function () {
 			});
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -213,8 +214,8 @@ describe('class', function () {
 			});
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -264,8 +265,8 @@ describe('class', function () {
 			});
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -366,8 +367,8 @@ describe('class', function () {
 			});
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			done();
@@ -389,8 +390,8 @@ describe('class', function () {
 			should(json).not.have.property('functions');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json).have.property('classes', {
 				A: {
@@ -481,8 +482,8 @@ describe('class', function () {
 			should(json).not.have.property('functions');
 			should(json.metadata).have.property('api-version', '1');
 			should(json.metadata).have.property('generated');
-			should(json.metadata).have.property('min-version', sdk.version);
-			should(json.metadata).have.property('sdk-path', sdk.sdkdir);
+			should(json.metadata).have.property('min-version', sdk.minVersion);
+			should(json.metadata).have.property('sdk-path', sdk.sdkPath);
 			should(json.metadata).have.property('platform', 'ios');
 			should(json.metadata.generated).match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2,}Z/);
 			should(json).have.property('classes', {

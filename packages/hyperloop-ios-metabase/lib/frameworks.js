@@ -1,15 +1,20 @@
 'use strict';
 
-const exec = require('child_process').exec, // eslint-disable-line security/detect-child-process
-	path = require('path'),
+const path = require('path'),
 	fs = require('fs-extra'),
 	async = require('async'),
 	semver = require('semver'),
 	chalk = require('chalk'),
 	cocoapods = require('./cocoapods'),
 	metabasegen = require('./metabase'),
-	util = require('./util');
+	util = require('./util'),
+	os = require('os');
 
+/**
+ * ~/.hyperloop - used to cache system framework mappings/metabases.
+ * @type {string}
+ */
+const USER_HOME_HYPERLOOP = path.join(os.homedir(), '.hyperloop');
 /**
  * convert an apple style version (9.0) to a semver compatible version
  * @param {String} ver apple style version string
@@ -109,7 +114,6 @@ class ModuleMetadata {
 		return metadata;
 	}
 
-	// TODO Move metabase generation to this type?
 	generateMetabase(cacheDir, sdkPath, iosMinVersion) {
 		// TODO Determine cacheDir based on framework type? system frameworks could be cached in user home!
 		// TODO Should we hold sdk path in the metadata? What about min version?
@@ -134,16 +138,15 @@ class ModuleMetadata {
 
 /**
  * return the system frameworks mappings as JSON for a given sdkType and minVersion
- * @param {String} cacheDir absolute path to cache directory
  * @param {String} sdkPath path to specific SDK we'll sniff for frameworks
  * @param {frameworkMapCallback} callback callback function
  * @returns {void}
  */
-function getSystemFrameworks(cacheDir, sdkPath, callback) {
+function getSystemFrameworks(sdkPath, callback) {
 	const cacheToken = util.createHashFromString(sdkPath);
-	const cacheFilename = path.join(cacheDir, 'metabase-mappings-' + cacheToken + '.json');
-	if (!fs.existsSync(cacheDir)) {
-		fs.ensureDirSync(cacheDir);
+	const cacheFilename = path.join(USER_HOME_HYPERLOOP, 'metabase-mappings-' + cacheToken + '.json');
+	if (!fs.existsSync(USER_HOME_HYPERLOOP)) {
+		fs.ensureDirSync(USER_HOME_HYPERLOOP);
 	} else {
 		const cachedMetadata = readModulesMetadataFromCache(cacheFilename);
 		if (cachedMetadata !== null) {
@@ -264,25 +267,6 @@ function sniffFramework(frameworkMetadata) { // TODO Move into constructor?
 
 	return frameworkMetadata;
 }
-
-/**
- * return the configured SDK path
- * @param {String} sdkType 'iphoneos' || 'iphonesimulator'
- * @param {getSDKPathCallback} callback callback function
- */
-function getSDKPath(sdkType, callback) {
-	exec('/usr/bin/xcrun --sdk ' + sdkType + ' --show-sdk-path', function (err, stdout) {
-		if (err) {
-			return callback(err);
-		}
-		return callback(null, stdout.trim());
-	});
-}
-/**
- * @callback getSDKPathCallback
- * @param {Error} err
- * @param {string} sdkPath
- */
 
 /**
  * Generates metadata for all frameworks known to the iOS builder.
@@ -555,4 +539,3 @@ exports.ModuleMetadata = ModuleMetadata;
 exports.getSystemFrameworks = getSystemFrameworks;
 exports.generateUserFrameworksMetadata = generateUserFrameworksMetadata;
 exports.generateCocoaPods = generateCocoaPods;
-exports.getSDKPath = getSDKPath;
