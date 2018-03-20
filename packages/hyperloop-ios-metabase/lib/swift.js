@@ -161,7 +161,7 @@ function generateSwiftMangledClassName(appName, className) {
 
 /**
  * Parses a single swift source file and extract the classes defined within.
- * For tryign to decode AST syntax: https://github.com/apple/swift/blob/master/lib/AST/ASTDumper.cpp
+ * For trying to decode AST syntax: https://github.com/apple/swift/blob/master/lib/AST/ASTDumper.cpp
  * @param  {String}   framework     name of the framework to assign this file to
  * @param  {string} fn            filename of the swift source
  * @param  {Object}   metabase      Metabase of dependencies to look up types
@@ -308,14 +308,15 @@ function extractSwiftClasses(framework, fn, metabase, sdkPath, iosMinVersion, xc
  * @param {string} name framework name to use for this bunch of swift sources
  * @param  {Map<string, ModuleMetadata>}   frameworks    [description]
  * @param {string} cacheDir place to cache generated metabases
- * @param  {string}   sdkPath       absolute path to the sdk to use
- * @param  {string}   iosMinVersion i.e. '9.0'
- * @param  {string}   xcodeTargetOS 'iphoneos' || 'iphonesimulator'
+ * @param {SDKEnvironment} sdk sdk info object
+ * @param  {string}   sdk.sdkPath       absolute path to the sdk to use
+ * @param  {string}   sdk.minVersion i.e. '9.0'
+ * @param  {string}   sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param  {string[]} swiftFiles            swift source filename
  * @param  {Function} callback      typical async callback function
  * @return {void}
  */
-function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, iosMinVersion, xcodeTargetOS, swiftFiles, callback) {
+function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFiles, callback) {
 	// read our imports from the file so we can generate an appropriate metabase
 	const imports = new Set();
 	async.each(swiftFiles, (file, next) => {
@@ -332,7 +333,7 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, ios
 
 		// Ok, so we know what the set of swift files imported, now let's generate a
 		// deep, unified metabase from the frameworks used plus all dependencies
-		metabaselib.unifiedMetabase(cacheDir, sdkPath, iosMinVersion, frameworks, Array.from(imports), (err, metabase) => {
+		metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, Array.from(imports), (err, metabase) => {
 			if (err) {
 				return callback(err);
 			}
@@ -343,7 +344,7 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, ios
 			// cap how many we do in parallel
 			const startExtractSwift = Date.now();
 			async.map(swiftFiles, (file, next) => {
-				extractSwiftClasses(name, file, metabase, sdkPath, iosMinVersion, xcodeTargetOS, next);
+				extractSwiftClasses(name, file, metabase, sdk.sdkPath, sdk.minVersion, sdk.sdkType, next);
 			}, (err, results) => {
 				util.logger.trace(`Took ${Date.now() - startExtractSwift}ms to extract swift classes`);
 				if (err) {
@@ -363,11 +364,11 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdkPath, ios
 				generated.metadata = {
 					'api-version': '1',
 					dependencies: [], // TODO: inject the imports?
-					'min-version': iosMinVersion,
+					'min-version': sdk.minVersion,
 					platform: 'ios',
 					'system-generated': 'true',
 					generated: new Date().toISOString(),
-					'sdk-path': sdkPath
+					'sdk-path': sdk.sdkPath
 				};
 
 				callback(null, generated);

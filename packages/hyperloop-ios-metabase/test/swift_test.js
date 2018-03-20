@@ -27,14 +27,14 @@ describe('swift', function () {
 			.then(frameworks => {
 				frameworkMap = frameworks;
 				// Pre-generate a unified metabase for UIKit and dependencies
-				metabase.unifiedMetabase(tmpdir, sdk.sdkPath, sdk.minVersion, frameworkMap, [ 'UIKit' ], done);
+				metabase.unifiedMetabase(tmpdir, sdk, frameworkMap, [ 'UIKit' ], done);
 			})
 			.catch(err => done(err));
 	});
 
 	it('should generate swift class', done => {
 		const swiftFiles = [ helper.getFixture('simple_class.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -55,7 +55,7 @@ describe('swift', function () {
 
 	it('should not generate private swift class', done => {
 		const swiftFiles = [ helper.getFixture('private_class.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result.imports).be.eql([ 'UIKit' ]);
@@ -66,7 +66,7 @@ describe('swift', function () {
 
 	it('should handle syntax error', done => {
 		const swiftFiles = [ helper.getFixture('syntaxerror.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err) {
 			should(err).be.ok;
 			should(err.message).be.equal('Swift file at ' + helper.getFixture('syntaxerror.swift') + ' has compiler problems. Please check to make sure it compiles OK.');
 			done();
@@ -76,7 +76,7 @@ describe('swift', function () {
 	// FIXME: CGRectMake is explicitly unavailable
 	it('should generate swift class with functions', done => { // eslint-disable-line
 		const swiftFiles = [ helper.getFixture('class_functions.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('imports');
@@ -146,7 +146,7 @@ describe('swift', function () {
 
 	it('should generate swift class with properties', done => {
 		const swiftFiles = [ helper.getFixture('class_properties.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 			should(result).be.an.object;
 			should(result).have.property('classes');
@@ -180,7 +180,7 @@ describe('swift', function () {
 	it('should generate framework metabase from multiple swift files', function (done) {
 		this.timeout(30000);
 		const swiftFiles = [ helper.getFixture('simple_class.swift'), helper.getFixture('class_properties.swift') ];
-		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk.sdkPath, sdk.minVersion, sdk.sdkType, swiftFiles, function (err, result) {
+		swift.generateSwiftFrameworkMetabase('Swift', frameworkMap, tmpdir, sdk, swiftFiles, function (err, result) {
 			should(err).not.be.ok;
 
 			should(result).be.an.object;

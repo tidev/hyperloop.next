@@ -1,7 +1,6 @@
 // TODO Use incremental task like in Android hook!
 'use strict';
 
-const hm = require('hyperloop-metabase');
 const babylon = require('babylon');
 const t = require('babel-types');
 const generate = require('babel-generator').default;
@@ -53,23 +52,26 @@ function appendReference(refs, key, value) {
  * @param  {String} filename path to the file
  * @param  {Map<string, ModuleMetadata>} frameworks [description]
  * @param  {String} cacheDir   directory to read/write metabase cache files
- * @param  {String} sdkPath    path to SDK to use (to generate metabase)
- * @param  {String} minVersion minimum iOS version , i.e. '9.0'
+ * @param  {SDKEnvironment} sdk sdk info object
+ * @param  {String} sdk.sdkPath    path to SDK to use (to generate metabase)
+ * @param  {String} sdk.minVersion minimum iOS version , i.e. '9.0'
  * @param  {Object} logger     logger to use
  * @return {Object} Object holding 'references' key with value of
  * Map<string, string[]> (framework name -> types used), 'replacedContent' key
  * with value of updated source code after requires are replaced.
  */
-function scanForReferences(contents, filename, frameworks, cacheDir, sdkPath, minVersion, logger) {
+function scanForReferences(contents, filename, frameworks, cacheDir, sdk, logger) {
 	const references = new Map(); // gather map of references: framework name -> array of type names
 
 	function asyncTypeExistsInFramework(framework, typeName, callback) {
 		logger.trace('Checking require for: ' + framework.name.toLowerCase() + '/' + typeName.toLowerCase());
-		hm.metabase.generateFrameworkMetabase(cacheDir, sdkPath, minVersion, framework, function (err, json) {
-			// we should have a metabase just for this framework now, if we could find such a framework!
-			// Does the type exist as a class or enum in this framework?
-			callback(err, json.classes[typeName] || json.enums[typeName]);
-		});
+		framework.generateMetabase(cacheDir, sdk)
+			.then(json => {
+				// we should have a metabase just for this framework now, if we could find such a framework!
+				// Does the type exist as a class or enum in this framework?
+				callback(null, json.classes[typeName] || json.enums[typeName]);
+			})
+			.catch(err => callback(err));
 	}
 	// Need to make deasync so babel AST visitor can run in sync fashion!
 	const typeExistsInFramework = deasync(asyncTypeExistsInFramework);

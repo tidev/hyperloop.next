@@ -21,9 +21,10 @@ const hm = require('hyperloop-metabase');
 /**
  * [generateMetabase description]
  * @param  {string}   buildDir   path to directory where metabase json files will be cached
- * @param  {string} sdkPath path to iOS SDK
- * @param  {string} minVersion minimum iOS version, i.e. '9.0'
- * @param  {string} sdkType 'iphoneos' || 'iphonesimulator'
+ * @param  {SDKEnvironment} sdk sdk info object
+ * @param  {string} sdk.sdkPath path to iOS SDK
+ * @param  {string} sdk.minVersion minimum iOS version, i.e. '9.0'
+ * @param  {string} sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param  {Map<string,ModuleMetadata>}   frameworkMap [description]
  * @param  {string[]} usedFrameworkNames list of explicitly used frameworks
  * @param  {object[]} swiftSources array of swift source file metadata
@@ -31,7 +32,7 @@ const hm = require('hyperloop-metabase');
  * @param  {Function} callback   [description]
  * @return {void}
  */
-function generateMetabase(buildDir, sdkPath, minVersion, sdkType, frameworkMap, usedFrameworkNames, swiftSources, logger, callback) {
+function generateMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, swiftSources, logger, callback) {
 	fs.ensureDirSync(buildDir);
 
 	// Loop through swift sources and group by framework name!
@@ -49,7 +50,7 @@ function generateMetabase(buildDir, sdkPath, minVersion, sdkType, frameworkMap, 
 	// FIXME: Shouldn't we be generating swift frameworks earlier when we gather other frameworks?
 	// Then we can just treat them like any other frameworks here and just call unifiedMetabase on the set of system/user/3rd-party/swift frameworks
 	let masterMetabase = {};
-	hm.metabase.unifiedMetabase(buildDir, sdkPath, minVersion, frameworkMap, usedFrameworkNames, (err, metabase) => {
+	hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, (err, metabase) => {
 		if (err) {
 			return callback(err);
 		}
@@ -61,7 +62,7 @@ function generateMetabase(buildDir, sdkPath, minVersion, sdkType, frameworkMap, 
 		async.each(swiftFrameworkNames, (name, next) => {
 			const swiftFiles = swiftFrameworks.get(name);
 			// logger.info('Generating metabase for swift framework ' + chalk.cyan(name + ' ' + swiftFiles));
-			hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdkPath, minVersion, sdkType, swiftFiles, (err, swiftMetabase) => {
+			hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdk, swiftFiles, (err, swiftMetabase) => {
 				if (err) {
 					return next(err);
 				}

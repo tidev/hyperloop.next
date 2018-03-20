@@ -95,8 +95,9 @@ function collectFrameworkHeaders(frameworkHeadersPath) {
 /**
  * [generateFrameworkMetabase description]
  * @param  {String}   cacheDir output directory
- * @param  {String}   sdkPath path to iOS SDK to use
- * @param  {String}   iosMinVersion i.e. '9.0'
+ * @param  {SDKEnvironment} sdk sdk info object
+ * @param  {String}   sdk.sdkPath path to iOS SDK to use
+ * @param  {String}   sdk.minVersion i.e. '9.0'
  * @param  {Object}   framework framework metadata
  * @param  {String}   framework.name display name of the framework
  * @param  {String}   framework.path absolute path to the framework
@@ -104,7 +105,7 @@ function collectFrameworkHeaders(frameworkHeadersPath) {
  * @param  {generateMetabaseCallback} callback  [description]
  * @return {void}             [description]
  */
-function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, callback) {
+function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
 	const force = false; // FIXME Allow passing this in?
 	const cacheToken = util.createHashFromString(framework.path);
 	const prefix = 'metabase-' + framework.name + '-' + cacheToken;
@@ -134,7 +135,7 @@ function generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, framework, 
 		'-framework', framework.path,
 		'-pretty'
 	];
-	runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, args, function (err, json) {
+	runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args, function (err, json) {
 		json.$includes = includes;
 		return callback(null, json, outfile, header, false);
 	});
@@ -245,13 +246,14 @@ function extractFrameworksFromDependencies(headers) {
  * explicitly depend upon, generate a unified metabase from those frameworks
  * plus all of their dependencies.
  * @param  {string} cacheDir cache dir to place metabase JSON files
- * @param  {string} sdkPath path to ios sdk to use
- * @param  {string} minVersion minimum iOS version, i.e. '9.0'
+ * @param  {SDKEnvironment} sdk sdk info object
+ * @param  {string} sdk.sdkPath path to ios sdk to use
+ * @param  {string} sdk.minVersion minimum iOS version, i.e. '9.0'
  * @param  {Map<string,ModuleMetadata>}   frameworkMap map of all frameworks
  * @param  {string[]}   frameworksToGenerate array of framework names we need to include
  * @param  {runMetabaseBinaryCallback} callback async callback function
  */
-function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworksToGenerate, callback) {
+function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate, callback) {
 	let metabase = {};
 	const frameworksDone = [];
 
@@ -265,7 +267,7 @@ function unifiedMetabase(cacheDir, sdkPath, minVersion, frameworkMap, frameworks
 
 			// TODO: God damn it, why do we have to keep passing cache dir, sdk path, min ios version around?
 			// Can't we just bake this into the ModuleMetadata object and be done with it?
-			generateFrameworkMetabase(cacheDir, sdkPath, minVersion, framework, function (err, json) {
+			generateFrameworkMetabase(cacheDir, sdk, framework, function (err, json) {
 				if (err) {
 					return next(err);
 				}

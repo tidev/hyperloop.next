@@ -4,8 +4,8 @@
 
 const should = require('should'),
 	gencustom = require('../generate/custom'),
-	fs = require('fs-extra'),
 	hm = require('hyperloop-metabase'),
+	SDKEnvironment = hm.SDKEnvironment,
 	util = require('../generate/util'),
 	nodePath = require('path'),
 	buildDir = nodePath.join(__dirname, '..', 'tmp', 'hyperloop');
@@ -64,28 +64,29 @@ HyperloopProxy.prototype.inspect = function () {
 };
 
 describe('GenerateSourcesTask', function () {
-
+	let sdk;
 	this.timeout(10000);
 
 	function generateStub(frameworkName, className, cb) {
-		hm.frameworks.getSDKPath('iphonesimulator', (err, sdkPath) => {
-			// FIXME This should really test the same workflow we use in the hook!
-			hm.frameworks.getSystemFrameworks(buildDir, sdkPath, (err, frameworkMap) => {
-				should(err).not.be.ok;
+		SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0')
+			.then(sdkInfo => {
+				sdk = sdkInfo;
+				return sdk.getSystemFrameworks();
+			})
+			.then(frameworkMap => {
 				should(frameworkMap).be.ok;
 				frameworkMap.has('$metadata').should.be.false;
 
 				const state = new gencustom.ParserState();
-				const minVersion = '9.0';
 				const frameworksToGenerate = [ frameworkName ];
-				hm.metabase.unifiedMetabase(buildDir, sdkPath, minVersion, frameworkMap, frameworksToGenerate, (err, metabase) => {
+				hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, frameworksToGenerate, (err, metabase) => {
 					should(err).not.be.ok;
 
 					const references = [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ];
 					GenerateSourcesTask.generateSources(buildDir, 'TestApp', metabase, state, frameworkMap, references, noopBunyanLogger, cb);
 				});
-			});
-		});
+			})
+			.catch(err => cb(err));
 	}
 
 	afterEach(() => {

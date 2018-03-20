@@ -75,6 +75,14 @@ function recursiveReadDir(dir, result) {
 	return result;
 }
 
+/**
+ * [compileResources description]
+ * @param  {string}   dir      where resource is located
+ * @param  {string}   sdk      i.e. 'iphonesimulator-9.0' or 'iphoneos-11.0'
+ * @param  {string}   appDir   path to xcode app
+ * @param  {boolean}  wildcard if true, copies source files (*.m|mm|h|cpp|hpp|c|s) to xcode app dir
+ * @param  {Function} callback async callback function
+ */
 function compileResources(dir, sdk, appDir, wildcard, callback) {
 	// copy them into our target
 	const files = recursiveReadDir(dir);

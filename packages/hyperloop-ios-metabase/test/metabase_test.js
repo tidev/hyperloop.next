@@ -10,7 +10,6 @@ describe('metabase', () => {
 	const tmpDir = path.join(__dirname, 'tmp');
 	let systemFrameworks = new Map();
 	let sdk;
-	const minVersion = '9.0';
 
 	before(done => {
 		// Shut the logger up!
@@ -107,7 +106,7 @@ describe('metabase', () => {
 	// Add a new method to generate a single framework's metabase on the fly!
 	describe('#generateFrameworkMetabase()', () => {
 		it('should generate metabase for a single framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk.sdkPath, minVersion, systemFrameworks.get('UIKit'), (err, json) => {
+			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('UIKit'), (err, json) => {
 				should(err).not.be.ok;
 				should(json).be.ok;
 
@@ -121,7 +120,7 @@ describe('metabase', () => {
 		});
 
 		it('should generate NSObject from Foundation framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk.sdkPath, minVersion, systemFrameworks.get('Foundation'), (err, json) => {
+			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('Foundation'), (err, json) => {
 				should(err).not.be.ok;
 				should(json).be.ok;
 
@@ -131,7 +130,7 @@ describe('metabase', () => {
 		});
 
 		it('should include system types in CoreFoundation framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk.sdkPath, minVersion, systemFrameworks.get('CoreFoundation'), (err, json) => {
+			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('CoreFoundation'), (err, json) => {
 				should(err).not.be.ok;
 				should(json).be.ok;
 

@@ -27,6 +27,7 @@ const path = require('path');
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
 const hm = require('hyperloop-metabase');
 const ModuleMetadata = hm.frameworks.ModuleMetadata;
+const SDKEnvironment = hm.SDKEnvironment;
 const fs = require('fs-extra');
 const crypto = require('crypto');
 const chalk = require('chalk');
@@ -294,15 +295,9 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
  * @param {Function} callback typical callback function
  */
 HyperloopiOSBuilder.prototype.getSDKInfo = function getSDKInfo(callback) {
-	hm.frameworks.getSDKPath(this.builder.xcodeTargetOS, function (err, sdkPath) {
-		if (!err) {
-			this.sdkInfo.sdkType = this.builder.xcodeTargetOS;
-			this.sdkInfo.sdkPath = sdkPath;
-			this.sdkInfo.minVersion = this.builder.minIosVer;
-		}
-
-		callback(err);
-	}.bind(this));
+	SDKEnvironment.fromTypeAndMinimumVersion(this.builder.xcodeTargetOS, this.builder.minIosVer)
+		.then(info => { this.sdkInfo = info; })
+		.catch(err => callback(err));
 };
 
 /**
@@ -310,17 +305,15 @@ HyperloopiOSBuilder.prototype.getSDKInfo = function getSDKInfo(callback) {
  * @param {Function} callback typical callback function
  */
 HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks(callback) {
-	hm.frameworks.getSystemFrameworks(this.hyperloopBuildDir, this.sdkInfo.sdkPath, function (err, systemFrameworks) {
-		if (!err) {
+	this.sdkInfo.getSystemFrameworks()
+		.then(systemFrameworks => {
 			this.systemFrameworks = new Map(systemFrameworks); // copy the map
 
 			this.systemFrameworks.forEach(frameworkMetadata => {
 				this.frameworks.set(frameworkMetadata.name, frameworkMetadata);
 			}, this);
-		}
-
-		callback(err);
-	}.bind(this));
+		})
+		.catch(err => callback(err));
 };
 
 /**
@@ -536,7 +529,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		return cb();
 	}
 
-	const result = ScanReferencesTask.scanForReferences(contents, sourceFilename, this.frameworks, this.hyperloopBuildDir, this.sdkInfo.sdkPath, this.minVersion, this.logger);
+	const result = ScanReferencesTask.scanForReferences(contents, sourceFilename, this.frameworks, this.hyperloopBuildDir, this.sdkInfo, this.logger);
 	// Do something with references! Loop through and gather list of used frameworks and types!
 	result.references.forEach((value, key) => {
 		this.references[`/hyperloop/${key.toLowerCase()}/${value.toLowerCase()}`] = 1;
@@ -586,9 +579,7 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 
 	GenerateMetabaseTask.generateMetabase(
 		this.hyperloopBuildDir,
-		this.sdkInfo.sdkPath,
-		this.sdkInfo.minVersion,
-		this.sdkInfo.sdkType,
+		this.sdkInfo,
 		this.frameworks,
 		frameworksUsed,
 		this.swiftSources,

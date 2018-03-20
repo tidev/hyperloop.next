@@ -70,7 +70,7 @@ class ModuleMetadata {
 	}
 
 	/**
-	 * Determines wether this module is available in the given iOS version
+	 * Determines whether this module is available in the given iOS version
 	 *
 	 * @param {String} iOSVersion iOS version identifier to check the availability for
 	 * @return {Boolean} True if this module is available in the given iOS version, false if not
@@ -114,17 +114,22 @@ class ModuleMetadata {
 		return metadata;
 	}
 
-	generateMetabase(cacheDir, sdkPath, iosMinVersion) {
+	generateMetabase(cacheDir, sdk) {
+		// If we have the cached in-memory copy of the metabase, return it!
+		if (this._metabase) {
+			return Promise.resolve(this._metabase);
+		}
+
 		// TODO Determine cacheDir based on framework type? system frameworks could be cached in user home!
 		// TODO Should we hold sdk path in the metadata? What about min version?
 		// Looks like sdk path is baked into the path for system frameworks (it's a prefix!)
 		return new Promise((resolve, reject) => {
-			metabasegen.generateFrameworkMetabase(cacheDir, sdkPath, iosMinVersion, this, (err, json) => {
+			metabasegen.generateFrameworkMetabase(cacheDir, sdk, this, (err, json) => {
 				if (err) {
 					return reject(err);
 				}
 				this._metabase = json;
-				resolve();
+				resolve(json);
 			});
 		});
 	}
@@ -287,19 +292,13 @@ function generateUserFrameworksMetadata(frameworks, cacheDir, callback) {
 	}
 
 	const modules = new Map();
-	async.eachSeries(frameworkNames, (frameworkName, next) => {
+	frameworkNames.forEach(frameworkName => {
 		const frameworkInfo = frameworks[frameworkName];
 		const metadata = sniffFramework(new ModuleMetadata(frameworkInfo.name, frameworkInfo.path, frameworkInfo.type));
 		modules.set(metadata.name, metadata);
-		next();
-	}, (err) => {
-		if (err) {
-			callback(err);
-		}
-
-		writeModulesMetadataToCache(modules, cachePathAndFilename);
-		callback(null, modules);
 	});
+	writeModulesMetadataToCache(modules, cachePathAndFilename);
+	callback(null, modules);
 }
 
 /**
@@ -536,6 +535,6 @@ function generateCocoaPods(cachedir, builder, callback) {
 
 exports.appleVersionToSemver = appleVersionToSemver; // for testing only!
 exports.ModuleMetadata = ModuleMetadata;
-exports.getSystemFrameworks = getSystemFrameworks;
+exports.getSystemFrameworks = getSystemFrameworks; // to be used by sdk.js internally only!
 exports.generateUserFrameworksMetadata = generateUserFrameworksMetadata;
 exports.generateCocoaPods = generateCocoaPods;

@@ -1,9 +1,3 @@
-// TODO Create a class/object that holds info on the SDK environment:
-// - min IOS version
-// - xcode target OS
-// - SDK path
-// - sdk type(same as target OS?)
-// -
 'use strict';
 
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
