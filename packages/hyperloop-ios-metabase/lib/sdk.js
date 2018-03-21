@@ -13,7 +13,7 @@ class SDKEnvironment {
 	 * @param {String} minIosVersion minimum iOS version , i.e. '9.0'
 	 */
 	constructor(type, path, minIosVersion) {
-		this.sdkPath = path; // FIXME Shorten then property names once we're moved over!
+		this.sdkPath = path; // FIXME Shorten the property names once we're moved over!
 		this.sdkType = type;
 		this.minVersion = minIosVersion;
 	}

@@ -265,8 +265,6 @@ function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate, call
 			const framework = frameworkMap.get(frameworkToGenerate);
 			// TODO: Can we generate multiple at once async? Basically grab the full set to do and do them each in parallel?
 
-			// TODO: God damn it, why do we have to keep passing cache dir, sdk path, min ios version around?
-			// Can't we just bake this into the ModuleMetadata object and be done with it?
 			generateFrameworkMetabase(cacheDir, sdk, framework, function (err, json) {
 				if (err) {
 					return next(err);
@@ -300,5 +298,5 @@ function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate, call
 
 // public API
 exports.merge = merge;
-exports.generateFrameworkMetabase = generateFrameworkMetabase;
+exports.generateFrameworkMetabase = generateFrameworkMetabase; // for testing and ModuleMetadata.generateMetabase
 exports.unifiedMetabase = unifiedMetabase;

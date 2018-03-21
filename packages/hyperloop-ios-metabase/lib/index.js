@@ -7,7 +7,8 @@
 exports.metabase = require('./metabase');
 exports.swift = require('./swift');
 exports.util = require('./util');
-exports.frameworks = require('./frameworks');
+// exports.frameworks = require('./frameworks');
 exports.cocoapods = require('./cocoapods');
 exports.resources = require('./resources');
+exports.ModuleMetadata = require('./module_metadata').ModuleMetadata;
 exports.SDKEnvironment = require('./sdk').SDKEnvironment;

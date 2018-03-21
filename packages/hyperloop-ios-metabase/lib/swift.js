@@ -7,8 +7,9 @@
 const fs = require('fs'),
 	util = require('./util'),
 	async = require('async'),
-	metabaselib = require('./metabase'),
-	spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
+	metabaselib = require('./metabase');
+const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
+const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
 
 // regular expressions for dealing with Swift ASTs
 const COMPONENT_RE = /component id='(.*)'/;
@@ -20,24 +21,44 @@ const TYPE_RE = /type='(\w+)'/;
 const PUBLIC_ACCESS_PATTERN = /access=(public|open)/;
 
 /**
+ * Determine version of swift async
+ * @return  {Promise<string>} returns version of swift
+ */
+function getVersion() {
+	return new Promise((resolve, reject) => {
+		exec('/usr/bin/xcrun swift -version', function (err, stdout) {
+			if (err) {
+				return reject(err);
+			}
+			const versionMatch = stdout.match(/version\s(\d.\d)/);
+			if (versionMatch !== null) {
+				return resolve(versionMatch[1]);
+			}
+			reject(new Error('Version string didn\'t match expectations: ' + stdout));
+		});
+	});
+}
+
+/**
  * generate Swift AST output from a swift file
- * @param {String} sdkPath absolute path to the iOS SDK directory
- * @param {String} iosMinVersion i.e. '9.0'
- * @param {String} xcodeTargetOS 'iphoneos' || 'iphonesimulator'
+ * @param {SDKEnvironment} sdk sdk info object
+ * @param {String} sdk.sdkPath absolute path to the iOS SDK directory
+ * @param {String} sdk.minVersion i.e. '9.0'
+ * @param {String} sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param {String} fn filename
  * @param {Function} callback callback function
  */
-function generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, callback) {
+function generateSwiftAST(sdk, fn, callback) {
 	const start = Date.now();
-	const args = [ 'swiftc', '-sdk', sdkPath, '-dump-ast', fn ];
-	if (xcodeTargetOS === 'iphoneos' || xcodeTargetOS === 'iphonesimulator') {
+	const args = [ 'swiftc', '-sdk', sdk.sdkPath, '-dump-ast', fn ];
+	if (sdk.sdkType === 'iphoneos' || sdk.sdkType === 'iphonesimulator') {
 		args.push('-target');
-		if (xcodeTargetOS === 'iphoneos') {
+		if (sdk.sdkType === 'iphoneos') {
 			// armv7 for all devices. Note that we also could use armv7s or arm64 here
-			args.push('armv7-apple-ios' + iosMinVersion);
+			args.push('armv7-apple-ios' + sdk.minVersion);
 		} else {
 			var simArch = process.arch === 'i386' ? 'i386' : 'x86_64';
-			args.push(simArch + '-apple-ios' + iosMinVersion);
+			args.push(simArch + '-apple-ios' + sdk.minVersion);
 		}
 	}
 	const child = spawn('xcrun', args);
@@ -165,13 +186,14 @@ function generateSwiftMangledClassName(appName, className) {
  * @param  {String}   framework     name of the framework to assign this file to
  * @param  {string} fn            filename of the swift source
  * @param  {Object}   metabase      Metabase of dependencies to look up types
- * @param {String} sdkPath absolue filepath to ios SDK directory
- * @param {String} iosMinVersion i.e. '9.0'
- * @param {String} xcodeTargetOS 'iphoneos' || 'iphonesimulator'
+ * @param  {SDKEnvironment} sdk sdk info object
+ * @param {String} sdk.sdkPath absolue filepath to ios SDK directory
+ * @param {String} sdk.minVersion i.e. '9.0'
+ * @param {String} sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param  {Function} callback  callback function
  */
-function extractSwiftClasses(framework, fn, metabase, sdkPath, iosMinVersion, xcodeTargetOS, callback) {
-	generateSwiftAST(sdkPath, iosMinVersion, xcodeTargetOS, fn, function (err, buf) {
+function extractSwiftClasses(framework, fn, metabase, sdk, callback) {
+	generateSwiftAST(sdk, fn, function (err, buf) {
 		if (err) {
 			return callback(err, buf);
 		}
@@ -305,10 +327,10 @@ function extractSwiftClasses(framework, fn, metabase, sdkPath, iosMinVersion, xc
  * Given an array of Swift source files, this will generate an in-memory metabase
  * holding the classes defined within these files.
  *
- * @param {string} name framework name to use for this bunch of swift sources
+ * @param  {string} name framework name to use for this bunch of swift sources
  * @param  {Map<string, ModuleMetadata>}   frameworks    [description]
- * @param {string} cacheDir place to cache generated metabases
- * @param {SDKEnvironment} sdk sdk info object
+ * @param  {string} cacheDir place to cache generated metabases
+ * @param  {SDKEnvironment} sdk sdk info object
  * @param  {string}   sdk.sdkPath       absolute path to the sdk to use
  * @param  {string}   sdk.minVersion i.e. '9.0'
  * @param  {string}   sdk.sdkType 'iphoneos' || 'iphonesimulator'
@@ -344,7 +366,7 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFi
 			// cap how many we do in parallel
 			const startExtractSwift = Date.now();
 			async.map(swiftFiles, (file, next) => {
-				extractSwiftClasses(name, file, metabase, sdk.sdkPath, sdk.minVersion, sdk.sdkType, next);
+				extractSwiftClasses(name, file, metabase, sdk, next);
 			}, (err, results) => {
 				util.logger.trace(`Took ${Date.now() - startExtractSwift}ms to extract swift classes`);
 				if (err) {
@@ -379,3 +401,4 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFi
 
 exports.generateSwiftFrameworkMetabase = generateSwiftFrameworkMetabase;
 exports.generateSwiftMangledClassName = generateSwiftMangledClassName; // only exported for testing!
+exports.getVersion = getVersion;

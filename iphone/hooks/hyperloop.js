@@ -24,9 +24,8 @@ const coreLib = {
 };
 
 const path = require('path');
-const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
 const hm = require('hyperloop-metabase');
-const ModuleMetadata = hm.frameworks.ModuleMetadata;
+const ModuleMetadata = hm.ModuleMetadata;
 const SDKEnvironment = hm.SDKEnvironment;
 const fs = require('fs-extra');
 const crypto = require('crypto');
@@ -322,21 +321,26 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
-	// attempt to handle CocoaPods for third-party frameworks
-	hm.frameworks.generateCocoaPods(this.hyperloopBuildDir, this.builder, function (err, settings, modules) {
-		if (!err) {
+	hm.cocoapods.installPodsAndGetSettings()
+		.then(settings => {
+			this.cocoaPodsBuildSettings = settings || {};
+			return hm.cocoapods.generateCocoaPodsMetadata(this.hyperloopBuildDir, this.builder, settings);
+		})
+		.then(modules => {
 			this.hasCocoaPods = modules && modules.size > 0;
 			if (this.hasCocoaPods) {
-				this.cocoaPodsBuildSettings = settings || {};
 				modules.forEach(metadata => {
 					this.frameworks.set(metadata.name, metadata);
 					this.cocoaPodsProducts.push(metadata.name);
 				}, this);
 			}
-		}
-		callback(err);
-	}.bind(this));
+			callback();
+		})
+		.catch(err => callback(err));
 };
+
+// TODO We need to process the swift source in advance of doing the requires/import handling via cli hooks!
+// Otherwise, we can't reference swift types from JS code, can we?
 
 /**
  * Gets frameworks for any third-party dependencies defined in the Hyperloop config and compiles them.
@@ -486,18 +490,12 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(callback) {
-	// TODO Merge with getSDKInfo to gather up one object holding the sdk type, sdk path, min ios version, swift version, etc
-	const that = this;
-	exec('/usr/bin/xcrun swift -version', function (err, stdout) {
-		if (err) {
-			return callback(err);
-		}
-		const versionMatch = stdout.match(/version\s(\d.\d)/);
-		if (versionMatch !== null) {
-			that.swiftVersion = versionMatch[1];
-		}
-		callback();
-	});
+	hm.swift.getVersion()
+		.then(version => {
+			this.swiftVersion = version;
+			callback();
+		})
+		.catch(err => callback(err));
 };
 
 /**
@@ -604,7 +602,7 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
 		this.logger.info('Skipping ' + HL + ' generating of symbol references. Empty AST. ');
 		return;
 	}
-	var symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
+	const symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
 		json = JSON.stringify(this.parserState.getReferences(), null, 2);
 	if (!fs.existsSync(symbolRefFile) || fs.readFileSync(symbolRefFile).toString() !== json) {
 		this.forceStubGeneration = true;
@@ -1190,12 +1188,12 @@ HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMig
  */
 HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles() {
 	// remove empty Framework directory that might have been created by cocoapods
-	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
+	const frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
 		fs.removeSync(frameworksDir);
 	}
 	if (this.hasCocoaPods) {
-		var productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
+		const productsDirectory = path.resolve(this.builder.xcodeAppDir, '..');
 		this.cocoaPodsProducts.forEach(function (product) {
 			this.builder.unmarkBuildDirFiles(path.join(productsDirectory, product));
 		}.bind(this));

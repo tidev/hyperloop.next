@@ -9,7 +9,7 @@ const spawn = require('child_process').spawn, // eslint-disable-line security/de
 
 /**
  * run the ibtool
- * @param {String} runDir absilute path to cwd to run inside
+ * @param {String} runDir absolute path to cwd to run inside
  * @param {string[]} args command line arguments
  * @param {Function} callback callback function
  */
