@@ -12,6 +12,7 @@
 @property (nonatomic, retain) id nativeObject;
 #endif
 @property (nonatomic, retain) Class customClass;
+@property (nonatomic, copy) NSString *className;
 
 /**
  * create a new instance using classname

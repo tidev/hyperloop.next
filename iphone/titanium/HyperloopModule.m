@@ -985,10 +985,7 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  * this method is called before Titanium loads to allow Hyperloop to bootstrap into the JS VM
  */
 +(void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge {
-#if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
-#endif
-
+// NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
 	context = kroll;
 	bridge = krollbridge;
 	TiGlobalContextRef ctx = (TiGlobalContextRef)[kroll context];
@@ -1100,9 +1097,7 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  * this method is called after Titanium starts the context
  */
 +(void)didStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] didStartNewContext %@", kroll);
-#endif
+// NSLog(@"[TRACE][HYPERLOOP] didStartNewContext %@", kroll);
 }
 
 
@@ -1110,9 +1105,7 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  * this method is called before Titanium shuts down the context
  */
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", kroll);
-#endif
+// NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", kroll);
 	if (context) {
 		[callbacks removeAllObjects];
 		[modules removeAllObjects];
@@ -1143,9 +1136,7 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  * this method is called after Titanium stops the context
  */
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
-#if TARGET_OS_SIMULATOR
-	NSLog(@"[TRACE][HYPERLOOP] didStopNewContext %@", kroll);
-#endif
+// NSLog(@"[TRACE][HYPERLOOP] didStopNewContext %@", kroll);
 }
 
 +(TiObjectRef)createPointer:(HyperloopPointer *)pointer {
