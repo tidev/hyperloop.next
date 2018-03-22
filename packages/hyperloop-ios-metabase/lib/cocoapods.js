@@ -9,7 +9,7 @@ const spawn = require('child_process').spawn, // eslint-disable-line security/de
 	fs = require('fs-extra');
 const frameworks = require('./frameworks');
 const ModuleMetadata = require('./module_metadata').ModuleMetadata;
-const cache = require('./cache');
+const Frameworks = require('./framework_group').Frameworks;
 
 /**
  * parse the xcconfig file
@@ -309,8 +309,7 @@ function gatherStaticLibraries(staticLibrariesHeaderPath) {
 	// TODO Do this async?
 	frameworkNames.forEach(frameworkName => {
 		const libraryPath = path.join(staticLibrariesHeaderPath, frameworkName);
-		const moduleMetadata = new ModuleMetadata(frameworkName, libraryPath, ModuleMetadata.MODULE_TYPE_STATIC);
-		moduleMetadata.umbrellaHeader = path.join(moduleMetadata.path, `${moduleMetadata.name}.h`);
+		const moduleMetadata = ModuleMetadata.fromHeaders(frameworkName, [ path.join(libraryPath, `${frameworkName}.h`) ]);
 		modules.set(moduleMetadata.name, moduleMetadata);
 	});
 	return modules;
@@ -357,42 +356,16 @@ function gatherFrameworksFromSearchPaths(frameworkSearchPaths, podsRoot, podsCon
  * This can process both static libraries and frameworks (dynamic frameworks
  * need to expose an ObjC Interface Header).
  *
- * @param {String} cacheDir Path to the cache directory
  * @param {Object} builder iOSBuilder instance
  * @param {String} builder.projectDir path to project directory
  * @param {String} builder.xcodeTarget Active configuration name, i.e. 'Debug', 'Release'
  * @param {String} builder.xcodeTargetOS Active SDK type, i.e. 'iphone' or 'iphonesimulator'
- * @param {Object} settings sdk settings?
+ * @param {Object} settings sdk settings - from #installPodsAndGetSettings!
  * @returns {Promise<Map<string, ModuleMetadata>>}
  */
-function generateCocoaPodsMetadata(cacheDir, builder, settings) {
-	const podLockfilePathAndFilename = path.join(builder.projectDir, 'Podfile.lock');
-	const cacheToken = calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
-	const cachePathAndFilename = path.join(cacheDir, 'metabase-cocoapods-' + cacheToken + '.json');
-	const cachedMetadata = cache.readModulesMetadataFromCache(cachePathAndFilename);
-	if (cachedMetadata !== null) {
-		util.logger.trace('Using cached CocoaPods metadata.');
-		return Promise.resolve(cachedMetadata);
-	}
-
-	// Check static libraries
-	const podDir = path.join(builder.projectDir, 'Pods');
-	const staticLibrariesHeaderPath = path.join(podDir, 'Headers', 'Public');
-	const modules = gatherStaticLibraries(staticLibrariesHeaderPath);
-
-	// Now check FRAMEWORK_SEARCH_PATHS!
-	const frameworkSearchPaths = (settings.FRAMEWORK_SEARCH_PATHS || '').split(' ');
-	const cocoaPodsConfigurationBuildDir = getBuiltProductsRootPath(builder.projectDir, builder.xcodeTarget, builder.xcodeTargetOS);
-	return gatherFrameworksFromSearchPaths(frameworkSearchPaths, settings.PODS_ROOT, cocoaPodsConfigurationBuildDir)
-		.then(dynamicModules => {
-			// Combine dynamic modules with static
-			dynamicModules.forEach((value, key) => {
-				modules.set(key, value);
-			});
-			// write cache
-			cache.writeModulesMetadataToCache(modules, cachePathAndFilename);
-			return Promise.resolve(modules);
-		});
+function generateCocoaPodsMetadata(builder, settings) {
+	const frameworks = new CocoapodsFrameworks(builder, settings);
+	return frameworks.load();
 }
 
 /**
@@ -423,6 +396,51 @@ function gatherSubdirectories(dir) {
  */
 function getBuiltProductsRootPath(basePath, configurationName, sdkType) {
 	return path.join(basePath, 'build/iphone/build/Products', configurationName + '-' + sdkType);
+}
+
+class CocoapodsFrameworks extends Frameworks {
+
+/**
+ * @param {Object} builder iOSBuilder instance
+ * @param {String} builder.projectDir path to project directory
+ * @param {String} builder.xcodeTarget Active configuration name, i.e. 'Debug', 'Release'
+ * @param {String} builder.xcodeTargetOS Active SDK type, i.e. 'iphone' or 'iphonesimulator'
+ * @param {Object} settings sdk settings - from #installPodsAndGetSettings!
+ */
+	constructor(builder, settings) {
+		super();
+		this.builder = builder;
+		this.settings = settings;
+	}
+
+	cacheFile() {
+		const podLockfilePathAndFilename = path.join(this.builder.projectDir, 'Podfile.lock');
+		const cacheToken = calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename);
+		return path.join(this.cacheDir, `metabase-cocoapods-${cacheToken}.json`);
+	}
+
+	/**
+	 * The actual work to detect/load frameworks from original data.
+	 * @return {Promise<Map<string, ModuleMetadata>>}
+	 */
+	detect() {
+		// Check static libraries
+		const podDir = path.join(this.builder.projectDir, 'Pods');
+		const staticLibrariesHeaderPath = path.join(podDir, 'Headers', 'Public');
+		const modules = gatherStaticLibraries(staticLibrariesHeaderPath);
+
+		// Now check FRAMEWORK_SEARCH_PATHS!
+		const frameworkSearchPaths = (this.settings.FRAMEWORK_SEARCH_PATHS || '').split(' ');
+		const cocoaPodsConfigurationBuildDir = getBuiltProductsRootPath(this.builder.projectDir, this.builder.xcodeTarget, this.builder.xcodeTargetOS);
+		return gatherFrameworksFromSearchPaths(frameworkSearchPaths, this.settings.PODS_ROOT, cocoaPodsConfigurationBuildDir)
+			.then(dynamicModules => {
+				// Combine dynamic modules with static
+				dynamicModules.forEach((value, key) => {
+					modules.set(key, value);
+				});
+				return Promise.resolve(modules);
+			});
+	}
 }
 
 exports.installPodsAndGetSettings = installPodsAndGetSettings;

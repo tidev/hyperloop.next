@@ -7,7 +7,6 @@
 const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
 	path = require('path'),
 	fs = require('fs-extra'),
-	async = require('async'),
 	util = require('./util'),
 	binary = path.join(__dirname, '..', 'bin', 'metabase');
 
@@ -106,6 +105,7 @@ function collectFrameworkHeaders(frameworkHeadersPath) {
  * @return {void}             [description]
  */
 function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
+	// TODO Move this to module_metadata#generateMetabase
 	const force = false; // FIXME Allow passing this in?
 	const cacheToken = util.createHashFromString(framework.path);
 	const prefix = 'metabase-' + framework.name + '-' + cacheToken;
@@ -158,8 +158,7 @@ function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, c
 		'-sim-sdk-path', sdkPath,
 		'-min-ios-ver', iosMinVersion
 	].concat(extraArgs);
-	util.logger.trace('running', binary, 'with', args.join(' '));
-	const ts = Date.now();
+
 	let triedToFixPermissions = false;
 	(function runMetabase(binary, args) {
 		let child;
@@ -186,7 +185,6 @@ function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, c
 		});
 		child.on('error', callback);
 		child.on('exit', function (ex) {
-			util.logger.trace('metabase took', (Date.now() - ts), 'ms to generate');
 			if (ex) {
 				return callback(new Error('Metabase generation failed'));
 			}
@@ -225,20 +223,32 @@ function merge(a, b) {
 }
 
 /**
- * [extractFrameworksFromDependencies description]
- * @param  {string[]} headers [description]
- * @return {Set<string>}         [description]
+ * Given an array of framework names used, deeply get the set of all frameworks necessary.
+ * This is done as a side-effect, collecting the full set in the done parameter.
+ * I couldn't figure out how to nicely return the full set as teh actual return value :(
+ * @param  {string}   cacheDir   [description]
+ * @param  {SDKEnvironment}   sdk        [description]
+ * @param  {Map<string, ModuleMetadata>}   frameworks [description]
+ * @param  {string[]}   toGet      [description]
+ * @param  {Set<string>} done frameworks we've done or are in process
+ * @return {Promise<Set<string>>}
  */
-function extractFrameworksFromDependencies(headers) {
-	const frameworks = new Set();
-	headers.forEach(file => {
-		const index = file.indexOf('.framework');
-		if (index !== -1) {
-			const frameworkName = file.substring(file.lastIndexOf('/', index) + 1, index);
-			frameworks.add(frameworkName);
-		}
-	});
-	return frameworks;
+function getDependencies(cacheDir, sdk, frameworks, toGet, done) {
+	return Promise.all(toGet.map(name => {
+		done.add(name); // we're in process so don't do again!
+		const framework = frameworks.get(name);
+		return framework.getDependencies(cacheDir, sdk)
+			.then(dependencySet => {
+				const deps = Array.from(dependencySet);
+				const filtered = deps.filter(d => { // filter out any we are already getting/got/in-process!
+					return !toGet.includes(d) && !done.has(d);
+				});
+				if (filtered.length === 0) {
+					return Promise.resolve();
+				}
+				return getDependencies(cacheDir, sdk, frameworks, filtered, done);
+			});
+	}));
 }
 
 /**
@@ -251,49 +261,30 @@ function extractFrameworksFromDependencies(headers) {
  * @param  {string} sdk.minVersion minimum iOS version, i.e. '9.0'
  * @param  {Map<string,ModuleMetadata>}   frameworkMap map of all frameworks
  * @param  {string[]}   frameworksToGenerate array of framework names we need to include
- * @param  {runMetabaseBinaryCallback} callback async callback function
+ * @returns {Promise<object>} the unified metabase object/JSON
  */
-function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate, callback) {
-	let metabase = {};
-	const frameworksDone = [];
-
+function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate) {
 	const start = Date.now();
-	async.whilst(
-		function () { return frameworksToGenerate.length > 0; },
-		function (next) {
-			const frameworkToGenerate = frameworksToGenerate.shift();
-			const framework = frameworkMap.get(frameworkToGenerate);
-			// TODO: Can we generate multiple at once async? Basically grab the full set to do and do them each in parallel?
-
-			generateFrameworkMetabase(cacheDir, sdk, framework, function (err, json) {
-				if (err) {
-					return next(err);
-				}
-				frameworksDone.push(frameworkToGenerate);
-				// we should have a metabase just for this framework now, if we could find such a framework!
-				metabase = merge(metabase, json); // merge in to a single "metabase"
-
-				const dependentHeaders = json.metadata.dependencies;
-				// extract the frameworks from dependencies!
-				const dependentFrameworks = extractFrameworksFromDependencies(dependentHeaders);
-				util.logger.trace(`Dependencies of framework ${frameworkToGenerate}: ${Array.from(dependentFrameworks)}`);
-				dependentFrameworks.forEach(dependency => {
-					// Add to our todo list if we haven't already done it and it's not already on our todo list
-					if (!frameworksDone.includes(dependency) && !frameworksToGenerate.includes(dependency)) {
-						frameworksToGenerate.push(dependency);
-					}
-				});
-				next();
+	const done = new Set(); // this is used to gather the full set of dependencies
+	return getDependencies(cacheDir, sdk, frameworkMap, frameworksToGenerate, done)
+		.then(() => {
+			const deepFrameworks = Array.from(done).map(name => {
+				return frameworkMap.get(name);
 			});
-		},
-		function (err) {
-			if (err) {
-				return callback(err);
-			}
-			util.logger.trace(`Took ${Date.now() - start}ms to generate unified metabase from frameworks: ${JSON.stringify(frameworksDone)}`);
-			return callback(null, metabase);
-		}
-	);
+			const promises = deepFrameworks.map(framework => {
+				return framework.generateMetabase(cacheDir, sdk);
+			});
+			return Promise.all(promises);
+		})
+		.then(metabases => {
+			let metabase = {};
+			// merge all the metabases
+			metabases.forEach(json => {
+				metabase = merge(metabase, json); // merge in to a single "metabase"
+			});
+			util.logger.trace(`Took ${Date.now() - start}ms to generate unified metabase from frameworks: ${JSON.stringify(frameworksToGenerate)}`);
+			return Promise.resolve(metabase);
+		});
 }
 
 // public API

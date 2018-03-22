@@ -1,31 +1,10 @@
 /* eslint-disable no-unused-expressions */
 'use strict';
 
-const should = require('should'),
-	path = require('path'),
-	metabase = require('../lib/metabase'),
-	SDKEnvironment = require('../lib/sdk').SDKEnvironment;
+const should = require('should');  // eslint-disable-line no-unused-vars
+const metabase = require('../lib/metabase');
 
 describe('metabase', () => {
-	const tmpDir = path.join(__dirname, 'tmp');
-	let systemFrameworks = new Map();
-	let sdk;
-
-	before(done => {
-		// Shut the logger up!
-		require('../lib/util').setLog({ trace: function () {} });
-		SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0')
-			.then(sdkInfo => {
-				sdk = sdkInfo;
-				return sdk.getSystemFrameworks();
-			})
-			.then(frameworkMap => {
-				systemFrameworks = frameworkMap;
-				done();
-			})
-			.catch(err => done(err));
-	});
-
 	describe('#merge', () => {
 		it('should merge two metabase objects', () => {
 			const targetMetabase = {
@@ -100,47 +79,6 @@ describe('metabase', () => {
 			result.should.not.have.property('vars'); // it's not in src, so doesn't get created in target
 			result.should.have.property('protocols');
 			result.protocols.should.have.property('MyProtocol');
-		});
-	});
-
-	// Add a new method to generate a single framework's metabase on the fly!
-	describe('#generateFrameworkMetabase()', () => {
-		it('should generate metabase for a single framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('UIKit'), (err, json) => {
-				should(err).not.be.ok;
-				should(json).be.ok;
-
-				json.classes.should.not.have.property('CAAnimation'); // Don't include QuartzCore class
-				json.classes.should.have.property('UILabel'); // Does have class from UIKit
-				// Contains dependencies in the metadata
-				json.metadata.should.have.property('dependencies');
-				// Contains an array of header paths we skipped
-				json.metadata.dependencies.should.containEql(path.join(sdk.sdkPath, 'System/Library/Frameworks/QuartzCore.framework/Headers/CAAnimation.h'));
-			});
-		});
-
-		it('should generate NSObject from Foundation framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('Foundation'), (err, json) => {
-				should(err).not.be.ok;
-				should(json).be.ok;
-
-				json.classes.should.have.property('NSObject');
-				json.protocols.should.have.property('NSObject');
-			});
-		});
-
-		it('should include system types in CoreFoundation framework', () => {
-			metabase.generateFrameworkMetabase(tmpDir, sdk, systemFrameworks.get('CoreFoundation'), (err, json) => {
-				should(err).not.be.ok;
-				should(json).be.ok;
-
-				json.typedefs.should.have.property('BOOL');
-				json.typedefs.should.have.property('Boolean');
-				json.typedefs.should.have.property('Byte');
-				json.typedefs.should.have.property('Class');
-				json.typedefs.should.have.property('Float32');
-				json.typedefs.should.have.property('Float64');
-			});
 		});
 	});
 });

@@ -324,7 +324,7 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 	hm.cocoapods.installPodsAndGetSettings()
 		.then(settings => {
 			this.cocoaPodsBuildSettings = settings || {};
-			return hm.cocoapods.generateCocoaPodsMetadata(this.hyperloopBuildDir, this.builder, settings);
+			return hm.cocoapods.generateCocoaPodsMetadata(this.builder, settings);
 		})
 		.then(modules => {
 			this.hasCocoaPods = modules && modules.size > 0;
@@ -351,7 +351,6 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	var frameworks = this.frameworks;
 	var thirdPartyFrameworks = this.thirdPartyFrameworks;
 	var swiftSources = this.swiftSources;
-	var hyperloopBuildDir = this.hyperloopBuildDir;
 	const thirdparty = this.hyperloopConfig.ios.thirdparty || [];
 	var projectDir = this.builder.projectDir;
 	var xcodeAppDir = this.builder.xcodeAppDir;
@@ -395,17 +394,15 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			return next();
 		}
 
-		hm.frameworks.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function (err, modules) {
-			if (err) {
-				return next(err);
-			}
-
-			modules.forEach(moduleMetadata => {
-				thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
-				frameworks.set(moduleMetadata.name, moduleMetadata);
-			});
-			return next();
-		});
+		hm.frameworks.generateUserFrameworksMetadata(builder.frameworks)
+			.then(modules => {
+				modules.forEach(moduleMetadata => {
+					thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
+					frameworks.set(moduleMetadata.name, moduleMetadata);
+				});
+				next();
+			})
+			.catch(err => next(err));
 	}
 
 	/**
@@ -427,12 +424,10 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 					const headers = arrayifyAndResolve(lib.header);
 					if (headers) {
 						// Creates a 'static' framework pointing at the first header as the location
-						const metadata = new ModuleMetadata(frameworkName, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
+						const metadata = ModuleMetadata.fromHeaders(frameworkName, headers[0]);
 						frameworks.set(metadata.name, metadata);
-						cb();
-					} else {
-						cb();
 					}
+					cb();
 				},
 
 				function (cb) {

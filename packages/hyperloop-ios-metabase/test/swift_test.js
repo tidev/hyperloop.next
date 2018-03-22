@@ -27,8 +27,9 @@ describe('swift', function () {
 			.then(frameworks => {
 				frameworkMap = frameworks;
 				// Pre-generate a unified metabase for UIKit and dependencies
-				metabase.unifiedMetabase(tmpdir, sdk, frameworkMap, [ 'UIKit' ], done);
+				return metabase.unifiedMetabase(tmpdir, sdk, frameworkMap, [ 'UIKit' ]);
 			})
+			.then(() => { done(); })
 			.catch(err => done(err));
 	});
 

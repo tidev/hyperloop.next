@@ -68,6 +68,7 @@ describe('GenerateSourcesTask', function () {
 	this.timeout(10000);
 
 	function generateStub(frameworkName, className, cb) {
+		let frameworks;
 		SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0')
 			.then(sdkInfo => {
 				sdk = sdkInfo;
@@ -76,15 +77,15 @@ describe('GenerateSourcesTask', function () {
 			.then(frameworkMap => {
 				should(frameworkMap).be.ok;
 				frameworkMap.has('$metadata').should.be.false;
+				frameworks = frameworkMap;
 
-				const state = new gencustom.ParserState();
 				const frameworksToGenerate = [ frameworkName ];
-				hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, frameworksToGenerate, (err, metabase) => {
-					should(err).not.be.ok;
-
-					const references = [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ];
-					GenerateSourcesTask.generateSources(buildDir, 'TestApp', metabase, state, frameworkMap, references, noopBunyanLogger, cb);
-				});
+				return hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, frameworksToGenerate);
+			})
+			.then((metabase) => {
+				const state = new gencustom.ParserState();
+				const references = [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ];
+				GenerateSourcesTask.generateSources(buildDir, 'TestApp', metabase, state, frameworks, references, noopBunyanLogger, cb);
 			})
 			.catch(err => cb(err));
 	}

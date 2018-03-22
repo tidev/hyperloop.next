@@ -1,7 +1,11 @@
 'use strict';
 
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
+const path = require('path');
+
+const util = require('./util');
 const frameworks = require('./frameworks');
+const Frameworks = require('./framework_group').Frameworks;
 
 class SDKEnvironment {
 
@@ -16,6 +20,7 @@ class SDKEnvironment {
 		this.sdkPath = path; // FIXME Shorten the property names once we're moved over!
 		this.sdkType = type;
 		this.minVersion = minIosVersion;
+		this.frameworks = new SystemFrameworks(path);
 	}
 
 	/**
@@ -41,12 +46,34 @@ class SDKEnvironment {
 	 * @returns {Promise<Map<string, ModuleMetadata>>}
 	 */
 	getSystemFrameworks() {
+		return this.frameworks.load();
+	}
+}
+
+class SystemFrameworks extends Frameworks {
+
+	constructor(sdkPath) {
+		super();
+		this.sdkPath = sdkPath;
+	}
+
+	cacheFile() {
+		const cacheToken = util.createHashFromString(this.sdkPath);
+		return path.join(this.cacheDir, `metabase-mappings-${cacheToken}.json`);
+	}
+
+	/**
+	 * The actual work to detect/load frameworks from original data.
+	 * @return {Promise<Map<string, ModuleMetadata>>}
+	 */
+	detect() {
 		return new Promise((resolve, reject) => {
-			frameworks.getSystemFrameworks(this.sdkPath, (err, frameworks) => {
+			const frameworksPath = path.resolve(path.join(this.sdkPath, 'System/Library/Frameworks'));
+			frameworks.detectFrameworks(frameworksPath, function (err, frameworks) {
 				if (err) {
 					return reject(err);
 				}
-				return resolve(frameworks);
+				resolve(frameworks);
 			});
 		});
 	}

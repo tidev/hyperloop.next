@@ -50,40 +50,40 @@ function generateMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, swift
 	// FIXME: Shouldn't we be generating swift frameworks earlier when we gather other frameworks?
 	// Then we can just treat them like any other frameworks here and just call unifiedMetabase on the set of system/user/3rd-party/swift frameworks
 	let masterMetabase = {};
-	hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, (err, metabase) => {
-		if (err) {
-			return callback(err);
-		}
-		masterMetabase = metabase;
+	hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames)
+		.then((metabase) => {
+			masterMetabase = metabase;
 
-		// Now do swift metabases
-		const swiftMetabases = [];
-		// TODO: Can we generate a ModuleMetadata equivalent for this Swift source framework?
-		async.each(swiftFrameworkNames, (name, next) => {
-			const swiftFiles = swiftFrameworks.get(name);
-			// logger.info('Generating metabase for swift framework ' + chalk.cyan(name + ' ' + swiftFiles));
-			hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdk, swiftFiles, (err, swiftMetabase) => {
+			// Now do swift metabases
+			const swiftMetabases = [];
+			// TODO: Can we generate a ModuleMetadata equivalent for this Swift source framework?
+			// TODO Convert to Promises! Promise.all is equivalent of async.each
+			async.each(swiftFrameworkNames, (name, next) => {
+				const swiftFiles = swiftFrameworks.get(name);
+				// logger.info('Generating metabase for swift framework ' + chalk.cyan(name + ' ' + swiftFiles));
+				hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdk, swiftFiles, (err, swiftMetabase) => {
+					if (err) {
+						return next(err);
+					}
+
+					swiftMetabases.push(swiftMetabase);
+					next();
+				});
+			}, err => {
 				if (err) {
-					return next(err);
+					return callback(err);
 				}
 
-				swiftMetabases.push(swiftMetabase);
-				next();
-			});
-		}, err => {
-			if (err) {
-				return callback(err);
-			}
+				// Merge the swift metabases into the master one from system/etc frameworks.
+				swiftMetabases.forEach(swiftMetabase => {
+					masterMetabase = hm.metabase.merge(masterMetabase, swiftMetabase);
+				});
 
-			// Merge the swift metabases into the master one from system/etc frameworks.
-			swiftMetabases.forEach(swiftMetabase => {
-				masterMetabase = hm.metabase.merge(masterMetabase, swiftMetabase);
+				// OK we've merged them all together!
+				callback(null, masterMetabase);
 			});
-
-			// OK we've merged them all together!
-			callback(null, masterMetabase);
-		});
-	});
+		})
+		.catch(err => callback(err));
 }
 
 exports.generateMetabase = generateMetabase;

@@ -3,13 +3,16 @@
  * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
-
-const fs = require('fs'),
-	util = require('./util'),
-	async = require('async'),
-	metabaselib = require('./metabase');
+// core modules
+const fs = require('fs');
 const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
+// 3rd-party modules
+const async = require('async');
+// 1st-party library modules
+const util = require('./util');
+const metabaselib = require('./metabase');
+const Frameworks = require('./framework_group').Frameworks;
 
 // regular expressions for dealing with Swift ASTs
 const COMPONENT_RE = /component id='(.*)'/;
@@ -339,6 +342,7 @@ function extractSwiftClasses(framework, fn, metabase, sdk, callback) {
  * @return {void}
  */
 function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFiles, callback) {
+	// TODO Convert to Promises!
 	// read our imports from the file so we can generate an appropriate metabase
 	const imports = new Set();
 	async.each(swiftFiles, (file, next) => {
@@ -355,48 +359,82 @@ function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFi
 
 		// Ok, so we know what the set of swift files imported, now let's generate a
 		// deep, unified metabase from the frameworks used plus all dependencies
-		metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, Array.from(imports), (err, metabase) => {
-			if (err) {
-				return callback(err);
-			}
+		metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, Array.from(imports))
+			.then((metabase) => {
+				// Generate the classes in parallel, then merge them sync at the end!
+				// dumping the swift AST for each file is slow, but if we can do many in parallel,
+				// the overall performance isn't that bad. We *MAY* need to do mapLimit to
+				// cap how many we do in parallel
+				const startExtractSwift = Date.now();
+				// TODO Convert to Promises!
+				async.map(swiftFiles, (file, next) => {
+					extractSwiftClasses(name, file, metabase, sdk, next);
+				}, (err, results) => {
+					util.logger.trace(`Took ${Date.now() - startExtractSwift}ms to extract swift classes`);
+					if (err) {
+						return callback(err);
+					}
 
-			// Generate the classes in parallel, then merge them sync at the end!
-			// dumping the swift AST for each file is slow, but if we can do many in parallel,
-			// the overall performance isn't that bad. We *MAY* need to do mapLimit to
-			// cap how many we do in parallel
-			const startExtractSwift = Date.now();
-			async.map(swiftFiles, (file, next) => {
-				extractSwiftClasses(name, file, metabase, sdk, next);
-			}, (err, results) => {
-				util.logger.trace(`Took ${Date.now() - startExtractSwift}ms to extract swift classes`);
-				if (err) {
-					return callback(err);
-				}
+					// Now merge all the results together
+					let generated = {
+						classes: {},
+						imports: Array.from(imports)
+					};
+					results.forEach(classes => {
+						generated = metabaselib.merge(generated, { classes: classes });
+					});
 
-				// Now merge all the results together
-				let generated = {
-					classes: {},
-					imports: Array.from(imports)
-				};
-				results.forEach(classes => {
-					generated = metabaselib.merge(generated, { classes: classes });
+					// Add metadata to the metabase!
+					generated.metadata = {
+						'api-version': '1',
+						dependencies: [], // TODO: inject the imports?
+						'min-version': sdk.minVersion,
+						platform: 'ios',
+						'system-generated': 'true',
+						generated: new Date().toISOString(),
+						'sdk-path': sdk.sdkPath
+					};
+
+					callback(null, generated);
 				});
-
-				// Add metadata to the metabase!
-				generated.metadata = {
-					'api-version': '1',
-					dependencies: [], // TODO: inject the imports?
-					'min-version': sdk.minVersion,
-					platform: 'ios',
-					'system-generated': 'true',
-					generated: new Date().toISOString(),
-					'sdk-path': sdk.sdkPath
-				};
-
-				callback(null, generated);
-			});
-		});
+			})
+			.catch(err => callback(err));
 	});
+}
+
+class SwiftFrameworks extends Frameworks {
+	constructor(swiftSources) {
+		super();
+		this.swiftFrameworks = new Map();
+		swiftSources.forEach(entry => {
+			let files = [];
+			if (this.swiftFrameworks.has(entry)) {
+				files = this.swiftFrameworks.get(entry.framework);
+			}
+			files.push(entry.source);
+			this.swiftFrameworks.set(entry.framework, files);
+		});
+	}
+
+	cacheFile() {
+		// TODO: What can we use as the cache token? The set of framework names -> files?
+		//
+		// const frameworkNames = Object.keys(this.userFrameworks);
+		// const cacheToken = util.createHashFromString(frameworkNames.join(''));
+		// return path.join(cacheDir, `metabase-user-frameworks-${cacheToken}.json`);
+		throw new Error('Subclasses should define behavior here to generate the filepath to the on-disk json cache for the group');
+	}
+
+	/**
+	 * Subclasses should return a Promise<Map<string, ModuleMetadata>> after
+	 * generating ModuleMetadata instances from the original source data we were given
+	 */
+	detect() {
+		// FIXME: How do we handle swift sources? We group them by framework name, so they are:
+		// framework name -> [file array]
+		// But then we basically just skip to generating a metabase from them. How can we generate "metadata" for each "framework"?
+		throw new Error('Subclasses should define behavior here to load the frameworks');
+	}
 }
 
 exports.generateSwiftFrameworkMetabase = generateSwiftFrameworkMetabase;
