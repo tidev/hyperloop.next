@@ -83,28 +83,28 @@ function compileResources(dir, sdk, appDir, wildcard) {
 					'--sdk', sdk,
 					file
 				];
-				return runIBTool(path.dirname(file), args, cb);
+				return runIBTool(path.dirname(file), args);
 			}
 			case '.xcdatamodel': {
 				const args = [
 					file,
 					path.join(appDir, rel.replace(/\.xcdatamodel$/, '.mom'))
 				];
-				return runMomcTool(path.dirname(file), sdk, args, cb);
+				return runMomcTool(path.dirname(file), sdk, args);
 			}
 			case '.xcdatamodeld': {
 				const args = [
 					file,
 					path.join(appDir, rel.replace(/\.xcdatamodeld$/, '.momd'))
 				];
-				return runMomcTool(path.dirname(file), sdk, args, cb);
+				return runMomcTool(path.dirname(file), sdk, args);
 			}
 			case '.xcmappingmodel': {
 				const args = [
 					file,
 					path.join(appDir, rel.replace(/\.xcmappingmodel$/, '.cdm'))
 				];
-				return runMapcTool(path.dirname(file), sdk, args, cb);
+				return runMapcTool(path.dirname(file), sdk, args);
 			}
 			case '.xcassets': {
 				// FIXME: Throw an error to at least to show we don't yet handle this?
@@ -119,11 +119,11 @@ function compileResources(dir, sdk, appDir, wildcard) {
 					'--sdk', sdk,
 					file
 				];
-				return runIBTool(path.dirname(file), args, cb);
+				return runIBTool(path.dirname(file), args);
 			}
 			default: {
 				if (wildcard && !/\.(m|mm|h|cpp|hpp|c|s)$/.test(file)) {
-					return new Promise(resolve => {
+					return new Promise((resolve, reject) => {
 						const buf = fs.readFileSync(file);
 						const out = path.join(appDir, rel);
 						const d = path.dirname(out);
@@ -131,8 +131,12 @@ function compileResources(dir, sdk, appDir, wildcard) {
 						fs.ensureDirSync(d);
 						util.logger.trace('Copying Resource', chalk.cyan(file), 'to', chalk.cyan(out));
 
-						fs.writeFile(out, buf, cb);
-						resolve();
+						fs.writeFile(out, buf, function (err) {
+							if (err) {
+								return reject(err);
+							}
+							resolve();
+						});
 					});
 				}
 				return Promise.resolve();

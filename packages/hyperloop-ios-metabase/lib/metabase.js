@@ -118,7 +118,6 @@ function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
 		try {
 			const json = JSON.parse(fs.readFileSync(outfile));
 			json.$includes = includes;
-			//util.logger.trace('Returning cached metabase from', outfile);
 			return callback(null, json, outfile, header, true);
 		} catch (e) {
 			// fall through and re-generate again
