@@ -3,16 +3,15 @@
  * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
 'use strict';
-// core modules
+
 const fs = require('fs');
 const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
-// 3rd-party modules
-const async = require('async');
-// 1st-party library modules
+
 const util = require('./util');
 const metabaselib = require('./metabase');
-const Frameworks = require('./framework_group').Frameworks;
+const Frameworks = require('./frameworks').Frameworks;
+const ModuleMetadata = require('./module_metadata').ModuleMetadata;
 
 // regular expressions for dealing with Swift ASTs
 const COMPONENT_RE = /component id='(.*)'/;
@@ -159,8 +158,7 @@ function resolveType(filename, metabase, value) {
 		const typedef = metabase.typedefs[value];
 		return { type: typedef.type, value: value, encoding: typedef.encoding };
 	}
-	console.error('Swift Generation failed with unknown or unsupported type (' + value + ') found while compiling', filename);
-	process.exit(1);
+	throw new Error(`Swift Generation failed with unknown or unsupported type (${value}) found while compiling ${filename}`);
 }
 
 /**
@@ -208,6 +206,8 @@ function extractSwiftClasses(framework, fn, metabase, sdk) {
 				methodef,
 				vardef;
 
+			// FIXME This code is nasty and likely pretty slow.
+			// We should rewrite this!
 			lines.forEach(function (line, index) {
 				line = line.toString().trim();
 				if (line) {
@@ -327,113 +327,153 @@ function extractSwiftClasses(framework, fn, metabase, sdk) {
 }
 
 /**
- * Given an array of Swift source files, this will generate an in-memory metabase
- * holding the classes defined within these files.
- *
- * @param  {string} name framework name to use for this bunch of swift sources
- * @param  {Map<string, ModuleMetadata>}   frameworks    [description]
- * @param  {string} cacheDir place to cache generated metabases
- * @param  {SDKEnvironment} sdk sdk info object
- * @param  {string}   sdk.sdkPath       absolute path to the sdk to use
- * @param  {string}   sdk.minVersion i.e. '9.0'
- * @param  {string}   sdk.sdkType 'iphoneos' || 'iphonesimulator'
- * @param  {string[]} swiftFiles            swift source filename
- * @return {Promise<object>}
+ * Wraps user swift sources into grouped frameworks (mapped by name to "metadata")
+ * @param  {object[]} swiftSources array of objects each having a 'framework' and 'source' key
+ * @return {Promise<Map<string, ModuleMetadata>>}
  */
-function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFiles) {
-	// extract imports for each swift file in paralle
-	const promises = swiftFiles.map(f => {
-		return new Promise(resolve => {
-			resolve(extractImports(fs.readFileSync(f).toString()));
-		});
-	});
-	let imports;
-	return Promise.all(promises)
-		.then(results => {
-			// results should be an array of arrays
-			// Smush down to a Set of unique imports
-			const imports = new Set();
-			results.forEach(r => {
-				r.forEach(i => imports.add(i));
-			});
-			return Promise.resolve(imports);
-		})
-		.then(importSet => {
-			// Ok, so we know what the set of swift files imported, now let's generate a
-			// deep, unified metabase from the frameworks used plus all dependencies
-			imports = Array.from(importSet);
-			return metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, imports);
-		})
-		.then(metabase => {
-			// Generate the classes in parallel, then merge them sync at the end!
-			// dumping the swift AST for each file is slow, but if we can do many in parallel,
-			// the overall performance isn't that bad. We *MAY* need to do mapLimit to
-			// cap how many we do in parallel
-			const extractPromises = swiftFiles.map(file => {
-				return extractSwiftClasses(name, file, metabase, sdk);
-			});
-			return Promise.all(extractPromises);
-		})
-		.then(results => {
-			// results is an array of objects
-			// Now merge all the results together
-			let generated = {
-				classes: {},
-				imports: imports
-			};
-			results.forEach(classes => {
-				generated = metabaselib.merge(generated, { classes: classes });
-			});
+function generateSwiftFrameworks(swiftSources) {
+	return new SwiftFrameworks(swiftSources).load();
+}
 
-			// Add metadata to the metabase!
-			generated.metadata = {
-				'api-version': '1',
-				dependencies: [], // TODO: inject the imports?
-				'min-version': sdk.minVersion,
-				platform: 'ios',
-				'system-generated': 'true',
-				generated: new Date().toISOString(),
-				'sdk-path': sdk.sdkPath
-			};
-			return Promise.resolve(generated);
+class SwiftModule extends ModuleMetadata {
+	constructor(name, files) {
+		super(name, files[0], ModuleMetadata.MODULE_TYPE_DYNAMIC);
+		this.files = files;
+	}
+
+	/**
+	 * Returns the metabase JSON object. May be from in-memory cache, on-disk cache, or generated on-demand.
+	 * @param  {SDKEnvironment} sdk The SDk information used to generate the metabase
+	 * @return {Promise<object>}
+	 */
+	generateMetabase(sdk) {
+		// If we have the cached in-memory copy of the metabase, return it!
+		if (this._metabase) {
+			return Promise.resolve(this._metabase);
+		}
+
+		let imports;
+		return this.getDependencies(sdk)
+			.then(importSet => {
+				imports = Array.from(importSet);
+				// FIXME Pass in all the other frameworks here? Otherwise we're limited as to what the swift source can reference!
+				// For now, let's just cheat and use the system frameworks
+				return sdk.getSystemFrameworks();
+			})
+			.then(frameworks => {
+				// Ok, so we know what the set of swift files imported, now let's generate a
+				// deep, unified metabase from the frameworks used plus all dependencies
+				return metabaselib.unifiedMetabase(sdk, frameworks, imports);
+			})
+			.then(metabase => {
+				// Generate the classes in parallel, then merge them sync at the end!
+				// dumping the swift AST for each file is slow, but if we can do many in parallel,
+				// the overall performance isn't that bad.
+				const extractPromises = this.files.map(file => {
+					return extractSwiftClasses(this.name, file, metabase, sdk);
+				});
+				return Promise.all(extractPromises);
+			})
+			.then(results => {
+				// results is an array of objects
+				// Now merge all the results together
+				let generated = {
+					classes: {},
+					imports: imports
+				};
+				results.forEach(classes => {
+					generated = metabaselib.merge(generated, { classes: classes });
+				});
+
+				// Add metadata to the metabase!
+				generated.metadata = {
+					'api-version': '1',
+					dependencies: [], // TODO: inject the imports?
+					'min-version': sdk.minVersion,
+					platform: 'ios',
+					'system-generated': 'true',
+					generated: new Date().toISOString(),
+					'sdk-path': sdk.sdkPath
+				};
+				this._metabase = generated;
+				return Promise.resolve(generated);
+			});
+	}
+
+	/**
+	 * Returns the shallow set of all dependencies (the names of the frameworks)
+	 * @param  {SDKEnvironment} sdk The SDk information used to generate the metabase
+	 * @return {Promise<Set<string>>}
+	 */
+	getDependencies(sdk) { // eslint-disable-line no-unused-vars
+		// extract imports for each swift file in paralle
+		const promises = this.files.map(f => {
+			return new Promise(resolve => {
+				resolve(extractImports(fs.readFileSync(f).toString()));
+			});
 		});
+		return Promise.all(promises)
+			.then(results => {
+				// results should be an array of arrays
+				// Smush down to a Set of unique imports
+				const imports = new Set();
+				results.forEach(r => {
+					r.forEach(i => imports.add(i));
+				});
+				if (imports.size === 0) {
+					// Assume 'Foundation' is always included
+					imports.add('Foundation');
+				}
+				return Promise.resolve(imports);
+			});
+	}
 }
 
 class SwiftFrameworks extends Frameworks {
 	constructor(swiftSources) {
 		super();
-		this.swiftFrameworks = new Map();
-		swiftSources.forEach(entry => {
-			let files = [];
-			if (this.swiftFrameworks.has(entry)) {
-				files = this.swiftFrameworks.get(entry.framework);
-			}
-			files.push(entry.source);
-			this.swiftFrameworks.set(entry.framework, files);
-		});
-	}
-
-	cacheFile() {
-		// TODO: What can we use as the cache token? The set of framework names -> files?
-		//
-		// const frameworkNames = Object.keys(this.userFrameworks);
-		// const cacheToken = util.createHashFromString(frameworkNames.join(''));
-		// return path.join(cacheDir, `metabase-user-frameworks-${cacheToken}.json`);
-		throw new Error('Subclasses should define behavior here to generate the filepath to the on-disk json cache for the group');
+		this.swiftSources = swiftSources;
 	}
 
 	/**
-	 * Subclasses should return a Promise<Map<string, ModuleMetadata>> after
-	 * generating ModuleMetadata instances from the original source data we were given
+	 * Overridden to avoid on-disk cache mechanism.
+	 * @return {Promise<Map<string, ModuleMetadata>>}
+	 */
+	load() {
+		// do we have it in memory?
+		if (this.modules) {
+			return Promise.resolve(this.modules);
+		}
+		// Not in-memory. Do the real work.
+		return this.detect().then(modules => {
+			// then store in memory
+			this.modules = modules;
+			return Promise.resolve(modules);
+		});
+	}
+
+	/**
+	 * Turns a grouping of names to swift files into a map of frameworks that wraps this data
+	 * @return {Promise<Map<string, ModuleMetadata>>}
 	 */
 	detect() {
-		// FIXME: How do we handle swift sources? We group them by framework name, so they are:
-		// framework name -> [file array]
-		// But then we basically just skip to generating a metabase from them. How can we generate "metadata" for each "framework"?
-		throw new Error('Subclasses should define behavior here to load the frameworks');
+		const swiftFrameworks = new Map();
+		this.swiftSources.forEach(entry => {
+			let files = [];
+			if (swiftFrameworks.has(entry.framework)) {
+				files = swiftFrameworks.get(entry.framework);
+			}
+			files.push(entry.source);
+			swiftFrameworks.set(entry.framework, files);
+		});
+		const modules = new Map();
+		swiftFrameworks.forEach((files, name) => {
+			modules.set(name, new SwiftModule(name, files));
+		});
+		return Promise.resolve(modules);
 	}
 }
 
-exports.generateSwiftFrameworkMetabase = generateSwiftFrameworkMetabase;
 exports.generateSwiftMangledClassName = generateSwiftMangledClassName; // only exported for testing!
 exports.getVersion = getVersion;
+exports.generateSwiftFrameworks = generateSwiftFrameworks;

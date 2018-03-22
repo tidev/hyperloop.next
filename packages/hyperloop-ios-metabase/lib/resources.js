@@ -3,7 +3,7 @@
 const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
 	path = require('path'),
 	fs = require('fs-extra'),
-	async = require('async'),
+	async = require('async'), // TODO Move to Promises
 	chalk = require('chalk'),
 	util = require('./util');
 

@@ -2,10 +2,18 @@
 
 const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
 const path = require('path');
+const os = require('os');
+const fs = require('fs-extra');
 
 const util = require('./util');
-const frameworks = require('./frameworks');
-const Frameworks = require('./framework_group').Frameworks;
+const Frameworks = require('./frameworks').Frameworks;
+const ModuleMetadata = require('./module_metadata').ModuleMetadata;
+
+/**
+ * ~/.hyperloop - used to cache system framework mappings/metabases.
+ * @type {string}
+ */
+const USER_HOME_HYPERLOOP = path.join(os.homedir(), '.hyperloop');
 
 class SDKEnvironment {
 
@@ -50,11 +58,20 @@ class SDKEnvironment {
 	}
 }
 
+class SystemFramework extends ModuleMetadata {
+	constructor(frameworkPath) {
+		super(path.basename(frameworkPath, '.framework'), frameworkPath, ModuleMetadata.MODULE_TYPE_DYNAMIC);
+		this.cacheDir = USER_HOME_HYPERLOOP;
+		this.sniff();
+	}
+}
+
 class SystemFrameworks extends Frameworks {
 
 	constructor(sdkPath) {
 		super();
 		this.sdkPath = sdkPath;
+		this.cacheDir = USER_HOME_HYPERLOOP;
 	}
 
 	cacheFile() {
@@ -67,15 +84,21 @@ class SystemFrameworks extends Frameworks {
 	 * @return {Promise<Map<string, ModuleMetadata>>}
 	 */
 	detect() {
-		return new Promise((resolve, reject) => {
-			const frameworksPath = path.resolve(path.join(this.sdkPath, 'System/Library/Frameworks'));
-			frameworks.detectFrameworks(frameworksPath, function (err, frameworks) {
-				if (err) {
-					return reject(err);
-				}
-				resolve(frameworks);
+		const frameworksPath = path.resolve(path.join(this.sdkPath, 'System/Library/Frameworks'));
+		const frameworksEntries = fs.readdirSync(frameworksPath).filter(entryName => /\.framework$/.test(entryName));
+		const allFrameworkPromises = frameworksEntries.map(searchPathEntry => {
+			return new Promise(resolve => {
+				resolve(new SystemFramework(path.join(frameworksPath, searchPathEntry)));
 			});
 		});
+		return Promise.all(allFrameworkPromises)
+			.then(metadatas => {
+				const frameworks = new Map();
+				metadatas.forEach(metadata => {
+					frameworks.set(metadata.name, metadata);
+				});
+				return Promise.resolve(frameworks);
+			});
 	}
 }
 

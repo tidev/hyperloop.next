@@ -43,7 +43,7 @@ describe('module metadata', () => {
 		});
 
 		it('should generate metabase for a single framework', (done) => {
-			systemFrameworks.get('UIKit').generateMetabase(tmpDir, sdk)
+			systemFrameworks.get('UIKit').generateMetabase(sdk)
 				.then(json => {
 					should(json).be.ok;
 
@@ -59,7 +59,7 @@ describe('module metadata', () => {
 		});
 
 		it('should generate NSObject from Foundation framework', (done) => {
-			systemFrameworks.get('Foundation').generateMetabase(tmpDir, sdk)
+			systemFrameworks.get('Foundation').generateMetabase(sdk)
 				.then(json => {
 					should(json).be.ok;
 
@@ -71,7 +71,7 @@ describe('module metadata', () => {
 		});
 
 		it('should include system types in CoreFoundation framework', (done) => {
-			systemFrameworks.get('CoreFoundation').generateMetabase(tmpDir, sdk)
+			systemFrameworks.get('CoreFoundation').generateMetabase(sdk)
 				.then(json => {
 					should(json).be.ok;
 

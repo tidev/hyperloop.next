@@ -80,7 +80,7 @@ describe('GenerateSourcesTask', function () {
 				frameworks = frameworkMap;
 
 				const frameworksToGenerate = [ frameworkName ];
-				return hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, frameworksToGenerate);
+				return hm.unifiedMetabase(sdk, frameworkMap, frameworksToGenerate);
 			})
 			.then((metabase) => {
 				const state = new gencustom.ParserState();

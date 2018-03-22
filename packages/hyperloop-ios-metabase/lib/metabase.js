@@ -118,7 +118,7 @@ function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
 		try {
 			const json = JSON.parse(fs.readFileSync(outfile));
 			json.$includes = includes;
-			util.logger.trace('Returning cached metabase from', outfile);
+			//util.logger.trace('Returning cached metabase from', outfile);
 			return callback(null, json, outfile, header, true);
 		} catch (e) {
 			// fall through and re-generate again
@@ -226,18 +226,17 @@ function merge(a, b) {
  * Given an array of framework names used, deeply get the set of all frameworks necessary.
  * This is done as a side-effect, collecting the full set in the done parameter.
  * I couldn't figure out how to nicely return the full set as teh actual return value :(
- * @param  {string}   cacheDir   [description]
  * @param  {SDKEnvironment}   sdk        [description]
  * @param  {Map<string, ModuleMetadata>}   frameworks [description]
  * @param  {string[]}   toGet      [description]
  * @param  {Set<string>} done frameworks we've done or are in process
  * @return {Promise<Set<string>>}
  */
-function getDependencies(cacheDir, sdk, frameworks, toGet, done) {
+function getDependencies(sdk, frameworks, toGet, done) {
 	return Promise.all(toGet.map(name => {
 		done.add(name); // we're in process so don't do again!
 		const framework = frameworks.get(name);
-		return framework.getDependencies(cacheDir, sdk)
+		return framework.getDependencies(sdk)
 			.then(dependencySet => {
 				const deps = Array.from(dependencySet);
 				const filtered = deps.filter(d => { // filter out any we are already getting/got/in-process!
@@ -246,7 +245,7 @@ function getDependencies(cacheDir, sdk, frameworks, toGet, done) {
 				if (filtered.length === 0) {
 					return Promise.resolve();
 				}
-				return getDependencies(cacheDir, sdk, frameworks, filtered, done);
+				return getDependencies(sdk, frameworks, filtered, done);
 			});
 	}));
 }
@@ -255,7 +254,6 @@ function getDependencies(cacheDir, sdk, frameworks, toGet, done) {
  * Given the map of all frameworks, and an array of framework names that we
  * explicitly depend upon, generate a unified metabase from those frameworks
  * plus all of their dependencies.
- * @param  {string} cacheDir cache dir to place metabase JSON files
  * @param  {SDKEnvironment} sdk sdk info object
  * @param  {string} sdk.sdkPath path to ios sdk to use
  * @param  {string} sdk.minVersion minimum iOS version, i.e. '9.0'
@@ -263,16 +261,15 @@ function getDependencies(cacheDir, sdk, frameworks, toGet, done) {
  * @param  {string[]}   frameworksToGenerate array of framework names we need to include
  * @returns {Promise<object>} the unified metabase object/JSON
  */
-function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate) {
-	const start = Date.now();
+function unifiedMetabase(sdk, frameworkMap, frameworksToGenerate) {
 	const done = new Set(); // this is used to gather the full set of dependencies
-	return getDependencies(cacheDir, sdk, frameworkMap, frameworksToGenerate, done)
+	return getDependencies(sdk, frameworkMap, frameworksToGenerate, done)
 		.then(() => {
 			const deepFrameworks = Array.from(done).map(name => {
 				return frameworkMap.get(name);
 			});
 			const promises = deepFrameworks.map(framework => {
-				return framework.generateMetabase(cacheDir, sdk);
+				return framework.generateMetabase(sdk);
 			});
 			return Promise.all(promises);
 		})
@@ -282,7 +279,6 @@ function unifiedMetabase(cacheDir, sdk, frameworkMap, frameworksToGenerate) {
 			metabases.forEach(json => {
 				metabase = merge(metabase, json); // merge in to a single "metabase"
 			});
-			util.logger.trace(`Took ${Date.now() - start}ms to generate unified metabase from frameworks: ${JSON.stringify(frameworksToGenerate)}`);
 			return Promise.resolve(metabase);
 		});
 }

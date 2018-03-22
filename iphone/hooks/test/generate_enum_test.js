@@ -2,8 +2,8 @@
 /* eslint no-unused-expressions: "off" */
 'use strict';
 
-const should = require('should'), // eslint-disable-line no-unused-vars
-	genenum = require('../generate/enum');
+const should = require('should'); // eslint-disable-line no-unused-vars
+const genenum = require('../generate/enum');
 
 describe('generate/enum', () => {
 

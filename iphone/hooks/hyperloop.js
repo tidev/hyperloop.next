@@ -70,6 +70,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.frameworks = new Map();
 	this.systemFrameworks = new Map();
 	this.thirdPartyFrameworks = new Map();
+	this.swiftFrameworks = new Map();
 	this.includes = [];
 	this.swiftSources = [];
 	this.swiftVersion = '3.0';
@@ -86,7 +87,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.useCopyResourceHook = false; // boolean flag to determine which CLi hook to use based on SDK version
 
 	// set our CLI logger
-	hm.util.setLog(builder.logger);
+	hm.setLogger(builder.logger);
 }
 
 /**
@@ -394,7 +395,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			return next();
 		}
 
-		hm.frameworks.generateUserFrameworksMetadata(builder.frameworks)
+		hm.userFrameworks(builder.frameworks)
 			.then(modules => {
 				modules.forEach(moduleMetadata => {
 					thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
@@ -473,9 +474,22 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 		}, next);
 	}
 
+	function processSwiftFrameworks(next) {
+		hm.swift.generateSwiftFrameworks(swiftSources)
+			.then(modules => {
+				modules.forEach(moduleMetadata => {
+					this.swiftFrameworks.set(moduleMetadata.name, moduleMetadata);
+					frameworks.set(moduleMetadata.name, moduleMetadata);
+				});
+				next();
+			})
+			.catch(err => next(err));
+	}
+
 	async.series([
 		processFrameworks,
-		processConfiguredThirdPartySource
+		processConfiguredThirdPartySource,
+		processSwiftFrameworks
 	], callback);
 };
 
@@ -571,11 +585,9 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 	const frameworksUsed = Array.from(this.usedFrameworks.keys());
 
 	GenerateMetabaseTask.generateMetabase(
-		this.hyperloopBuildDir,
 		this.sdkInfo,
 		this.frameworks,
-		frameworksUsed,
-		this.swiftSources)
+		frameworksUsed)
 		.then(metabase => {
 			this.metabase = metabase;
 			callback();
@@ -778,21 +790,27 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		return;
 	}
 
-	var projectDir = this.builder.projectDir;
-	var appName = this.builder.tiapp.name;
-	var xcodeProject = data.args[0];
-	var xobjs = xcodeProject.hash.project.objects;
-	var projectUuid = xcodeProject.hash.project.rootObject;
-	var pbxProject = xobjs.PBXProject[projectUuid];
-	var mainTargetUuid = pbxProject.targets.filter(function (t) { return t.comment.replace(/^"/, '').replace(/"$/, '') === appName; })[0].value;
-	var mainTarget = xobjs.PBXNativeTarget[mainTargetUuid];
-	var mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
-	var generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
+	const projectDir = this.builder.projectDir;
+	const appName = this.builder.tiapp.name;
+	const xcodeProject = data.args[0];
+	const xobjs = xcodeProject.hash.project.objects;
+	const projectUuid = xcodeProject.hash.project.rootObject;
+	const pbxProject = xobjs.PBXProject[projectUuid];
+	const mainTargetUuid = pbxProject.targets.filter(t => {
+		return t.comment.replace(/^"/, '').replace(/"$/, '') === appName;
+	})[0].value;
+	const mainTarget = xobjs.PBXNativeTarget[mainTargetUuid];
+	const mainGroupChildren = xobjs.PBXGroup[pbxProject.mainGroup].children;
+	const generateUuid = this.builder.generateXcodeUuid.bind(this.builder, xcodeProject);
 
-	var frameworksGroup = xobjs.PBXGroup[mainGroupChildren.filter(function (child) { return child.comment === 'Frameworks'; })[0].value];
-	var frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXFrameworksBuildPhase[phase.value]; })[0].value];
-	var frameworksToAdd = [];
-	var alreadyAddedFrameworks = new Set();
+	const frameworksGroup = xobjs.PBXGroup[mainGroupChildren.filter(child => {
+		return child.comment === 'Frameworks';
+	})[0].value];
+	const frameworksBuildPhase = xobjs.PBXFrameworksBuildPhase[mainTarget.buildPhases.filter(phase => {
+		return xobjs.PBXFrameworksBuildPhase[phase.value];
+	})[0].value];
+	const frameworksToAdd = [];
+	const alreadyAddedFrameworks = new Set();
 	Object.keys(xobjs.PBXFrameworksBuildPhase).forEach(buildPhaseId => {
 		if (xobjs.PBXFrameworksBuildPhase[buildPhaseId] && typeof xobjs.PBXFrameworksBuildPhase[buildPhaseId] === 'object') {
 			xobjs.PBXFrameworksBuildPhase[buildPhaseId].files.forEach(file => {
@@ -867,7 +885,9 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	}, this);
 
 	// create a Hyperloop group so that the code is nice and tidy in the Xcode project
-	var hyperloopGroupUuid = (mainGroupChildren.filter(function (child) { return child.comment === 'Hyperloop'; })[0] || {}).value;
+	var hyperloopGroupUuid = (mainGroupChildren.filter(child => {
+		return child.comment === 'Hyperloop';
+	})[0] || {}).value;
 	var hyperloopGroup = hyperloopGroupUuid && xobjs.PBXGroup[hyperloopGroupUuid];
 	if (!hyperloopGroup) {
 		hyperloopGroupUuid = generateUuid();
@@ -986,7 +1006,9 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		groups['Custom'][customClass] = 1;
 	}
 
-	var sourcesBuildPhase = xobjs.PBXSourcesBuildPhase[mainTarget.buildPhases.filter(function (phase) { return xobjs.PBXSourcesBuildPhase[phase.value]; })[0].value];
+	var sourcesBuildPhase = xobjs.PBXSourcesBuildPhase[mainTarget.buildPhases.filter(phase => {
+		return xobjs.PBXSourcesBuildPhase[phase.value];
+	})[0].value];
 
 	// loop over the groups and the files in each group and add them to the Xcode project
 	Object.keys(groups).forEach(function (groupName) {

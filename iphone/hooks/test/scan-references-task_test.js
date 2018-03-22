@@ -2,10 +2,10 @@
 /* eslint no-unused-expressions: "off" */
 'use strict';
 
-const should = require('should'), // eslint-disable-line no-unused-vars
-	SDKEnvironment = require('hyperloop-metabase').SDKEnvironment,
-	nodePath = require('path'),
-	buildDir = nodePath.join(__dirname, '..', 'tmp', 'hyperloop');
+const should = require('should'); // eslint-disable-line no-unused-vars
+const SDKEnvironment = require('hyperloop-metabase').SDKEnvironment;
+const nodePath = require('path');
+const buildDir = nodePath.join(__dirname, '..', 'tmp', 'hyperloop');
 
 const ScanReferencesTask = require('../tasks/scan-references-task');
 const noopBunyanLogger = {

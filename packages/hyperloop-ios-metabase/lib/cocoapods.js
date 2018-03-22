@@ -7,9 +7,8 @@ const spawn = require('child_process').spawn, // eslint-disable-line security/de
 	semver = require('semver'),
 	chalk = require('chalk'),
 	fs = require('fs-extra');
-const frameworks = require('./frameworks');
 const ModuleMetadata = require('./module_metadata').ModuleMetadata;
-const Frameworks = require('./framework_group').Frameworks;
+const Frameworks = require('./frameworks').Frameworks;
 
 /**
  * parse the xcconfig file
@@ -306,10 +305,9 @@ function gatherStaticLibraries(staticLibrariesHeaderPath) {
 	// Look in path, assume each subdir is a "framework" whose name is the subdir name
 	// The path is the sub-dir, the umbrella header is assumed to be a file under the sub-dir with the same name!
 	const frameworkNames = gatherSubdirectories(staticLibrariesHeaderPath);
-	// TODO Do this async?
 	frameworkNames.forEach(frameworkName => {
 		const libraryPath = path.join(staticLibrariesHeaderPath, frameworkName);
-		const moduleMetadata = ModuleMetadata.fromHeaders(frameworkName, [ path.join(libraryPath, `${frameworkName}.h`) ]);
+		const moduleMetadata = new CocoapodStaticFramework(frameworkName, [ path.join(libraryPath, `${frameworkName}.h`) ]);
 		modules.set(moduleMetadata.name, moduleMetadata);
 	});
 	return modules;
@@ -317,55 +315,33 @@ function gatherStaticLibraries(staticLibrariesHeaderPath) {
 
 /**
  * Check for any frameworks under the CocoaPods FRAMEWORK_SEARCH_PATHS
- * @param  {[type]} frameworkSearchPaths [description]
- * @param  {[type]} podsRoot             [description]
- * @param  {[type]} podsConfigBuildDir   [description]
+ * @param  {string[]} frameworkSearchPaths [description]
+ * @param  {string} podsRoot             [description]
+ * @param  {string} podsConfigBuildDir   [description]
  * @return {Promise<Map<string, ModuleMetadata>>}
  */
 function gatherFrameworksFromSearchPaths(frameworkSearchPaths, podsRoot, podsConfigBuildDir) {
-	const modules = new Map();
 	const promises = frameworkSearchPaths.map(frameworkSearchPath => {
 		frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', podsRoot); // eslint-disable-line no-template-curly-in-string
 		frameworkSearchPath = frameworkSearchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', podsConfigBuildDir);
 		frameworkSearchPath = frameworkSearchPath.replace(/"/g, '');
 		if (!fs.existsSync(frameworkSearchPath)) {
-			return Promise.resolve();
+			return Promise.resolve(new Map());
 		}
 
-		return new Promise((resolve, reject) => {
-			frameworks.detectFrameworks(frameworkSearchPath, function (err, frameworks) {
-				if (err) {
-					return reject(err);
-				}
-
-				Array.from(frameworks.values()).each(frameworkMetadata => {
-					if (!modules.has(frameworkMetadata.name)) {
-						modules.set(frameworkMetadata.name, frameworkMetadata);
-					}
-				});
-			});
+		const frameworksEntries = fs.readdirSync(frameworkSearchPath).filter(entryName => /\.framework$/.test(entryName));
+		const frameworks = frameworksEntries.map(searchPathEntry => {
+			return new CocoapodFramework(path.join(frameworkSearchPath, searchPathEntry));
 		});
+		return Promise.all(frameworks);
 	});
-	return Promise.all(promises).then(() => Promise.resolve(modules));
-}
-
-/**
- * Generates a mapping of symbols for CocoaPods third-party libraries and
- * frameworks.
- *
- * This can process both static libraries and frameworks (dynamic frameworks
- * need to expose an ObjC Interface Header).
- *
- * @param {Object} builder iOSBuilder instance
- * @param {String} builder.projectDir path to project directory
- * @param {String} builder.xcodeTarget Active configuration name, i.e. 'Debug', 'Release'
- * @param {String} builder.xcodeTargetOS Active SDK type, i.e. 'iphone' or 'iphonesimulator'
- * @param {Object} settings sdk settings - from #installPodsAndGetSettings!
- * @returns {Promise<Map<string, ModuleMetadata>>}
- */
-function generateCocoaPodsMetadata(builder, settings) {
-	const frameworks = new CocoapodsFrameworks(builder, settings);
-	return frameworks.load();
+	return Promise.all(promises).then(arrayOfFrameworks => {
+		const modules = new Map();
+		arrayOfFrameworks.forEach(framework => {
+			modules.set(framework.name, framework);
+		});
+		return Promise.resolve(modules);
+	});
 }
 
 /**
@@ -396,6 +372,37 @@ function gatherSubdirectories(dir) {
  */
 function getBuiltProductsRootPath(basePath, configurationName, sdkType) {
 	return path.join(basePath, 'build/iphone/build/Products', configurationName + '-' + sdkType);
+}
+
+/**
+ * Generates a mapping of symbols for CocoaPods third-party libraries and
+ * frameworks.
+ *
+ * This can process both static libraries and frameworks (dynamic frameworks
+ * need to expose an ObjC Interface Header).
+ *
+ * @param {Object} builder iOSBuilder instance
+ * @param {String} builder.projectDir path to project directory
+ * @param {String} builder.xcodeTarget Active configuration name, i.e. 'Debug', 'Release'
+ * @param {String} builder.xcodeTargetOS Active SDK type, i.e. 'iphone' or 'iphonesimulator'
+ * @param {Object} settings sdk settings - from #installPodsAndGetSettings!
+ * @returns {Promise<Map<string, ModuleMetadata>>}
+ */
+function generateCocoaPodsMetadata(builder, settings) {
+	return new CocoapodsFrameworks(builder, settings).load();
+}
+
+class CocoapodStaticFramework extends ModuleMetadata {
+	constructor(name, headers) {
+		super(name, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
+	}
+}
+
+class CocoapodFramework extends ModuleMetadata {
+	constructor(frameworkPath) {
+		super(path.basename(frameworkPath, '.framework'), frameworkPath, ModuleMetadata.MODULE_TYPE_DYNAMIC);
+		this.sniff();
+	}
 }
 
 class CocoapodsFrameworks extends Frameworks {
