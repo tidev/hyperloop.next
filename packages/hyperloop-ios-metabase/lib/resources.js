@@ -3,56 +3,40 @@
 const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
 	path = require('path'),
 	fs = require('fs-extra'),
-	async = require('async'), // TODO Move to Promises
 	chalk = require('chalk'),
 	util = require('./util');
+
+function runTool(name, binary, runDir, args) {
+	return new Promise((resolve, reject) => {
+		const child = spawn(`/usr/bin/${binary}`, args, { cwd: runDir });
+		util.logger.debug(`running /usr/bin/${name} ${args.join(' ')} ${runDir}`);
+		util.prefixOutput(name, child.stdout, util.logger.trace);
+		util.prefixOutput(name, child.stderr, util.logger.warn);
+		child.on('error', err => reject(err));
+		child.on('exit', function (ec) {
+			if (ec !== 0) {
+				return reject(new Error(`the ${name} failed running from ${runDir}`));
+			}
+			resolve();
+		});
+	});
+}
 
 /**
  * run the ibtool
  * @param {String} runDir absolute path to cwd to run inside
  * @param {string[]} args command line arguments
- * @param {Function} callback callback function
  */
-function runIBTool(runDir, args, callback) {
-	var child = spawn('/usr/bin/ibtool', args, { cwd: runDir });
-	util.logger.debug('running /usr/bin/ibtool ' + args.join(' ') + ' ' + runDir);
-	util.prefixOutput('ibtool', child.stdout, util.logger.trace);
-	util.prefixOutput('ibtool', child.stderr, util.logger.warn);
-	child.on('error', callback);
-	child.on('exit', function (ec) {
-		if (ec !== 0) {
-			return callback(new Error('the ibtool failed running from ' + runDir));
-		}
-		callback();
-	});
+function runIBTool(runDir, args) {
+	return runTool('ibtool', runDir, args);
 }
 
-function runMomcTool(runDir, sdk, args, callback) {
-	var child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'momc' ].concat(args), { cwd: runDir });
-	util.logger.debug('running /usr/bin/xcrun momc' + args.join(' ') + ' ' + runDir);
-	util.prefixOutput('xcrun momc', child.stdout, util.logger.trace);
-	util.prefixOutput('xcrun momc', child.stderr, util.logger.warn);
-	child.on('error', callback);
-	child.on('exit', function (ec) {
-		if (ec !== 0) {
-			return callback(new Error('the xcrun momc failed running from ' + runDir));
-		}
-		callback();
-	});
+function runMomcTool(runDir, sdk, args) {
+	return runTool('xcrun momc', 'xcrun', runDir, [ '--sdk', sdk, 'momc' ].concat(args));
 }
 
-function runMapcTool(runDir, sdk, args, callback) {
-	var child = spawn('/usr/bin/xcrun', [ '--sdk', sdk, 'mapc' ].concat(args), { cwd: runDir });
-	util.logger.debug('running /usr/bin/xcrun mapc' + args.join(' ') + ' ' + runDir);
-	util.prefixOutput('xcrun mapc', child.stdout, util.logger.trace);
-	util.prefixOutput('xcrun mapc', child.stderr, util.logger.warn);
-	child.on('error', callback);
-	child.on('exit', function (ec) {
-		if (ec !== 0) {
-			return callback(new Error('the xcrun mapc failed running from ' + runDir));
-		}
-		callback();
-	});
+function runMapcTool(runDir, sdk, args) {
+	return runTool('xcrun mapc', 'xcrun', runDir, [ '--sdk', sdk, 'mapc' ].concat(args));
 }
 
 /**
@@ -81,12 +65,12 @@ function recursiveReadDir(dir, result) {
  * @param  {string}   sdk      i.e. 'iphonesimulator-9.0' or 'iphoneos-11.0'
  * @param  {string}   appDir   path to xcode app
  * @param  {boolean}  wildcard if true, copies source files (*.m|mm|h|cpp|hpp|c|s) to xcode app dir
- * @param  {Function} callback async callback function
+ * @returns {Promise}
  */
-function compileResources(dir, sdk, appDir, wildcard, callback) {
+function compileResources(dir, sdk, appDir, wildcard) {
 	// copy them into our target
 	const files = recursiveReadDir(dir);
-	async.each(files, function (file, cb) {
+	const promises = files.map(file => {
 		const rel = path.basename(path.relative(dir, file));
 
 		switch (path.extname(rel)) {
@@ -123,8 +107,8 @@ function compileResources(dir, sdk, appDir, wildcard, callback) {
 				return runMapcTool(path.dirname(file), sdk, args, cb);
 			}
 			case '.xcassets': {
-				// FIXME:
-				break;
+				// FIXME: Throw an error to at least to show we don't yet handle this?
+				return Promise.resolve();
 			}
 			case '.storyboard': {
 				const args = [
@@ -138,8 +122,8 @@ function compileResources(dir, sdk, appDir, wildcard, callback) {
 				return runIBTool(path.dirname(file), args, cb);
 			}
 			default: {
-				if (wildcard) {
-					if (!/\.(m|mm|h|cpp|hpp|c|s)$/.test(file)) {
+				if (wildcard && !/\.(m|mm|h|cpp|hpp|c|s)$/.test(file)) {
+					return new Promise(resolve => {
 						const buf = fs.readFileSync(file);
 						const out = path.join(appDir, rel);
 						const d = path.dirname(out);
@@ -147,14 +131,15 @@ function compileResources(dir, sdk, appDir, wildcard, callback) {
 						fs.ensureDirSync(d);
 						util.logger.trace('Copying Resource', chalk.cyan(file), 'to', chalk.cyan(out));
 
-						return fs.writeFile(out, buf, cb);
-					}
+						fs.writeFile(out, buf, cb);
+						resolve();
+					});
 				}
-				break;
+				return Promise.resolve();
 			}
 		}
-		cb();
-	}, callback);
+	});
+	return Promise.all(promises);
 }
 
 exports.compileResources = compileResources;

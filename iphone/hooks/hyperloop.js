@@ -438,15 +438,14 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 						async.eachLimit(resources, 5, function (dir, cb2) {
 							// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
 							// .xcmappingmodel, .xcassets, .storyboard)
-							hm.resources.compileResources(dir, sdk, xcodeAppDir, false, function (err) {
-								if (!err) {
+							hm.resources.compileResources(dir, sdk, xcodeAppDir, false)
+								.then(() => {
 									builder.copyDirSync(dir, xcodeAppDir, {
 										ignoreFiles: extRegExp
 									});
-								}
-
-								cb2(err);
-							});
+									cb2();
+								})
+								.catch(err => cb2(err));
 						}, cb);
 					} else {
 						cb();
@@ -624,7 +623,9 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
 	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
-	hm.resources.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false, callback);
+	hm.resources.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false)
+		.then(() => callback())
+		.catch(err => callback(err));
 };
 
 /**
