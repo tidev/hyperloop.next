@@ -5,8 +5,6 @@
 CWD=`pwd`
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
-# FIXME This is unused!
-export TITANIUM_SDK="`node ../tools/tiver.js`"
 
 XC=`which xcpretty`
 CHECK="✓ "
@@ -65,8 +63,6 @@ echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
 cd $CWD/build/zip
 rm -rf $CWD/hyperloop-iphone-$VERSION.zip
 zip -q -r $CWD/hyperloop-iphone-$VERSION.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*
-
-unset TITANIUM_SDK
 
 echo "$CHECK Done packaging iOS module!\n"
 exit 0

@@ -38,8 +38,7 @@
   "private": true,
   "devDependencies": {
     "eslint": "^4.17.0",
-    "eslint-config-axway": "^2.0.11",
-    "titanium": "*"
+    "eslint-config-axway": "^2.0.11"
   },
   "dependencies": {}
 }
