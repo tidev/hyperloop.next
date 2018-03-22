@@ -167,7 +167,6 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							if (fileExists('coverage/cobertura-coverage.xml')) {
 								step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
 							}
-							sh 'rm -rf node_modules' // wipe the node modules for now?
 							sh 'npm prune --production'
 						}
 					}
@@ -191,7 +190,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								}
 								sh 'npm prune --production'
 							}
-						}
+						} // dir('hooks')
 
 						echo 'Building iOS module...'
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"

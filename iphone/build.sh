@@ -46,26 +46,18 @@ xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TI
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
 
+# Install dependencies
+echo "Installing npm dependencies..."
+cd hooks
+npm i --production
+rm -rf node_modules/findit/test
+rm -rf package-lock.json
+cd $CWD
+
 echo "\nPackaging iOS module..."
 cp -R hooks build/zip/modules/iphone/hyperloop/$VERSION
 cp -R ../hooks build/zip/modules/iphone/hyperloop/$VERSION
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
-
-# package the metabase into the .zip
-echo "Packaging iOS metabase..."
-cd ../packages/hyperloop-ios-metabase
-rm *.tgz
-npm pack >/dev/null 2>&1
-cd $CWD
-
-# Install dependencies
-echo "Installing npm dependencies..."
-cd build/zip/modules/iphone/hyperloop/$VERSION/hooks
-npm i --production
-npm i $CWD/../packages/hyperloop-ios-metabase/hyperloop-metabase-$METABASE_VERSION.tgz
-rm -rf node_modules/findit/test
-rm -rf package-lock.json
-cd $CWD
 
 # titanium requires at least this file so just create an empty one
 echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
