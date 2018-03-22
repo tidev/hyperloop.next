@@ -37,17 +37,9 @@
   "license": "UNLICENSED",
   "private": true,
   "devDependencies": {
-    "async": "~0.9.0",
-    "colors": "~0.6.2",
-    "commander": "*",
     "eslint": "^4.17.0",
     "eslint-config-axway": "^2.0.11",
-    "fs-extra": "~2.0.0",
-    "node-appc": "0.2.21",
-    "request": "~2.27.0",
-    "semver": "^5.1.0",
-    "temp": "~0.6.0",
-    "titanium": "git://github.com/appcelerator/titanium.git#master"
+    "titanium": "*"
   },
   "dependencies": {}
 }
