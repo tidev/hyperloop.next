@@ -22,12 +22,13 @@ const USER_HOME_HYPERLOOP = path.join(os.homedir(), '.hyperloop');
  * - ThirdParty
  * - Swift
  *
- * Each type then has implemntations to detect the frameworks given the necessary objects/data from it's constructor.
+ * Each type then has implementations to detect the frameworks given the necessary objects/data from it's constructor.
  * Common code for caching/reading from cache is done in this base class.
  */
 class Frameworks {
 
 	constructor() {
+		// FIXME Default to using tmp dir and override in SystemFrameworks to use ~/.hyperloop
 		this.cacheDir = USER_HOME_HYPERLOOP;
 	}
 

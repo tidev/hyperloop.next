@@ -1,25 +1,10 @@
 // TODO: Make into an incremental appc-task!
 'use strict';
 const fs = require('fs-extra');
-const async = require('async');
 const hm = require('hyperloop-metabase');
 
-// TODO Take in the list of used frameworks/references...
-// We already should have generated their metabases on disk...
-// Combine them into a single unified object?
-// Look at their dependencies and ensure we also generate metabases for them?
-// Generate a framework/metabase for the swift sources?
-// Generate the builtins metabase?
-//
-
-// Next step is to generate sources from the unified metabase plus reference info
-// What do we need for that?
-// - unified metabase object
-// - output dir
-// - parser state? seems to act as the references info...
-
 /**
- * [generateMetabase description]
+ * Generates a full/unified metabase from all used frameworks, their dependencies and swift sources.
  * @param  {string}   buildDir   path to directory where metabase json files will be cached
  * @param  {SDKEnvironment} sdk sdk info object
  * @param  {string} sdk.sdkPath path to iOS SDK
@@ -28,11 +13,9 @@ const hm = require('hyperloop-metabase');
  * @param  {Map<string,ModuleMetadata>}   frameworkMap [description]
  * @param  {string[]} usedFrameworkNames list of explicitly used frameworks
  * @param  {object[]} swiftSources array of swift source file metadata
- * @param  {Object}   logger     [description]
- * @param  {Function} callback   [description]
- * @return {void}
+ * @return {Promise<object>}
  */
-function generateMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, swiftSources, logger, callback) {
+function generateMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, swiftSources) {
 	fs.ensureDirSync(buildDir);
 
 	// Loop through swift sources and group by framework name!
@@ -50,40 +33,23 @@ function generateMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames, swift
 	// FIXME: Shouldn't we be generating swift frameworks earlier when we gather other frameworks?
 	// Then we can just treat them like any other frameworks here and just call unifiedMetabase on the set of system/user/3rd-party/swift frameworks
 	let masterMetabase = {};
-	hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames)
-		.then((metabase) => {
+	return hm.metabase.unifiedMetabase(buildDir, sdk, frameworkMap, usedFrameworkNames)
+		.then(metabase => {
 			masterMetabase = metabase;
 
-			// Now do swift metabases
-			const swiftMetabases = [];
-			// TODO: Can we generate a ModuleMetadata equivalent for this Swift source framework?
-			// TODO Convert to Promises! Promise.all is equivalent of async.each
-			async.each(swiftFrameworkNames, (name, next) => {
+			const swiftMetabasePromises = swiftFrameworkNames.map(name => {
 				const swiftFiles = swiftFrameworks.get(name);
-				// logger.info('Generating metabase for swift framework ' + chalk.cyan(name + ' ' + swiftFiles));
-				hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdk, swiftFiles, (err, swiftMetabase) => {
-					if (err) {
-						return next(err);
-					}
-
-					swiftMetabases.push(swiftMetabase);
-					next();
-				});
-			}, err => {
-				if (err) {
-					return callback(err);
-				}
-
-				// Merge the swift metabases into the master one from system/etc frameworks.
-				swiftMetabases.forEach(swiftMetabase => {
-					masterMetabase = hm.metabase.merge(masterMetabase, swiftMetabase);
-				});
-
-				// OK we've merged them all together!
-				callback(null, masterMetabase);
+				return hm.swift.generateSwiftFrameworkMetabase(name, frameworkMap, buildDir, sdk, swiftFiles);
 			});
+			return Promise.all(swiftMetabasePromises);
 		})
-		.catch(err => callback(err));
+		.then(swiftMetabases => {
+			// Merge the swift metabases into the master one from system/etc frameworks.
+			swiftMetabases.forEach(swiftMetabase => {
+				masterMetabase = hm.metabase.merge(masterMetabase, swiftMetabase);
+			});
+			return Promise.resolve(masterMetabase);
+		});
 }
 
 exports.generateMetabase = generateMetabase;

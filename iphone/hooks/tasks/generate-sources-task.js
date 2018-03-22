@@ -1,5 +1,5 @@
 'use strict';
-// TODO This should generate JS wrappers for native types!
+
 const generator = require('../generate');
 
 /**

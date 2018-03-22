@@ -575,15 +575,12 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 		this.sdkInfo,
 		this.frameworks,
 		frameworksUsed,
-		this.swiftSources,
-		this.logger,
-		(err, metabase) => {
-			if (err) {
-				return callback(err);
-			}
+		this.swiftSources)
+		.then(metabase => {
 			this.metabase = metabase;
-			callback(null);
-		});
+			callback();
+		})
+		.catch(err => callback(err));
 };
 
 /**

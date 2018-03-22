@@ -49,34 +49,37 @@ function getVersion() {
  * @param {String} sdk.minVersion i.e. '9.0'
  * @param {String} sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param {String} fn filename
- * @param {Function} callback callback function
+ * @return {Promise<string>}
  */
-function generateSwiftAST(sdk, fn, callback) {
-	const start = Date.now();
+function generateSwiftAST(sdk, fn) {
 	const args = [ 'swiftc', '-sdk', sdk.sdkPath, '-dump-ast', fn ];
 	if (sdk.sdkType === 'iphoneos' || sdk.sdkType === 'iphonesimulator') {
 		args.push('-target');
 		if (sdk.sdkType === 'iphoneos') {
 			// armv7 for all devices. Note that we also could use armv7s or arm64 here
-			args.push('armv7-apple-ios' + sdk.minVersion);
+			args.push(`armv7-apple-ios${sdk.minVersion}`);
 		} else {
-			var simArch = process.arch === 'i386' ? 'i386' : 'x86_64';
-			args.push(simArch + '-apple-ios' + sdk.minVersion);
+			const simArch = process.arch === 'i386' ? 'i386' : 'x86_64';
+			args.push(`${simArch}-apple-ios${sdk.minVersion}`);
 		}
 	}
-	const child = spawn('xcrun', args);
-	let buf = '';
-	// swiftc -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -dump-ast MySwift.swift
-	child.on('error', callback);
-	child.stderr.on('data', function (data) {
-		buf += data.toString();
-	});
-	child.on('exit', function (ec) {
-		if (ec === 1) {
-			return callback(new Error('Swift file at ' + fn + ' has compiler problems. Please check to make sure it compiles OK.'), buf);
-		}
-		util.logger.trace(`Took ${Date.now() - start}ms to generate swift AST for ${fn}`);
-		callback(null, buf);
+
+	return new Promise((resolve, reject) => {
+		const start = Date.now();
+		const child = spawn('xcrun', args);
+		let buf = '';
+		// swiftc -sdk /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -dump-ast MySwift.swift
+		child.on('error', err => reject(err));
+		child.stderr.on('data', function (data) {
+			buf += data.toString();
+		});
+		child.on('exit', function (ec) {
+			if (ec === 1) {
+				return reject(new Error(`Swift file at ${fn} has compiler problems. Please check to make sure it compiles OK.`));
+			}
+			util.logger.trace(`Took ${Date.now() - start}ms to generate swift AST for ${fn}`);
+			resolve(buf);
+		});
 	});
 }
 
@@ -193,137 +196,134 @@ function generateSwiftMangledClassName(appName, className) {
  * @param {String} sdk.sdkPath absolue filepath to ios SDK directory
  * @param {String} sdk.minVersion i.e. '9.0'
  * @param {String} sdk.sdkType 'iphoneos' || 'iphonesimulator'
- * @param  {Function} callback  callback function
+ * @returns  {Promise<object>}
  */
-function extractSwiftClasses(framework, fn, metabase, sdk, callback) {
-	generateSwiftAST(sdk, fn, function (err, buf) {
-		if (err) {
-			return callback(err, buf);
-		}
+function extractSwiftClasses(framework, fn, metabase, sdk) {
+	return generateSwiftAST(sdk, fn)
+		.then(buf => {
+			const lines = buf.split(/\n/);
 
-		const lines = buf.split(/\n/);
+			const classes = {};
+			let classdef,
+				methodef,
+				vardef;
 
-		const classes = {};
-		let classdef,
-			methodef,
-			vardef;
-
-		lines.forEach(function (line, index) {
-			line = line.toString().trim();
-			if (line) {
-				// console.log('line=>', line);
-				if (line.indexOf('(class_decl ') === 0) {
-					const tok = line.split(' ');
-					const cls = tok[1].replace(/"/g, '').trim();
-					classdef = {
-						name: cls,
-						public: false,
-						methods: {},
-						properties: {},
-						filename: fn,
-						thirdparty: true,
-						framework: framework,
-						language: 'swift'
-					};
-					tok.slice(2).forEach(function (t, i) {
-						if (PUBLIC_ACCESS_PATTERN.test(t)) {
-							classdef.public = true;
-						} else if (t.indexOf('inherits:') === 0) {
-							classdef.superclass = tok[i + 3]; // 2 is sliced so add + 1
-						}
-					});
-					if (classdef.public) {
-						delete classdef.public;
-						classes[classdef.name] = classdef;
-						metabase.classes[classdef.name] = classdef;
-					} else {
-						classdef = null;
-					}
-				} else if (line.indexOf('(var_decl') === 0 && classdef) {
-					const tok = line.split(' ');
-					const name = tok[1].replace(/"/g, '').trim();
-					vardef = {
-						name: name,
-						public: false
-					};
-					tok.splice(2).forEach(function (t) {
-						if (PUBLIC_ACCESS_PATTERN.test(t)) {
-							vardef.public = true;
-						} else if (t.indexOf('type=') === 0) {
-							vardef.type = resolveType(fn, metabase, TYPE_RE.exec(t)[1]);
-						}
-					});
-					if (vardef.public) {
-						delete vardef.public;
-						classdef.properties[name] = vardef;
-					}
-				} else if (line.indexOf('(func_decl ') === 0 && line.indexOf('getter_for=') < 0) {
-					const tok = line.split(' ');
-					const name = tok[1].replace(/"/g, '').trim();
-					const i = name.indexOf('(');
-					methodef = {
-						name: name,
-						public: false,
-						instance: true
-					};
-					if (i) {
-						methodef.name = name.substring(0, i);
-						methodef.selector = methodef.name;
-						methodef.arguments = [];
-						name.substring(i + 1, name.length - 1).split(':').slice(1).forEach(function (t) {
-							methodef.selector += ':' + t;
-						});
-					}
-					// if the func_decl line ends in " type", it's a static function (in Swift 4)
-					if (tok[tok.length - 1] === 'type') {
-						// this is a class method
-						methodef.instance = false;
-					}
-
-					tok.splice(2).forEach(function (t) {
-						if (PUBLIC_ACCESS_PATTERN.test(t)) {
-							methodef.public = true;
-						} else if (t.indexOf('type=') === 0) { // old way of detecting static method (Swift 2/3?)
-							if (t.indexOf('type=\'' + classdef.name + '.Type') === 0) {
-								// this is a class method
-								methodef.instance = false;
+			lines.forEach(function (line, index) {
+				line = line.toString().trim();
+				if (line) {
+					// console.log('line=>', line);
+					if (line.indexOf('(class_decl ') === 0) {
+						const tok = line.split(' ');
+						const cls = tok[1].replace(/"/g, '').trim();
+						classdef = {
+							name: cls,
+							public: false,
+							methods: {},
+							properties: {},
+							filename: fn,
+							thirdparty: true,
+							framework: framework,
+							language: 'swift'
+						};
+						tok.slice(2).forEach(function (t, i) {
+							if (PUBLIC_ACCESS_PATTERN.test(t)) {
+								classdef.public = true;
+							} else if (t.indexOf('inherits:') === 0) {
+								classdef.superclass = tok[i + 3]; // 2 is sliced so add + 1
 							}
+						});
+						if (classdef.public) {
+							delete classdef.public;
+							classes[classdef.name] = classdef;
+							metabase.classes[classdef.name] = classdef;
+						} else {
+							classdef = null;
 						}
-					});
+					} else if (line.indexOf('(var_decl') === 0 && classdef) {
+						const tok = line.split(' ');
+						const name = tok[1].replace(/"/g, '').trim();
+						vardef = {
+							name: name,
+							public: false
+						};
+						tok.splice(2).forEach(function (t) {
+							if (PUBLIC_ACCESS_PATTERN.test(t)) {
+								vardef.public = true;
+							} else if (t.indexOf('type=') === 0) {
+								vardef.type = resolveType(fn, metabase, TYPE_RE.exec(t)[1]);
+							}
+						});
+						if (vardef.public) {
+							delete vardef.public;
+							classdef.properties[name] = vardef;
+						}
+					} else if (line.indexOf('(func_decl ') === 0 && line.indexOf('getter_for=') < 0) {
+						const tok = line.split(' ');
+						const name = tok[1].replace(/"/g, '').trim();
+						const i = name.indexOf('(');
+						methodef = {
+							name: name,
+							public: false,
+							instance: true
+						};
+						if (i) {
+							methodef.name = name.substring(0, i);
+							methodef.selector = methodef.name;
+							methodef.arguments = [];
+							name.substring(i + 1, name.length - 1).split(':').slice(1).forEach(function (t) {
+								methodef.selector += ':' + t;
+							});
+						}
+						// if the func_decl line ends in " type", it's a static function (in Swift 4)
+						if (tok[tok.length - 1] === 'type') {
+							// this is a class method
+							methodef.instance = false;
+						}
 
-					if (classdef && methodef.public) {
-						delete methodef.public;
-						classdef.methods[methodef.name] = methodef;
-					} else {
-						methodef = null;
-					}
-				} else if (methodef && line.indexOf('(parameter ') === 0 && PARAMETER_RE.test(line)) { // Swift 4.0 syntax for paraamters?
-					const re = PARAMETER_RE.exec(line);
-					const paramName = re[1];
-					if (paramName !== 'self') {
-						const typeName = re[4];
-						const t = resolveType(fn, metabase, typeName);
+						tok.splice(2).forEach(function (t) {
+							if (PUBLIC_ACCESS_PATTERN.test(t)) {
+								methodef.public = true;
+							} else if (t.indexOf('type=') === 0) { // old way of detecting static method (Swift 2/3?)
+								if (t.indexOf('type=\'' + classdef.name + '.Type') === 0) {
+									// this is a class method
+									methodef.instance = false;
+								}
+							}
+						});
+
+						if (classdef && methodef.public) {
+							delete methodef.public;
+							classdef.methods[methodef.name] = methodef;
+						} else {
+							methodef = null;
+						}
+					} else if (methodef && line.indexOf('(parameter ') === 0 && PARAMETER_RE.test(line)) { // Swift 4.0 syntax for paraamters?
+						const re = PARAMETER_RE.exec(line);
+						const paramName = re[1];
+						if (paramName !== 'self') {
+							const typeName = re[4];
+							const t = resolveType(fn, metabase, typeName);
+							methodef.arguments.push({
+								name: paramName,
+								type: t
+							});
+						}
+					} else if (methodef && line.indexOf('(pattern_named ') === 0 && PATTERN_NAMED_RE.test(line)) { // Swift 3.0 syntax for paraamters?
+						const re = PATTERN_NAMED_RE.exec(line);
+						const t = resolveType(fn, metabase, re[1]);
 						methodef.arguments.push({
-							name: paramName,
+							name: re[2],
 							type: t
 						});
+					} else if (methodef && line.indexOf('(result') === 0 && lines[index + 1].trim().indexOf('(type_ident') === 0 && lines[index + 2].trim().indexOf('(component ') === 0) {
+						methodef.returns = resolveType(fn, metabase, COMPONENT_RE.exec(lines[index + 2].trim())[1]);
+						methodef = null;
 					}
-				} else if (methodef && line.indexOf('(pattern_named ') === 0 && PATTERN_NAMED_RE.test(line)) { // Swift 3.0 syntax for paraamters?
-					const re = PATTERN_NAMED_RE.exec(line);
-					const t = resolveType(fn, metabase, re[1]);
-					methodef.arguments.push({
-						name: re[2],
-						type: t
-					});
-				} else if (methodef && line.indexOf('(result') === 0 && lines[index + 1].trim().indexOf('(type_ident') === 0 && lines[index + 2].trim().indexOf('(component ') === 0) {
-					methodef.returns = resolveType(fn, metabase, COMPONENT_RE.exec(lines[index + 2].trim())[1]);
-					methodef = null;
 				}
-			}
-		});
+			});
 
-		callback(null, classes);
-	});
+			return Promise.resolve(classes);
+		});
 }
 
 /**
@@ -338,68 +338,65 @@ function extractSwiftClasses(framework, fn, metabase, sdk, callback) {
  * @param  {string}   sdk.minVersion i.e. '9.0'
  * @param  {string}   sdk.sdkType 'iphoneos' || 'iphonesimulator'
  * @param  {string[]} swiftFiles            swift source filename
- * @param  {Function} callback      typical async callback function
- * @return {void}
+ * @return {Promise<object>}
  */
-function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFiles, callback) {
-	// TODO Convert to Promises!
-	// read our imports from the file so we can generate an appropriate metabase
-	const imports = new Set();
-	async.each(swiftFiles, (file, next) => {
-		// This only supports imports of a framework name, NOT specifying type of the import or "sub-modules"
-		// FOR NOW, that is...
-		extractImports(fs.readFileSync(file).toString()).forEach(i => {
-			imports.add(i);
+function generateSwiftFrameworkMetabase(name, frameworks, cacheDir, sdk, swiftFiles) {
+	// extract imports for each swift file in paralle
+	const promises = swiftFiles.map(f => {
+		return new Promise(resolve => {
+			resolve(extractImports(fs.readFileSync(f).toString()));
 		});
-		next();
-	}, err => {
-		if (err) {
-			callback(err);
-		}
-
-		// Ok, so we know what the set of swift files imported, now let's generate a
-		// deep, unified metabase from the frameworks used plus all dependencies
-		metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, Array.from(imports))
-			.then((metabase) => {
-				// Generate the classes in parallel, then merge them sync at the end!
-				// dumping the swift AST for each file is slow, but if we can do many in parallel,
-				// the overall performance isn't that bad. We *MAY* need to do mapLimit to
-				// cap how many we do in parallel
-				const startExtractSwift = Date.now();
-				// TODO Convert to Promises!
-				async.map(swiftFiles, (file, next) => {
-					extractSwiftClasses(name, file, metabase, sdk, next);
-				}, (err, results) => {
-					util.logger.trace(`Took ${Date.now() - startExtractSwift}ms to extract swift classes`);
-					if (err) {
-						return callback(err);
-					}
-
-					// Now merge all the results together
-					let generated = {
-						classes: {},
-						imports: Array.from(imports)
-					};
-					results.forEach(classes => {
-						generated = metabaselib.merge(generated, { classes: classes });
-					});
-
-					// Add metadata to the metabase!
-					generated.metadata = {
-						'api-version': '1',
-						dependencies: [], // TODO: inject the imports?
-						'min-version': sdk.minVersion,
-						platform: 'ios',
-						'system-generated': 'true',
-						generated: new Date().toISOString(),
-						'sdk-path': sdk.sdkPath
-					};
-
-					callback(null, generated);
-				});
-			})
-			.catch(err => callback(err));
 	});
+	let imports;
+	return Promise.all(promises)
+		.then(results => {
+			// results should be an array of arrays
+			// Smush down to a Set of unique imports
+			const imports = new Set();
+			results.forEach(r => {
+				r.forEach(i => imports.add(i));
+			});
+			return Promise.resolve(imports);
+		})
+		.then(importSet => {
+			// Ok, so we know what the set of swift files imported, now let's generate a
+			// deep, unified metabase from the frameworks used plus all dependencies
+			imports = Array.from(importSet);
+			return metabaselib.unifiedMetabase(cacheDir, sdk, frameworks, imports);
+		})
+		.then(metabase => {
+			// Generate the classes in parallel, then merge them sync at the end!
+			// dumping the swift AST for each file is slow, but if we can do many in parallel,
+			// the overall performance isn't that bad. We *MAY* need to do mapLimit to
+			// cap how many we do in parallel
+			const extractPromises = swiftFiles.map(file => {
+				return extractSwiftClasses(name, file, metabase, sdk);
+			});
+			return Promise.all(extractPromises);
+		})
+		.then(results => {
+			// results is an array of objects
+			// Now merge all the results together
+			let generated = {
+				classes: {},
+				imports: imports
+			};
+			results.forEach(classes => {
+				generated = metabaselib.merge(generated, { classes: classes });
+			});
+
+			// Add metadata to the metabase!
+			generated.metadata = {
+				'api-version': '1',
+				dependencies: [], // TODO: inject the imports?
+				'min-version': sdk.minVersion,
+				platform: 'ios',
+				'system-generated': 'true',
+				generated: new Date().toISOString(),
+				'sdk-path': sdk.sdkPath
+			};
+			return Promise.resolve(generated);
+		});
 }
 
 class SwiftFrameworks extends Frameworks {
