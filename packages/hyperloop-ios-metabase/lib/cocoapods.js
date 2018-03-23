@@ -323,7 +323,9 @@ function gatherStaticLibraries(staticLibrariesHeaderPath) {
 function gatherFrameworksFromSearchPaths(frameworkSearchPaths, podsRoot, podsConfigBuildDir) {
 	const promises = frameworkSearchPaths.map(frameworkSearchPath => {
 		frameworkSearchPath = frameworkSearchPath.replace('${PODS_ROOT}', podsRoot); // eslint-disable-line no-template-curly-in-string
-		frameworkSearchPath = frameworkSearchPath.replace('$PODS_CONFIGURATION_BUILD_DIR', podsConfigBuildDir);
+		// TIMOB-25829: CocoaPods < 1.4.0 uses $PODS_CONFIGURATION_BUILD_DIR, 1.4.0+ uses ${PODS_CONFIGURATION_BUILD_DIR}
+		// Remove regex once we bump the minimum version to 1.4.0+
+		frameworkSearchPath = frameworkSearchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, podsConfigBuildDir);
 		frameworkSearchPath = frameworkSearchPath.replace(/"/g, '');
 		if (!fs.existsSync(frameworkSearchPath)) {
 			return Promise.resolve(new Map());
