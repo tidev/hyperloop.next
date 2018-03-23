@@ -193,7 +193,10 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						} // dir('hooks')
 
 						echo 'Building iOS module...'
+						// hack the package.json version into the module manifest
 						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+						// hack the SDK version we installed above into the titanium.xcconfig used to build module
+						sh "sed -i.bak 's/7.0.2.GA/${sdkVersion}/g' ./titanium.xcconfig"
 
 						// Check if xcpretty gem is installed? Used by shell scripts when building
 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
@@ -202,7 +205,10 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						// }
 
 						sh 'rm -rf build'
-						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
+						withEnv(['CI=1']) {
+							sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
+						}
+						junit 'build/reports/junit.xml'
 
 						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
 						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
