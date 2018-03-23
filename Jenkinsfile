@@ -238,53 +238,53 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 				deleteDir() // wipe workspace
 			} // node
 		},
-		// 'windows': {
-		// 	node('windows && (vs2015 || vs2017)') {
-		// 		ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
-		// 			unstash 'source'
-		//
-		// 			nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-		// 				appc.install()
-		// 				def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
-		//
-		// 				echo 'Building Windows module...'
-		// 				// FIXME How the hell is Windows OK with these shell commands?
-		// 				dir('windows') {
-		// 					sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-		// 					// FIXME We should have a module clean command!
-		// 					// manually clean
-		// 					sh 'rm -rf build/'
-		// 					sh 'rm -rf dist/'
-		// 					sh 'rm -rf Windows10.ARM/'
-		// 					sh 'rm -rf Windows10.Win32/'
-		// 					sh 'rm -rf WindowsPhone.ARM/'
-		// 					sh 'rm -rf WindowsPhone.Win32/'
-		// 					sh 'rm -rf WindowsStore.Win32/'
-		// 					sh 'rm -f CMakeLists.txt'
-		// 					sh 'rm -f hyperloop-windows-*.zip'
-		// 					appc.loggedIn {
-		// 						sh 'appc run -p windows --build-only'
-		// 					} // appc.loggedIn
-		//
-		// 					sh 'rm -rf zip/'
-		// 					sh 'mkdir zip/'
-		// 					sh "mv hyperloop-windows-${packageVersion}.zip zip/hyperloop-windows-${packageVersion}.zip"
-		// 					dir('zip') {
-		// 						sh "unzip hyperloop-windows-${packageVersion}.zip"
-		// 						sh "rm -rf hyperloop-windows-${packageVersion}.zip"
-		// 						// Remove docs and examples
-		// 						sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
-		// 						sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
-		// 						// Now zip it back up
-		// 						sh "zip -r hyperloop-windows-${packageVersion}.zip ."
-		// 					}
-		// 					stash includes: 'zip/hyperloop-windows-*.zip', name: 'windows-zip'
-		// 				} // dir
-		// 			} // nodejs
-		// 			deleteDir() // wipe workspace
-		// 		} // ws
-		// 	} // node
-		// },
+		'windows': {
+			node('windows && (vs2015 || vs2017)') {
+				ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
+					unstash 'source'
+
+					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						appc.install()
+						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
+
+						echo 'Building Windows module...'
+						// FIXME How the hell is Windows OK with these shell commands?
+						dir('windows') {
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							// FIXME We should have a module clean command!
+							// manually clean
+							sh 'rm -rf build/'
+							sh 'rm -rf dist/'
+							sh 'rm -rf Windows10.ARM/'
+							sh 'rm -rf Windows10.Win32/'
+							sh 'rm -rf WindowsPhone.ARM/'
+							sh 'rm -rf WindowsPhone.Win32/'
+							sh 'rm -rf WindowsStore.Win32/'
+							sh 'rm -f CMakeLists.txt'
+							sh 'rm -f hyperloop-windows-*.zip'
+							appc.loggedIn {
+								sh 'appc run -p windows --build-only'
+							} // appc.loggedIn
+
+							sh 'rm -rf zip/'
+							sh 'mkdir zip/'
+							sh "mv hyperloop-windows-${packageVersion}.zip zip/hyperloop-windows-${packageVersion}.zip"
+							dir('zip') {
+								sh "unzip hyperloop-windows-${packageVersion}.zip"
+								sh "rm -rf hyperloop-windows-${packageVersion}.zip"
+								// Remove docs and examples
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/example"
+								sh "rm -rf modules/windows/hyperloop/${packageVersion}/documentation"
+								// Now zip it back up
+								sh "zip -r hyperloop-windows-${packageVersion}.zip ."
+							}
+							stash includes: 'zip/hyperloop-windows-*.zip', name: 'windows-zip'
+						} // dir
+					} // nodejs
+					deleteDir() // wipe workspace
+				} // ws
+			} // node
+		},
 		failFast: true
 	)
 }
@@ -298,8 +298,8 @@ stage('Package') {
 		unstash 'iphone-zip'
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
-		// unstash 'windows-zip'
-		// sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
+		unstash 'windows-zip'
+		sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
 
 		unstash 'android-zip'
 
@@ -309,8 +309,8 @@ stage('Package') {
 			sh "rm -f hyperloop-android-${packageVersion}.zip"
 			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
-			// sh "unzip -o hyperloop-windows-${packageVersion}.zip"
-			// sh "rm -f hyperloop-windows-${packageVersion}.zip"
+			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
+			sh "rm -f hyperloop-windows-${packageVersion}.zip"
 			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
 		}
