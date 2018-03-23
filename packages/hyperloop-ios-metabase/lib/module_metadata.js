@@ -4,45 +4,13 @@ const path = require('path');
 const fs = require('fs-extra');
 const semver = require('semver');
 const metabasegen = require('./metabase');
+const util = require('./util');
 
 /**
  * Temp directory used to cache non-system framework metadata/metabases.
  * @type {string}
  */
 const TMP_DIR = process.env.TMPDIR || process.env.TEMP || '/tmp';
-
-/**
- * convert an apple style version (9.0) to a semver compatible version
- * @param {String} ver apple style version string
- * @returns {String}
- */
-function appleVersionToSemver(ver) {
-	const v = String(ver).split('.');
-	if (v.length === 1) {
-		return ver + '.0.0';
-	}
-	if (v.length === 2) {
-		return ver + '.0';
-	}
-	return ver;
-}
-
-/**
- * Grab the list of other frameworks referenced from a listing of headers used by a framework.
- * @param  {string[]} headers header files referenced inside a given framework
- * @return {Set<string>}
- */
-function extractFrameworksFromDependencies(headers) {
-	const frameworks = new Set();
-	headers.forEach(file => {
-		const index = file.indexOf('.framework');
-		if (index !== -1) {
-			const frameworkName = file.substring(file.lastIndexOf('/', index) + 1, index);
-			frameworks.add(frameworkName);
-		}
-	});
-	return frameworks;
-}
 
 /**
  * Represents a module, which can be either a static library or a framework.
@@ -143,6 +111,26 @@ class ModuleMetadata {
 		return new ModuleMetadata(name, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
 	}
 
+	moduleMap() {
+		// possible locations of module map:
+		// ./Modules/module.modulemap
+		// ./module.map
+		const modulesPath = path.join(this.path, 'Modules');
+		if (fs.existsSync(modulesPath)) {
+			const moduleMapPathAndFilename = path.join(modulesPath, 'module.modulemap');
+			if (fs.existsSync(moduleMapPathAndFilename)) {
+				return fs.readFileSync(moduleMapPathAndFilename).toString();
+			}
+		}
+
+		const moduleMapPathAndFilename = path.join(this.path, 'module.map');
+		if (fs.existsSync(moduleMapPathAndFilename)) {
+			return fs.readFileSync(moduleMapPathAndFilename).toString();
+		}
+
+		return null;
+	}
+
 	/**
 	 * Attempts to detect more details/properties for a given module metadata object.
 	 * This is an optional step for some framework types, so is not baked into the constructor.
@@ -150,13 +138,11 @@ class ModuleMetadata {
 	sniff() {
 		const frameworkHeadersPath = path.join(this.path, 'Headers');
 
-		// If there's a Modules/module.modulemap, use it to give us correct umbrella header
-		// and detect if swift is used or not.
-		const modulesPath = path.join(this.path, 'Modules');
-		const moduleMapPathAndFilename = path.join(modulesPath, 'module.modulemap');
-		if (fs.existsSync(moduleMapPathAndFilename)) {
-			const moduleMap = fs.readFileSync(moduleMapPathAndFilename).toString();
-			if (fs.readdirSync(modulesPath).length > 1) {
+		const moduleMap = this.moduleMap();
+		// If we have a module map, it should tell us what the umbrella header is!
+		if (moduleMap) {
+			const modulesPath = path.join(this.path, 'Modules');
+			if (fs.existsSync(modulesPath) && fs.readdirSync(modulesPath).length > 1) {
 				// Dynamic frameworks containing Swift modules need to have an Objective-C
 				// interface header defined to be usable
 				this.usesSwift = true;
@@ -174,7 +160,10 @@ class ModuleMetadata {
 					// TODO: New Swift metabase generator required to support pure Swift frameworks
 					throw new Error('Incompatible framework ' + this.name + ' detected. Frameworks with Swift modules are only supported if they contain an Objective-C interface header.');
 				}
-			} else {
+			}
+
+			// if we don't have a special swift variant above...
+			if (!this.umbrellaHeader) {
 				// check for a specific umbrella header
 				const umbrellaHeaderRegex = /umbrella header\s"(.+\.h)"/i;
 				const umbrellaHeaderMatch = moduleMap.match(umbrellaHeaderRegex);
@@ -196,9 +185,11 @@ class ModuleMetadata {
 			this.umbrellaHeader = path.join(this.path, 'Headers', `${this.name}.h`);
 		}
 
-		// If the umbrella header doesn't exist, I think we need to blow up
+		// If the umbrella header doesn't exist, null it out and warn
 		if (!fs.existsSync(this.umbrellaHeader)) {
-			throw new Error(`Unable to detect framework umbrella header for ${this.name}.`);
+			// It'd probably be better to throw an Error, but even the iphone system frameworks have a bad framework in IOKit that we need to ignore
+			this.umbrellaHeader = null;
+			util.logger.warn(`Unable to detect framework umbrella header for ${this.name}.`);
 		}
 	}
 
@@ -213,18 +204,12 @@ class ModuleMetadata {
 			return Promise.resolve(this._metabase);
 		}
 
-		// TODO Determine cacheDir based on framework type? We cache system frameworks in user home, others in build dir.
-		// Maybe do all in ~/.hyperloop? non-system in tmp dir?
 		// TODO Should we hold sdk info in the metadata? Probaby not since it applies to the metabase and not the "metadata"
-		return new Promise((resolve, reject) => {
-			metabasegen.generateFrameworkMetabase(this.cacheDir, sdk, this, (err, json) => {
-				if (err) {
-					return reject(err);
-				}
-				this._metabase = json;
-				resolve(json);
+		return metabasegen.generateFrameworkMetabase(this.cacheDir, sdk, this)
+			.then(json => {
+				this._metabase = json; // cache in-memory
+				return Promise.resolve(json);
 			});
-		});
 	}
 
 	/**
@@ -239,6 +224,96 @@ class ModuleMetadata {
 				return Promise.resolve(extractFrameworksFromDependencies(dependentHeaders));
 			});
 	}
+
+	/**
+	 * Iterates over a framework's Headers directory and any nested frameworks to
+	 * collect the paths to all available header files of a framework.
+	 *
+	 * @return {string[]} List with paths to all found header files
+	 */
+	getHeaders() {
+		if (!this.umbrellaHeader) {
+			return [];
+		}
+		const stats = fs.statSync(this.umbrellaHeader);
+		if (stats.isFile()) { // umbrella header file
+			return [ this.umbrellaHeader ];
+		} else if (stats.isDirectory()) { // umbrella header directory
+			return getAllHeaderFiles([ this.umbrellaHeader ]);
+		}
+		return [];
+	}
+}
+
+/**
+ * convert an apple style version (9.0) to a semver compatible version
+ * @param {String} ver apple style version string
+ * @returns {String}
+ */
+function appleVersionToSemver(ver) {
+	const v = String(ver).split('.');
+	if (v.length === 1) {
+		return ver + '.0.0';
+	}
+	if (v.length === 2) {
+		return ver + '.0';
+	}
+	return ver;
+}
+
+/**
+ * Grab the Set of other frameworks referenced from a listing of headers used by a framework.
+ * @param  {string[]} headers header files referenced inside a given framework
+ * @return {Set<string>}
+ */
+function extractFrameworksFromDependencies(headers) {
+	const frameworks = new Set();
+	headers.forEach(file => {
+		const index = file.indexOf('.framework');
+		if (index !== -1) {
+			const frameworkName = file.substring(file.lastIndexOf('/', index) + 1, index);
+			frameworks.add(frameworkName);
+		}
+	});
+	return frameworks;
+}
+
+/**
+ * for an array of directories, return all valid header files
+ *
+ * @param  {string[]} directories [description]
+ * @return {[type]}             [description]
+ */
+function getAllHeaderFiles(directories) {
+	const files = [];
+	directories.forEach(dir => {
+		recursiveReadDir(dir).forEach(fn => {
+			if (/\.(h(pp)?|swift)$/.test(fn)) {
+				files.push(fn);
+			}
+		});
+	});
+	return files;
+}
+
+/**
+ * [recursiveReadDir description]
+ * @param  {string} dir path to directory to traverse
+ * @param  {string[]} result accumulator for recursive calls
+ * @return {string[]}
+ */
+function recursiveReadDir(dir, result) {
+	result = result || [];
+	const files = fs.readdirSync(dir);
+	files.forEach(fn => {
+		const fp = path.join(dir, fn);
+		if (fs.statSync(fp).isDirectory()) {
+			recursiveReadDir(fp, result);
+		} else {
+			result.push(fp);
+		}
+	});
+	return result;
 }
 
 exports.ModuleMetadata = ModuleMetadata;

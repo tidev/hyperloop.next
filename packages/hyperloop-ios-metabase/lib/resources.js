@@ -6,6 +6,14 @@ const spawn = require('child_process').spawn, // eslint-disable-line security/de
 	chalk = require('chalk'),
 	util = require('./util');
 
+/**
+ * [runTool description]
+ * @param  {string} name   short name of binary (for logs)
+ * @param  {string} binary binary name to actually execute
+ * @param  {string} runDir path to working dir to use for process
+ * @param  {string[]} args   [description]
+ * @return {Promise}
+ */
 function runTool(name, binary, runDir, args) {
 	return new Promise((resolve, reject) => {
 		const child = spawn(`/usr/bin/${binary}`, args, { cwd: runDir });
@@ -13,7 +21,7 @@ function runTool(name, binary, runDir, args) {
 		util.prefixOutput(name, child.stdout, util.logger.trace);
 		util.prefixOutput(name, child.stderr, util.logger.warn);
 		child.on('error', err => reject(err));
-		child.on('exit', function (ec) {
+		child.on('exit', ec => {
 			if (ec !== 0) {
 				return reject(new Error(`the ${name} failed running from ${runDir}`));
 			}
@@ -26,6 +34,7 @@ function runTool(name, binary, runDir, args) {
  * run the ibtool
  * @param {String} runDir absolute path to cwd to run inside
  * @param {string[]} args command line arguments
+ * @return {Promise}
  */
 function runIBTool(runDir, args) {
 	return runTool('ibtool', runDir, args);

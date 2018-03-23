@@ -4,12 +4,19 @@
  */
 'use strict';
 
-const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
-	path = require('path'),
-	fs = require('fs-extra'),
-	util = require('./util'),
-	binary = path.join(__dirname, '..', 'bin', 'metabase');
+const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
+const path = require('path');
+const fs = require('fs-extra');
 
+const util = require('./util');
+
+const BINARY = path.join(__dirname, '..', 'bin', 'metabase');
+
+/**
+ * @param  {string} file output file
+ * @param  {string[]} includes set of headers to include
+ * @return {Promise}
+ */
 function generateInputHeader(file, includes) {
 	const contents =  '/**\n'
 					+ ' * HYPERLOOP GENERATED - DO NOT MODIFY\n'
@@ -24,72 +31,8 @@ function generateInputHeader(file, includes) {
 						return ''; // should never happen...
 					}).join('\n')
 					+ '\n';
-	fs.writeFileSync(file, contents);
+	return fs.writeFile(file, contents);
 }
-
-/**
- * [recursiveReadDir description]
- * @param  {string} dir path to directory to traverse
- * @param  {string[]} result accumulator for recursive calls
- * @return {string[]}
- */
-function recursiveReadDir(dir, result) {
-	result = result || [];
-	const files = fs.readdirSync(dir);
-	files.forEach(fn => {
-		const fp = path.join(dir, fn);
-		if (fs.statSync(fp).isDirectory()) {
-			recursiveReadDir(fp, result);
-		} else {
-			result.push(fp);
-		}
-	});
-	return result;
-}
-
-/**
- * for an array of directories, return all valid header files
- *
- * @param  {string[]} directories [description]
- * @return {[type]}             [description]
- */
-function getAllHeaderFiles(directories) {
-	const files = [];
-	directories.forEach(dir => {
-		recursiveReadDir(dir).forEach(fn => {
-			if (/\.(h(pp)?|swift)$/.test(fn)) {
-				files.push(fn);
-			}
-		});
-	});
-	return files;
-}
-
-/**
- * Iterates over a framework's Headers directory and any nested frameworks to
- * collect the paths to all available header files of a framework.
- *
- * @param {String} frameworkHeadersPath Full path to the framework's umbrella header file/directory
- * @return {string[]} List with paths to all found header files
- */
-function collectFrameworkHeaders(frameworkHeadersPath) {
-	const stats = fs.statSync(frameworkHeadersPath);
-	if (stats.isFile()) { // umbrella header file
-		return [ frameworkHeadersPath ];
-	} else if (stats.isDirectory()) { // umbrella header directory
-		return getAllHeaderFiles([ frameworkHeadersPath ]);
-	}
-	return [];
-}
-
-/**
- * @callback generateMetabaseCallback
- * @param {Error} err
- * @param {Object} json
- * @param {String} outfile
- * @param {String} header
- * @param {boolean} fromCache whether we grabbed from cache or generated
- */
 
 /**
  * [generateFrameworkMetabase description]
@@ -101,42 +44,59 @@ function collectFrameworkHeaders(frameworkHeadersPath) {
  * @param  {String}   framework.name display name of the framework
  * @param  {String}   framework.path absolute path to the framework
  * @param  {String}   framework.umbrellaHeader absolute path to the umbrella header of the framework
- * @param  {generateMetabaseCallback} callback  [description]
- * @return {void}             [description]
+ * @return {Promise<object>}
  */
-function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
-	// TODO Move this to module_metadata#generateMetabase
-	const force = false; // FIXME Allow passing this in?
+function generateFrameworkMetabase(cacheDir, sdk, framework) {
+	const includes = framework.getHeaders();
 	const cacheToken = util.createHashFromString(framework.path);
-	const prefix = 'metabase-' + framework.name + '-' + cacheToken;
+	const prefix = `metabase-${framework.name}-${cacheToken}`;
 	const header = path.resolve(path.join(cacheDir, prefix + '.h'));
 	const outfile = path.resolve(path.join(cacheDir, prefix + '.json'));
-	const includes = collectFrameworkHeaders(framework.umbrellaHeader);
 
-	// check for cached version and attempt to return if found
-	if (!force && fs.existsSync(header) && fs.existsSync(outfile)) {
-		try {
+	return new Promise((resolve, reject) => {
+		// check for cached version and attempt to return if found
+		if (fs.existsSync(header) && fs.existsSync(outfile)) {
 			const json = JSON.parse(fs.readFileSync(outfile));
 			json.$includes = includes;
-			return callback(null, json, outfile, header, true);
-		} catch (e) {
-			// fall through and re-generate again
+			return resolve(json);
 		}
-	}
+		reject();
+	})
+		// fall through and re-generate again
+		.catch(() => fs.ensureDir(cacheDir))
+		.then(() => generateInputHeader(header, includes))
+		.then(() => {
+			const args = [
+				'-framework', framework.path,
+				'-pretty'
+			];
+			return runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args)
+				.then(json => {
+					json.$includes = includes;
+					return Promise.resolve(json);
+				});
+		});
+}
 
-	util.logger.trace('Generating metabase to', outfile);
-	if (!fs.existsSync(cacheDir)) {
-		fs.ensureDirSync(cacheDir);
-	}
-	generateInputHeader(header, includes);
-
-	const args = [
-		'-framework', framework.path,
-		'-pretty'
-	];
-	runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args, function (err, json) {
-		json.$includes = includes;
-		return callback(null, json, outfile, header, false);
+/**
+ * Base level execution of the metabase binary.
+ * @param  {string[]} args   arguments to pass to binary
+ * @return {Promise}
+ */
+function execute(args) {
+	return new Promise((resolve, reject) => {
+		const child = spawn(BINARY, args);
+		child.stdout.on('data', buf => {
+			util.logger.debug(String(buf).replace(/\n$/, ''));
+		});
+		child.stderr.on('data', () => {}); // Without this, for whatever reason, the metabase parser never returns
+		child.on('error', err => reject(err));
+		child.on('exit', ex => {
+			if (ex) {
+				return reject(new Error('Metabase generation failed'));
+			}
+			return resolve();
+		});
 	});
 }
 
@@ -147,10 +107,9 @@ function generateFrameworkMetabase(cacheDir, sdk, framework, callback) {
  * @param  {String}   sdkPath path to iOS SDK to use
  * @param  {String}   iosMinVersion i.e. '9.0'
  * @param  {String[]} extraArgs extra command line arguments to pass to binary
- * @param  {runMetabaseBinaryCallback} callback  [description]
- * @return {void}             [description]
+ * @return {Promise<object>} generated json/metabase
  */
-function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, callback) {
+function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs) {
 	const args = [
 		'-i', path.resolve(header),
 		'-o', path.resolve(outfile),
@@ -158,45 +117,25 @@ function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs, c
 		'-min-ios-ver', iosMinVersion
 	].concat(extraArgs);
 
-	let triedToFixPermissions = false;
-	(function runMetabase(binary, args) {
-		let child;
-		try {
-			child = spawn(binary, args);
-		} catch (e) {
-			if (e.code === 'EACCES') {
-				if (!triedToFixPermissions) {
-					fs.chmodSync(binary, '755');
-					triedToFixPermissions = true;
-					return runMetabase(binary, args);
-				} else {
-					return callback(new Error('Incorrect permissions for metabase binary ' + binary + '. Could not fix permissions automatically, please make sure it has execute permissions by running: chmod +x ' + binary));
-				}
+	return execute(args)
+		.catch(err => {
+			// if first time we get issue with access, try and chmod the binary and try again
+			if (err.code === 'EACCES') {
+				fs.chmodSync(BINARY, '755');
+				return execute(args);
 			}
-
-			throw e;
-		}
-		child.stdout.on('data', function (buf) {
-			util.logger.debug(String(buf).replace(/\n$/, ''));
-		});
-		child.stderr.on('data', function () {
-			// Without this, for whatever reason, the metabase parser never returns
-		});
-		child.on('error', callback);
-		child.on('exit', function (ex) {
-			if (ex) {
-				return callback(new Error('Metabase generation failed'));
+			return Promise.reject(err);
+		})
+		// if we failed again for access, give more useful error message about running chmod
+		.catch(err => {
+			if (err.code === 'EACCES') {
+				return Promise.reject(new Error(`Incorrect permissions for metabase binary ${BINARY}. Could not fix permissions automatically, please make sure it has execute permissions by running: chmod +x ${BINARY}`)); // eslint-disable-line max-len
 			}
-			const json = JSON.parse(fs.readFileSync(outfile));
-			return callback(null, json);
-		});
-	}(binary, args));
+			return Promise.reject(err);
+		})
+		// if we succeed, read the output and return it
+		.then(() => fs.readJson(outfile));
 }
-/**
- * @callback runMetabaseBinaryCallback
- * @param {Error} err
- * @param {Object} json generated metabase
- */
 
 /**
  * Merges two metabase objects
@@ -264,12 +203,8 @@ function unifiedMetabase(sdk, frameworkMap, frameworksToGenerate) {
 	const done = new Set(); // this is used to gather the full set of dependencies
 	return getDependencies(sdk, frameworkMap, frameworksToGenerate, done)
 		.then(() => {
-			const deepFrameworks = Array.from(done).map(name => {
-				return frameworkMap.get(name);
-			});
-			const promises = deepFrameworks.map(framework => {
-				return framework.generateMetabase(sdk);
-			});
+			const deepFrameworks = Array.from(done).map(name => frameworkMap.get(name));
+			const promises = deepFrameworks.map(framework => framework.generateMetabase(sdk));
 			return Promise.all(promises);
 		})
 		.then(metabases => {

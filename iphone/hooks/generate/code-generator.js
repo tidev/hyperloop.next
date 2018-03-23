@@ -337,6 +337,7 @@ class CodeGenerator {
 	 * @param {Object} imports Imports map
 	 */
 	fixCustomImports(imports) {
+		// FIXME Do we need this anymore? We get correct umbrella headers. Also umbrella header may be a folder!
 		Object.keys(imports).forEach(header => {
 			const headerParts = header.split('/');
 			const frameworkName = headerParts[0];
@@ -372,6 +373,7 @@ class CodeGenerator {
 	 * @param {Object} frameworks Object map of used frameworks as keys
 	 */
 	convertToUmbrellaHeaderImports(frameworks) {
+		// FIXME Do we need this anymore? We get correct umbrella headers. Also umbrella header may be a folder!
 		Object.keys(frameworks).forEach(frameworkName => {
 			if (this.iosBuilder.frameworks.has(frameworkName)) {
 				const meta = this.iosBuilder.frameworks.get(frameworkName);

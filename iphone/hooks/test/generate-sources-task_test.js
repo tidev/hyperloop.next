@@ -19,49 +19,52 @@ const noopBunyanLogger = {
 	error: () => { },
 };
 
-function Hyperloop () {
+class Hyperloop {
+	toJSON() {
+		return '[Hyperloop ' + this.name + ']';
+	}
+
+	inspect() {
+		return this.toJSON();
+	}
+
+	static getWrapper() {
+	}
+
+	static registerWrapper() {
+	}
 }
 
-Hyperloop.prototype.toJSON = function () {
-	return '[Hyperloop ' + this.name + ']';
-};
+class HyperloopObject {
+	constructor(pointer) {
+		this.pointer = pointer;
+		this.name = pointer.name || pointer.className;
+	}
 
-Hyperloop.prototype.inspect = function () {
-	return '[Hyperloop ' + this.name + ']';
-};
+	toJSON() {
+		return '[HyperloopObject ' + this.pointer + ']';
+	}
 
-Hyperloop.getWrapper = function () {
-};
-
-Hyperloop.registerWrapper = function () {
-};
-
-function HyperloopObject (pointer) {
-	this.pointer = pointer;
-	this.name = pointer.name || pointer.className;
+	inspect() {
+		return this.toJSON();
+	}
 }
 
-HyperloopObject.prototype.toJSON = function () {
-	return '[HyperloopObject ' + this.pointer + ']';
-};
+class HyperloopProxy {
+	constructor(n, c) {
+		this.$native = n;
+		this.$classname = c;
+		this.name = c;
+	}
 
-HyperloopObject.prototype.inspect = function () {
-	return '[HyperloopObject ' + this.pointer + ']';
-};
+	toJSON() {
+		return '[HyperloopProxy ' + this.$native + ']';
+	}
 
-function HyperloopProxy (n, c) {
-	this.$native = n;
-	this.$classname = c;
-	this.name = c;
+	inspect() {
+		return this.toJSON();
+	}
 }
-
-HyperloopProxy.prototype.toJSON = function () {
-	return '[HyperloopProxy ' + this.$native + ']';
-};
-
-HyperloopProxy.prototype.inspect = function () {
-	return '[HyperloopProxy ' + this.$native + ']';
-};
 
 describe('GenerateSourcesTask', function () {
 	let sdk;
@@ -82,7 +85,7 @@ describe('GenerateSourcesTask', function () {
 				const frameworksToGenerate = [ frameworkName ];
 				return hm.unifiedMetabase(sdk, frameworkMap, frameworksToGenerate);
 			})
-			.then((metabase) => {
+			.then(metabase => {
 				const state = new gencustom.ParserState();
 				const references = [ 'hyperloop/' + frameworkName.toLowerCase() + '/' + className.toLowerCase() ];
 				GenerateSourcesTask.generateSources(buildDir, 'TestApp', metabase, state, frameworks, references, noopBunyanLogger, cb);

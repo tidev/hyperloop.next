@@ -1,6 +1,6 @@
 // TODO: Make into an incremental appc-task!
 'use strict';
-const fs = require('fs-extra');
+
 const hm = require('hyperloop-metabase');
 
 /**
