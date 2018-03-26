@@ -65,11 +65,16 @@ function scanForReferences(contents, filename, frameworks, cacheDir, sdk, logger
 
 	function asyncTypeExistsInFramework(framework, typeName, callback) {
 		logger.trace('Checking require for: ' + framework.name.toLowerCase() + '/' + typeName.toLowerCase());
+		// If the typename matches the framework name, what should we do?
+		// I think we may need to just return right away with 'true' (callback(null, true))
+		if (framework.name === typeName) {
+			return callback(null, true);
+		}
 		framework.generateMetabase(sdk)
 			.then(json => {
 				// we should have a metabase just for this framework now, if we could find such a framework!
 				// Does the type exist as a class or enum in this framework?
-				callback(null, json.classes[typeName] || json.enums[typeName]);
+				callback(null, (json.classes && json.classes[typeName]) || (json.enums && json.enums[typeName]));
 			})
 			.catch(err => callback(err));
 	}

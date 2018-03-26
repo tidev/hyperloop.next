@@ -296,7 +296,10 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
  */
 HyperloopiOSBuilder.prototype.getSDKInfo = function getSDKInfo(callback) {
 	SDKEnvironment.fromTypeAndMinimumVersion(this.builder.xcodeTargetOS, this.builder.minIosVer)
-		.then(info => { this.sdkInfo = info; })
+		.then(info => {
+			this.sdkInfo = info;
+			callback();
+		})
 		.catch(err => callback(err));
 };
 
@@ -311,7 +314,8 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
 
 			this.systemFrameworks.forEach(frameworkMetadata => {
 				this.frameworks.set(frameworkMetadata.name, frameworkMetadata);
-			}, this);
+			});
+			callback();
 		})
 		.catch(err => callback(err));
 };
@@ -322,7 +326,7 @@ HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(callback) {
-	hm.cocoapods.installPodsAndGetSettings()
+	hm.cocoapods.installPodsAndGetSettings(this.builder)
 		.then(settings => {
 			this.cocoaPodsBuildSettings = settings || {};
 			return hm.cocoapods.generateCocoaPodsMetadata(this.builder, settings);
@@ -333,7 +337,7 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 				modules.forEach(metadata => {
 					this.frameworks.set(metadata.name, metadata);
 					this.cocoaPodsProducts.push(metadata.name);
-				}, this);
+				});
 			}
 			callback();
 		})
@@ -349,13 +353,14 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThirdPartyFrameworks(callback) {
-	var frameworks = this.frameworks;
-	var thirdPartyFrameworks = this.thirdPartyFrameworks;
-	var swiftSources = this.swiftSources;
+	const frameworks = this.frameworks;
+	const thirdPartyFrameworks = this.thirdPartyFrameworks;
+	const swiftSources = this.swiftSources;
+	const swiftFrameworks = this.swiftFrameworks;
 	const thirdparty = this.hyperloopConfig.ios.thirdparty || [];
-	var projectDir = this.builder.projectDir;
-	var xcodeAppDir = this.builder.xcodeAppDir;
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	const projectDir = this.builder.projectDir;
+	const xcodeAppDir = this.builder.xcodeAppDir;
+	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
 	const builder = this.builder;
 	const logger = this.logger;
 
@@ -477,7 +482,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 		hm.swift.generateSwiftFrameworks(swiftSources)
 			.then(modules => {
 				modules.forEach(moduleMetadata => {
-					this.swiftFrameworks.set(moduleMetadata.name, moduleMetadata);
+					swiftFrameworks.set(moduleMetadata.name, moduleMetadata);
 					frameworks.set(moduleMetadata.name, moduleMetadata);
 				});
 				next();
@@ -537,10 +542,12 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 
 	const result = ScanReferencesTask.scanForReferences(contents, sourceFilename, this.frameworks, this.hyperloopBuildDir, this.sdkInfo, this.logger);
 	// Do something with references! Loop through and gather list of used frameworks and types!
-	result.references.forEach((value, key) => {
-		this.references[`/hyperloop/${key.toLowerCase()}/${value.toLowerCase()}`] = 1;
-		if (!this.usedFrameworks.has(key)) {
-			this.usedFrameworks.set(key, this.frameworks.get(key));
+	result.references.forEach((types, frameworkName) => {
+		types.forEach(type => {
+			this.references[`/hyperloop/${frameworkName.toLowerCase()}/${type.toLowerCase()}`] = 1;
+		});
+		if (!this.usedFrameworks.has(frameworkName)) {
+			this.usedFrameworks.set(frameworkName, this.frameworks.get(frameworkName));
 		}
 	});
 
@@ -577,7 +584,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callback) {
 	// no hyperloop files detected, we can stop here
 	if (!this.includes.length && !Object.keys(this.references).length) {
-		this.logger.info('Skipping ' + HL + ' compile, no usage found ...');
+		this.logger.info(`Skipping ${HL} compile, no usage found ...`);
 		return callback(new StopHyperloopCompileError());
 	}
 
@@ -602,7 +609,7 @@ HyperloopiOSBuilder.prototype.generateMetabase = function generateMetabase(callb
 HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolReference() {
 
 	if (!this.parserState) {
-		this.logger.info('Skipping ' + HL + ' generating of symbol references. Empty AST. ');
+		this.logger.info(`Skipping ${HL} generating of symbol references. Empty AST.`);
 		return;
 	}
 	const symbolRefFile = path.join(this.hyperloopBuildDir, 'symbol_references.json'),
@@ -635,7 +642,7 @@ HyperloopiOSBuilder.prototype.compileResources = function compileResources(callb
  */
 HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 	if (!this.parserState) {
-		this.logger.info('Skipping ' + HL + ' stub generation. Empty AST.');
+		this.logger.info(`Skipping ${HL} stub generation. Empty AST.`);
 		return callback();
 	}
 	if (!this.forceStubGeneration) {

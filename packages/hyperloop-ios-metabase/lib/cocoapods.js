@@ -1,12 +1,14 @@
 'use strict';
 
-const spawn = require('child_process').spawn, // eslint-disable-line security/detect-child-process
-	exec = require('child_process').exec, // eslint-disable-line security/detect-child-process
-	path = require('path'),
-	util = require('./util'),
-	semver = require('semver'),
-	chalk = require('chalk'),
-	fs = require('fs-extra');
+const spawn = require('child_process').spawn; // eslint-disable-line security/detect-child-process
+const exec = require('child_process').exec; // eslint-disable-line security/detect-child-process
+const path = require('path');
+
+const chalk = require('chalk');
+const fs = require('fs-extra');
+const semver = require('semver');
+
+const util = require('./util');
 const ModuleMetadata = require('./module_metadata').ModuleMetadata;
 const Frameworks = require('./frameworks').Frameworks;
 
@@ -112,7 +114,7 @@ function validatePodfile(podfilePath, version) {
  * @return {Promise}
  */
 function podInstall(basedir, podBinary) {
-	util.logger.info(chalk.green('CocoaPods') + ' dependencies found. This will take a few moments but will be cached for subsequent builds');
+	util.logger.info(`${chalk.green('CocoaPods')} dependencies found. This will take a few moments but will be cached for subsequent builds`);
 	return new Promise((resolve, reject) => {
 		const child = spawn(podBinary, [ 'install' ], { cwd: basedir });
 		util.prefixOutput('CocoaPods', child.stdout, util.logger.trace);
@@ -148,17 +150,14 @@ function runPodInstallIfRequired(basedir) {
 				return validatePodfile(Podfile, version);
 			})
 			.then(() => {
-				util.logger.trace('Found CocoaPods ' + podVersion + ' (' + podBinary + ')');
+				util.logger.trace(`Found CocoaPods ${podVersion} (${podBinary})`);
 				if (semver.lt(podVersion, '1.0.0')) {
 					util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
 					return Promise.reject(new Error('Using a CocoaPods < 1.0.0 is not supported anymore.'));
 				}
-				return podInstall();
+				return podInstall(basedir, podBinary);
 			})
-			.then(() => {
-				fs.writeFileSync(cacheFile, cacheToken);
-				return Promise.resolve();
-			});
+			.then(() => fs.writeFile(cacheFile, cacheToken));
 	} else {
 		return Promise.resolve();
 	}
@@ -281,12 +280,10 @@ function installPodsAndGetSettings(builder) {
 	}
 
 	return runPodInstallIfRequired(basedir)
-		.then(() => {
-			return runCocoaPodsBuild(basedir, builder);
-		})
+		.then(() => runCocoaPodsBuild(basedir, builder))
 		.then(() => {
 			const settings = getCocoaPodsXCodeSettings(basedir);
-			util.logger.trace(chalk.green('CocoaPods') + ' Xcode settings will', JSON.stringify(settings, null, 2));
+			util.logger.trace(`${chalk.green('CocoaPods')} Xcode settings will be: ${JSON.stringify(settings, null, 2)}`);
 			return Promise.resolve(settings);
 		});
 }
