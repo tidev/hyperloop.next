@@ -6,3 +6,5 @@
 class StopHyperloopCompileError extends Error {
 
 }
+
+exports.StopHyperloopCompileError = StopHyperloopCompileError;

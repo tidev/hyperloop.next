@@ -6,7 +6,7 @@ const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
 const deasync = require('deasync');
-const isBuiltin = require('./util').isBuiltin;
+const isBuiltin = require('../lib/util').isBuiltin;
 
 const requireRegexp = /[\w_/\-\\.]+/ig;
 

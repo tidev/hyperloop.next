@@ -31,9 +31,10 @@ const crypto = require('crypto');
 const chalk = require('chalk');
 const async = require('async');
 const HL = chalk.magenta.inverse('Hyperloop');
-const StopHyperloopCompileError = require('./lib/error');
+const StopHyperloopCompileError = require('./lib/error').StopHyperloopCompileError;
 
 const generator = require('./generate');
+const util = require('./lib/util');
 const ScanReferencesTask = require('./tasks/scan-references-task');
 const GenerateMetabaseTask = require('./tasks/generate-metabase-task');
 const GenerateSourcesTask = require('./tasks/generate-sources-task');
@@ -469,7 +470,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		types.forEach(type => {
 			this.references[`/hyperloop/${frameworkName.toLowerCase()}/${type.toLowerCase()}`] = 1;
 		});
-		if (!this.usedFrameworks.has(frameworkName)) {
+		if (!this.usedFrameworks.has(frameworkName) && !util.isBuiltin(frameworkName)) {
 			this.usedFrameworks.set(frameworkName, this.frameworks.get(frameworkName));
 		}
 	});
@@ -552,10 +553,11 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
+	this.logger.info(`Compiling resources`);
 	const promises = [];
 	// compile 3rd-party framework resources
 	this.thirdPartyFrameworks.forEach(framework => {
-		promises.push(framework.compileResources(this.builder.xcodeTargetOS, this.builder.iosSdkVersion, xcodeAppDir));
+		promises.push(framework.compileResources(this.builder.xcodeTargetOS, this.builder.iosSdkVersion, this.builder.xcodeAppDir));
 	});
 	// compile project resources
 	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
@@ -580,6 +582,8 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
 		return callback();
 	}
 
+	this.logger.info(`Generating ${HL} stubs.`);
+	fs.ensureDirSync(this.hyperloopJSDir);
 	GenerateSourcesTask.generateSources(this.hyperloopJSDir, this.builder.tiapp.name, this.metabase, this.parserState, this.frameworks, this.references, this.logger, callback);
 };
 
@@ -587,6 +591,7 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
  * Copies Hyperloop generated JavaScript files into the app's `Resources/hyperloop` directory.
  */
 HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles() {
+	this.logger.info(`Copying ${HL} JS files.`);
 	// TODO: Move to a copy-sources-task.js task file like on Android
 	// copy any native generated file references so that we can compile them
 	// as part of xcodebuild
@@ -598,22 +603,24 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 	}
 
 	// check to see if we have any specific file native modules and copy them in
-	keys.forEach(function (ref) {
+	this.logger.info(`Copying native modules.`);
+	keys.forEach(ref => {
 		const file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
-	}, this);
+	});
 
 	// check to see if we have any package modules and copy them in
+	this.logger.info(`Copying package modules.`);
 	this.usedFrameworks.forEach(frameworkMetadata => {
 		const file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
 		if (fs.existsSync(file)) {
 			this.nativeModules[file] = 1;
 		}
-	}, this);
+	});
 
-	var builder = this.builder,
+	const builder = this.builder,
 		logger = this.logger,
 		jsRegExp = /\.js$/;
 
@@ -706,6 +713,7 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
  * Injects frameworks and source files into the Xcode project and regenerates it
  */
 HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject() {
+	this.logger.info('updateXcodeProject');
 	var data = this.xcodeprojectdata;
 	var nativeModules = Object.keys(this.nativeModules);
 

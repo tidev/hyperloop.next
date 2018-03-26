@@ -37,7 +37,7 @@ function runTool(name, binary, runDir, args) {
  * @return {Promise}
  */
 function runIBTool(runDir, args) {
-	return runTool('ibtool', runDir, args);
+	return runTool('ibtool', 'ibtool', runDir, args);
 }
 
 function runMomcTool(runDir, sdk, args) {

@@ -2,7 +2,6 @@
 'use strict';
 
 const hm = require('hyperloop-metabase');
-const util = require('./util');
 
 /**
  * Generates a full/unified metabase from all used frameworks, their dependencies and swift sources.
@@ -15,8 +14,6 @@ const util = require('./util');
  * @return {Promise<object>}
  */
 function generateMetabase(sdk, frameworkMap, usedFrameworkNames) {
-	// Filter out the builtins from usedFrameworkNames
-	const filteredFrameworks = usedFrameworkNames.filter(name => !util.isBuiltin(name));
 	return hm.unifiedMetabase(sdk, frameworkMap, filteredFrameworks);
 }
 
