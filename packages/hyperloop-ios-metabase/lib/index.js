@@ -8,10 +8,10 @@
 exports.setLogger = require('./util').setLog;
 exports.unifiedMetabase = require('./metabase').unifiedMetabase;
 exports.userFrameworks = require('./user_frameworks').getUserFrameworks;
-exports.ModuleMetadata = require('./module_metadata').ModuleMetadata;
+exports.thirdPartyFrameworks = require('./third_party_frameworks').getThirdPartyFrameworks;
 exports.SDKEnvironment = require('./sdk').SDKEnvironment;
-
-// TODO Try to limit what we expose in these as well:
-exports.swift = require('./swift');
+exports.swift = {
+	getVersion: require('./swift').getVersion;
+};
 exports.cocoapods = require('./cocoapods');
 exports.resources = require('./resources');

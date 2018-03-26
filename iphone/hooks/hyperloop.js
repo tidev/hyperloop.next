@@ -25,7 +25,6 @@ const coreLib = {
 
 const path = require('path');
 const hm = require('hyperloop-metabase');
-const ModuleMetadata = hm.ModuleMetadata;
 const SDKEnvironment = hm.SDKEnvironment;
 const fs = require('fs-extra');
 const crypto = require('crypto');
@@ -69,10 +68,9 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.parserState = null;
 	this.frameworks = new Map();
 	this.systemFrameworks = new Map();
+	this.userFrameworks = new Map();
 	this.thirdPartyFrameworks = new Map();
-	this.swiftFrameworks = new Map();
 	this.includes = [];
-	this.swiftSources = [];
 	this.swiftVersion = '3.0';
 	this.jsFiles = {};
 	this.references = {};
@@ -82,7 +80,7 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.hasCocoaPods = false;
 	this.cocoaPodsBuildSettings = {};
 	this.cocoaPodsProducts = [];
-	this.headers = null;
+	this.headers = []; // headers from third party frameworks!
 	this.needMigration = {};
 	this.useCopyResourceHook = false; // boolean flag to determine which CLi hook to use based on SDK version
 
@@ -160,6 +158,8 @@ HyperloopiOSBuilder.prototype.init = function init(callback) {
 		'validate',
 		'setup',
 		'wireupBuildHooks',
+		// TODO Most of these could be run in parallel! I think we need to get sdk info to get system frameworks.
+		// But we should be able to get swift version in parallel to that, same with cocoapods, third party frameworks
 		'getSDKInfo',
 		'detectSwiftVersion',
 		// Here we gather up the various frameworks the user could refer to.
@@ -171,7 +171,7 @@ HyperloopiOSBuilder.prototype.init = function init(callback) {
 
 HyperloopiOSBuilder.prototype.run = function run(builder, callback) {
 	const start = Date.now();
-	this.logger.info('Starting ' + HL + ' assembly');
+	this.logger.info(`Starting ${HL} assembly`);
 	this.appc.async.series(this, [
 		'generateMetabase',
 		'generateSymbolReference',
@@ -183,7 +183,7 @@ HyperloopiOSBuilder.prototype.run = function run(builder, callback) {
 		if (err instanceof StopHyperloopCompileError) {
 			err = null;
 		}
-		this.logger.info('Finished ' + HL + ' assembly in ' + (Math.round((Date.now() - start) / 10) / 100) + ' seconds');
+		this.logger.info(`Finished ${HL} assembly in ${(Math.round((Date.now() - start) / 10) / 100)} seconds`);
 		callback(err);
 	});
 };
@@ -344,50 +344,24 @@ HyperloopiOSBuilder.prototype.generateCocoaPods = function generateCocoaPods(cal
 		.catch(err => callback(err));
 };
 
-// TODO We need to process the swift source in advance of doing the requires/import handling via cli hooks!
-// Otherwise, we can't reference swift types from JS code, can we?
-
 /**
  * Gets frameworks for any third-party dependencies defined in the Hyperloop config and compiles them.
  * @param {Function} callback typical async callback function
  * @return {void}
  */
+// TODO: Break this apart into two distinct methods?
+// processPlatformIosframeworks
+// processAppcJsThirdPartyFrameworks (deprecated)
 HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThirdPartyFrameworks(callback) {
 	const frameworks = this.frameworks;
+	const userFrameworks = this.userFrameworks;
 	const thirdPartyFrameworks = this.thirdPartyFrameworks;
-	const swiftSources = this.swiftSources;
-	const swiftFrameworks = this.swiftFrameworks;
 	const thirdparty = this.hyperloopConfig.ios.thirdparty || [];
 	const projectDir = this.builder.projectDir;
 	const xcodeAppDir = this.builder.xcodeAppDir;
-	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
 	const builder = this.builder;
 	const logger = this.logger;
-
-	if (thirdparty.length > 0) {
-		// Throw a deprecation warning regarding thirdparty-references in the appc.js
-		logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 4.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
-
-		const headers = [];
-		Object.keys(thirdparty).forEach(function (frameworkName) {
-			const thirdPartyFrameworkConfig = thirdparty[frameworkName];
-			const headerPaths = Array.isArray(thirdPartyFrameworkConfig.header) ? thirdPartyFrameworkConfig.header : [ thirdPartyFrameworkConfig.header ];
-			headerPaths.forEach(function (headerPath) {
-				const searchPath = path.resolve(builder.projectDir, headerPath);
-				headers.push(searchPath);
-			});
-		});
-		this.headers = headers;
-	}
-
-	function arrayifyAndResolve(it) {
-		if (it) {
-			return (Array.isArray(it) ? it : [ it ]).map(function (name) {
-				return path.resolve(projectDir, name);
-			});
-		}
-		return null;
-	}
+	let headers = this.headers;
 
 	/**
 	 * Processes any frameworks from modules or the app's platform/ios folder
@@ -403,7 +377,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 		hm.userFrameworks(builder.frameworks)
 			.then(modules => {
 				modules.forEach(moduleMetadata => {
-					thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
+					userFrameworks.set(moduleMetadata.name, moduleMetadata);
 					frameworks.set(moduleMetadata.name, moduleMetadata);
 				});
 				next();
@@ -421,68 +395,18 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	 * @param {Function} next Callback function
 	 */
 	function processConfiguredThirdPartySource(next) {
-		async.eachLimit(Object.keys(thirdparty), 5, function (frameworkName, next) {
-			const lib = thirdparty[frameworkName];
+		if (thirdparty.length > 0) {
+			// Throw a deprecation warning regarding thirdparty-references in the appc.js
+			logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 4.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
+		}
 
-			logger.debug('Generating includes for third-party source ' + frameworkName.green + ' (defined in appc.js)');
-			async.series([
-				function (cb) {
-					const headers = arrayifyAndResolve(lib.header);
-					if (headers) {
-						// Creates a 'static' framework pointing at the first header as the location
-						const metadata = ModuleMetadata.fromHeaders(frameworkName, headers[0]);
-						frameworks.set(metadata.name, metadata);
-					}
-					cb();
-				},
-
-				function (cb) {
-					const resources = arrayifyAndResolve(lib.resource);
-					if (resources) {
-						const extRegExp = /\.(xib|storyboard|m|mm|cpp|h|hpp|swift|xcdatamodel)$/;
-						async.eachLimit(resources, 5, function (dir, cb2) {
-							// compile the resources (.xib, .xcdatamodel, .xcdatamodeld,
-							// .xcmappingmodel, .xcassets, .storyboard)
-							hm.resources.compileResources(dir, sdk, xcodeAppDir, false)
-								.then(() => {
-									builder.copyDirSync(dir, xcodeAppDir, {
-										ignoreFiles: extRegExp
-									});
-									cb2();
-								})
-								.catch(err => cb2(err));
-						}, cb);
-					} else {
-						cb();
-					}
-				},
-
-				function (cb) {
-					// generate metabase for swift files (if found)
-					const sources = arrayifyAndResolve(lib.source);
-					const swiftRegExp = /\.swift$/;
-
-					sources && sources.forEach(function (dir) {
-						fs.readdirSync(dir).forEach(function (filename) {
-							if (swiftRegExp.test(filename)) {
-								swiftSources.push({
-									framework: frameworkName,
-									source: path.join(dir, filename)
-								});
-							}
-						});
-					});
-					cb();
-				}
-			], next);
-		}, next);
-	}
-
-	function processSwiftFrameworks(next) {
-		hm.swift.generateSwiftFrameworks(swiftSources)
+		hm.thirdPartyFrameworks(projectDir, thirdparty)
 			.then(modules => {
 				modules.forEach(moduleMetadata => {
-					swiftFrameworks.set(moduleMetadata.name, moduleMetadata);
+					// Combine all the headers into this.headers!
+					const frameworkHeaders = moduleMetadata.getHeaders();
+					headers = headers.concat(frameworkHeaders);
+					thirdPartyFrameworks.set(moduleMetadata.name, moduleMetadata);
 					frameworks.set(moduleMetadata.name, moduleMetadata);
 				});
 				next();
@@ -492,8 +416,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 
 	async.series([
 		processFrameworks,
-		processConfiguredThirdPartySource,
-		processSwiftFrameworks
+		processConfiguredThirdPartySource
 	], callback);
 };
 
@@ -629,8 +552,15 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
  * @return {void}
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
+	const promises = [];
+	// compile 3rd-party framework resources
+	this.thirdPartyFrameworks.forEach(framework => {
+		promises.push(framework.compileResources(this.builder.xcodeTargetOS, this.builder.iosSdkVersion, xcodeAppDir));
+	});
+	// compile project resources
 	const sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
-	hm.resources.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false)
+	promises.push(hm.resources.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false));
+	Promise.all(promises)
 		.then(() => callback())
 		.catch(err => callback(err));
 };
@@ -790,7 +720,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			}, this);
 		}, this);
 	}
-	if (this.thirdPartyFrameworks.size > 0) {
+	if (this.userFrameworks.size > 0) {
 		thirdPartyFrameworksUsed = true;
 	}
 
@@ -960,6 +890,11 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		containsSwift = Object.keys(this.cocoaPodsBuildSettings).some(function (key) {
 			return key === 'EMBEDDED_CONTENT_CONTAINS_SWIFT';
 		});
+	}
+	if (!containsSwift) {
+		containsSwift = Array.from(this.userFrameworks.values()).some(function (frameworkMeta) {
+			return frameworkMeta.usesSwift === true;
+		}, this);
 	}
 	if (!containsSwift) {
 		containsSwift = Array.from(this.thirdPartyFrameworks.values()).some(function (frameworkMeta) {
@@ -1292,7 +1227,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	}, this);
 
 	// add our header include paths if we have custom ones
-	if (this.headers) {
+	if (this.headers.length > 0) {
 		addParam('HEADER_SEARCH_PATHS', '$(inherited)');
 		addParam('FRAMEWORK_SEARCH_PATHS', '$(inherited)');
 		this.headers.forEach(function (header) {

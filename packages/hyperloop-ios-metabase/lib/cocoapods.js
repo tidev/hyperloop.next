@@ -449,5 +449,5 @@ class CocoapodsFrameworks extends Frameworks {
 	}
 }
 
-exports.installPodsAndGetSettings = installPodsAndGetSettings;
-exports.generateCocoaPodsMetadata = generateCocoaPodsMetadata;
+exports.installPodsAndGetSettings = installPodsAndGetSettings; // used by hyperloop hook
+exports.generateCocoaPodsMetadata = generateCocoaPodsMetadata; // used by hyperloop hook

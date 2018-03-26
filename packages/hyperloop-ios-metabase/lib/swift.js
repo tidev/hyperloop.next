@@ -475,5 +475,6 @@ class SwiftFrameworks extends Frameworks {
 }
 
 exports.generateSwiftMangledClassName = generateSwiftMangledClassName; // only exported for testing!
-exports.getVersion = getVersion;
-exports.generateSwiftFrameworks = generateSwiftFrameworks;
+exports.getVersion = getVersion; // used by hyperloop hook
+exports.generateSwiftFrameworks = generateSwiftFrameworks; // only exported for testing! refactor tests and remove this. No longer needed!
+exports.SwiftModule = SwiftModule; // used by third_party_frameworks.js

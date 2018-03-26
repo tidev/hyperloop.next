@@ -131,7 +131,7 @@ function compileResources(dir, sdk, appDir, wildcard) {
 				return runIBTool(path.dirname(file), args);
 			}
 			default: {
-				if (wildcard && !/\.(m|mm|h|cpp|hpp|c|s)$/.test(file)) {
+				if (wildcard && !/\.(m|mm|h|cpp|hpp|c|swift)$/.test(file)) {
 					return new Promise((resolve, reject) => {
 						const buf = fs.readFileSync(file);
 						const out = path.join(appDir, rel);
@@ -155,4 +155,4 @@ function compileResources(dir, sdk, appDir, wildcard) {
 	return Promise.all(promises);
 }
 
-exports.compileResources = compileResources;
+exports.compileResources = compileResources; // used by hyperloop hook and third_party_frameworks.js

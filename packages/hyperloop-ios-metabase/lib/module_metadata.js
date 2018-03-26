@@ -100,17 +100,6 @@ class ModuleMetadata {
 		return metadata;
 	}
 
-	/**
-	 * Returns a static ModuleMetadata from one or more header files
-	 * @param  {string} name framework name to use
-	 * @param  {string[]} headers paths to header files
-	 * @return {ModuleMetadata}
-	 */
-	// TODO Encapsulate the last use case for this: 3rd-party sources (although this is deprecated!)
-	static fromHeaders(name, headers) {
-		return new ModuleMetadata(name, headers[0], ModuleMetadata.MODULE_TYPE_STATIC);
-	}
-
 	moduleMap() {
 		// possible locations of module map:
 		// ./Modules/module.modulemap
@@ -318,3 +307,4 @@ function recursiveReadDir(dir, result) {
 
 exports.ModuleMetadata = ModuleMetadata;
 exports.appleVersionToSemver = appleVersionToSemver; // for testing only!
+exports.getAllHeaderFiles = getAllHeaderFiles;

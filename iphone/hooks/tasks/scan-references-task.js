@@ -6,6 +6,7 @@ const t = require('babel-types');
 const generate = require('babel-generator').default;
 const traverse = require('babel-traverse').default;
 const deasync = require('deasync');
+const isBuiltin = require('./util').isBuiltin;
 
 const requireRegexp = /[\w_/\-\\.]+/ig;
 
@@ -17,16 +18,6 @@ const requireRegexp = /[\w_/\-\\.]+/ig;
  */
 function shouldSkip(moduleName) {
 	return moduleName.startsWith('alloy/') || moduleName.charAt(0) === '.' || moduleName.charAt(0) === '/';
-}
-
-/**
- * Is the reference to a "builtin"?
- * TODO: Delegate to code in generate library where we handle builtins?
- * @param  {String} frameworkName possible framework name
- * @return {boolean}
- */
-function isBuiltin(frameworkName) {
-	return frameworkName === 'Titanium';
 }
 
 /**
