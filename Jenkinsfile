@@ -76,7 +76,7 @@ stage('Build') {
 						dir('android') {
 							echo 'Testing Android hook...'
 							// Run hook tests and then prune to production deps
-							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+							sh "sed -i '' 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 							dir('hooks') {
 								sh 'npm install' // TODO Use npm ci?
 								try {
@@ -94,7 +94,7 @@ stage('Build') {
 							} // dir('hooks')
 
 							// Now do the main native module build
-							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							sh "sed -i '' 's/VERSION/${packageVersion}/g' ./manifest"
 							writeFile file: 'build.properties', text: """
 titanium.platform=${activeSDKPath}/android
 android.platform=${androidSDK}/platforms/android-${androidAPILevel}
@@ -175,7 +175,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					dir('iphone') {
 						echo 'Testing iOS hook...'
 						// Run hook tests
-						sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+						sh "sed -i '' 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 						dir('hooks') {
 							sh 'npm install' // TODO Use npm ci?
 							try {
@@ -194,9 +194,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 
 						echo 'Building iOS module...'
 						// hack the package.json version into the module manifest
-						sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+						sh "sed -i '' 's/VERSION/${packageVersion}/g' ./manifest"
 						// hack the SDK version we installed above into the titanium.xcconfig used to build module
-						sh "sed -i.bak 's/7.0.2.GA/${sdkVersion}/g' ./titanium.xcconfig"
+						sh "sed -i '' 's/7.0.2.GA/${sdkVersion}/g' ./titanium.xcconfig"
 
 						// Check if xcpretty gem is installed? Used by shell scripts when building
 						// if (sh(returnStatus: true, script: 'which xcpretty') != 0) {
@@ -222,7 +222,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						//
 						// 	// Building for JSCore
 						// 	echo "Building for JSCore ..."
-						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
+						// 	sh "sed -i '' 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
 						// 	sh 'appc ti build --build-only'
 						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
 						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
@@ -250,7 +250,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						echo 'Building Windows module...'
 						// FIXME How the hell is Windows OK with these shell commands?
 						dir('windows') {
-							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							sh "sed -i '' 's/VERSION/${packageVersion}/g' ./manifest"
 							// FIXME We should have a module clean command!
 							// manually clean
 							sh 'rm -rf build/'

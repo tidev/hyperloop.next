@@ -49,12 +49,15 @@ echo "Installing npm dependencies..."
 cd hooks
 npm i --production
 rm -rf node_modules/findit/test
-rm -rf package-lock.json
 cd $CWD
 
 echo "\nPackaging iOS module..."
-cp -R hooks build/zip/modules/iphone/hyperloop/$VERSION
+# Need to copy recursively *AND* follow symlinks! symlink is used to point at hyperloop-metabase package!
+cp -RL hooks build/zip/modules/iphone/hyperloop/$VERSION
 cp -R ../hooks build/zip/modules/iphone/hyperloop/$VERSION
+rm -rf build/zip/modules/iphone/hyperloop/$VERSION/hooks/test
+rm -rf build/zip/modules/iphone/hyperloop/$VERSION/hooks/Gruntfile.js
+rm -rf build/zip/modules/iphone/hyperloop/$VERSION/hooks/NOTES.md
 cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
 
 # titanium requires at least this file so just create an empty one
@@ -62,7 +65,7 @@ echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
 
 cd $CWD/build/zip
 rm -rf $CWD/hyperloop-iphone-$VERSION.zip
-zip -q -r $CWD/hyperloop-iphone-$VERSION.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*
+zip -q -r $CWD/hyperloop-iphone-$VERSION.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc* --exclude *package-lock.json*
 
 echo "$CHECK Done packaging iOS module!\n"
 exit 0
