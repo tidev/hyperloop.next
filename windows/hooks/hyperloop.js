@@ -17,7 +17,8 @@ exports.cliVersion = '>=3.2';
 		ejs = require('ejs'),
 		path = require('path'),
 		spawn = require('child_process').spawn,
-		wrench = require('wrench');
+		wrench = require('wrench'),
+		babel_types = require('babel-types');
 
 	// State
 	var state = {};
@@ -78,10 +79,24 @@ exports.cliVersion = '>=3.2';
 				builder.native_types  || (builder.native_types  = {});
 				builder.native_events || (builder.native_events = {});
 
+				// Store relation between local variable name and class name
+				var native_specifiers = {};
+
+				// For typical require calls:
+				// Look for CallExpression with callee Identifier whose name property is "require"
+				//
+				// For imports like this: import MessageDialog from 'Windows.UI.Popups.MessageDialog';
+				// Look for ImportDeclaration whose 'source' property is a Literal with 'value' property holds the package name ('Windows.UI.Popups.MessageDialog')
+				// 'specifiers' property is an array holding multiple elements of type ImportSpecifier
+				// Each has an 'imported' and 'local' property is an Identifier whose 'name' is the imported class name ("MessageDialog")
+				// Variant on this may be: import { MessageDialog as MyLocalName } where 'imported' would be 'MessageDialog', 'local' would be 'MyLocalName'
+				//
+				// import 'module-name';
+				// This can be ignored in our case as nothing is imported locally, so basically it's like a require with no assign, imported only for running/side-effects.
 				traverse(ast, {
+					// ES5-style require calls
 					CallExpression: {
 						enter: function(path) {
-
 							// if we're calling require with one string literal argument...
 							// FIXME What if it is a requires, but not a string? What if it is a dynamically built string?
 							if (types.isIdentifier(path.node.callee, { name: 'require' }) &&
@@ -106,19 +121,38 @@ exports.cliVersion = '>=3.2';
 										types.isNewExpression(binding.path.node.init) && // and it's assigned from a 'new' expression
 										types.isIdentifier(binding.path.node.init.callee) // and the type is an identifier
 										) {
-									var ctor = path.scope.getBinding(binding.path.node.init.callee.name); // and it's the constructor variable
+									var detectedConstructorType = null;
+									var localname = binding.path.node.init.callee.name;
+									var ctor = path.scope.getBinding(localname); // and it's the constructor variable
 									if (ctor && ctor.path.node.init && ctor.path.node.init.arguments && ctor.path.node.init.arguments.length > 0) {
-										var detectedConstructorType = ctor.path.node.init.arguments[0].value; // record the type of the constructor
-										if (t_.hasWindowsAPI(detectedConstructorType)) {
-											var native_event = {
-												name: event_name,
-												type: detectedConstructorType,
-												signature: event_name + '_' + detectedConstructorType.replace(/\./g, '_')
-											};
-											builder.native_events[native_event.signature] = native_event;
-											logger.info('Detected native API event: ' + native_event.name + ' for ' + detectedConstructorType);
-										}
+										detectedConstructorType = ctor.path.node.init.arguments[0].value; // record the type of the constructor
+									} else if (native_specifiers[localname]) {
+										detectedConstructorType = native_specifiers[localname];	
 									}
+									if (detectedConstructorType != null && t_.hasWindowsAPI(detectedConstructorType)) {
+										var native_event = {
+											name: event_name,
+											type: detectedConstructorType,
+											signature: event_name + '_' + detectedConstructorType.replace(/\./g, '_')
+										};
+										builder.native_events[native_event.signature] = native_event;
+										logger.info('Detected native API event: ' + native_event.name + ' for ' + detectedConstructorType);
+									}
+								}
+							}
+						}
+					},
+					// ES6+-style imports
+					ImportDeclaration: function(p) {
+						const nodeSource = p.node.source;
+						if (nodeSource && babel_types.isStringLiteral(nodeSource)) {  // module name is a string literal
+							// Found an import that acts the same as a require...
+							let className = nodeSource.value;
+							if (t_.hasWindowsAPI(className)) {
+								for (let i = 0; i < p.node.specifiers.length; i++) {
+									logger.info("Detected native API reference: " + className);
+									builder.native_types[className] = {name: className};
+									native_specifiers[p.node.specifiers[i].local.name] = className;
 								}
 							}
 						}
