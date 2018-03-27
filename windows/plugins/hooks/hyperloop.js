@@ -1,9 +1,20 @@
+/**
+ * Hyperloop ® builder for Windows
+ * Copyright (c) 2018 by Appcelerator, Inc.
+ * All Rights Reserved. This library contains intellectual
+ * property protected by patents and/or patents pending.
+ *
+ *
+ * THIS IS A PLUGIN FOR "BUILDING HYPERLOOP MODULE" BINARY
+ * THIS IS NOT A PLUGIN HOOK FOR BUILDING TITANIUM APP!
+ */
 var spawn = require('child_process').spawn,
     async = require('async'),
     path = require('path'),
     fs   = require('fs'),
     ejs  = require('ejs'),
-    appc = require('node-appc');
+    appc = require('node-appc'),
+    wrench = require('wrench');
 
 function isVS2017(data) {
     if (data.windowsInfo && data.windowsInfo.selectedVisualStudio) {
@@ -81,10 +92,13 @@ exports.init = function(logger, config, cli, nodeappc) {
             });
         });
 
-        var sharedInitHook = path.join(data.projectDir, '..', 'hooks', 'hyperloop-init.js');
-        if (fs.existsSync(sharedInitHook)) {
-          fs.createReadStream(sharedInitHook).pipe(fs.createWriteStream(path.join(data.projectDir, 'hooks', 'hyperloop-init.js')));
-        }
+        // Copy hooks
+        var hooksFrom = path.join(data.projectDir, 'hooks'),
+            hooksTo   = path.join(data.projectDir, 'build', 'hyperloop', data.manifest.version, 'hooks')
+        fs.existsSync(hooksTo) || wrench.mkdirSyncRecursive(hooksTo);
+        wrench.copyDirSyncRecursive(hooksFrom, hooksTo, {
+            forceDelete: true
+        });
 
         callback(null, data);
     });
