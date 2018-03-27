@@ -325,19 +325,19 @@ function gatherFrameworksFromSearchPaths(frameworkSearchPaths, podsRoot, podsCon
 		frameworkSearchPath = frameworkSearchPath.replace(/\$(\{)?(PODS_CONFIGURATION_BUILD_DIR)(\})?/, podsConfigBuildDir);
 		frameworkSearchPath = frameworkSearchPath.replace(/"/g, '');
 		if (!fs.existsSync(frameworkSearchPath)) {
-			return Promise.resolve(new Map());
+			return Promise.resolve([]);
 		}
 
 		const frameworksEntries = fs.readdirSync(frameworkSearchPath).filter(entryName => /\.framework$/.test(entryName));
 		const frameworks = frameworksEntries.map(searchPathEntry => {
 			return new CocoapodFramework(path.join(frameworkSearchPath, searchPathEntry));
 		});
-		return Promise.all(frameworks);
+		return Promise.resolve(frameworks);
 	});
-	return Promise.all(promises).then(arrayOfFrameworks => {
+	return Promise.all(promises).then(arrayOfArrays => {
 		const modules = new Map();
-		arrayOfFrameworks.forEach(framework => {
-			modules.set(framework.name, framework);
+		arrayOfArrays.forEach(arrayOfFrameworks => {
+			arrayOfFrameworks.forEach(framework => modules.set(framework.name, framework));
 		});
 		return Promise.resolve(modules);
 	});

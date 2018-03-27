@@ -792,6 +792,7 @@ exports.getPrimitiveValue = getPrimitiveValue;
 exports.getMethodTableForMigration = getMethodTableForMigration;
 exports.getResultWrapper = getResultWrapper;
 exports.getStructNameFromEncoding = getStructNameFromEncoding;
+exports.cleanupClassName = cleanupClassName; // used by custom.js
 
 Object.defineProperty(exports, 'logger', {
 	get: function () {

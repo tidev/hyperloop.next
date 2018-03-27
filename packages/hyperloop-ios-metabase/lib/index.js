@@ -11,7 +11,8 @@ exports.userFrameworks = require('./user_frameworks').getUserFrameworks;
 exports.thirdPartyFrameworks = require('./third_party_frameworks').getThirdPartyFrameworks;
 exports.SDKEnvironment = require('./sdk').SDKEnvironment;
 exports.swift = {
-	getVersion: require('./swift').getVersion
+	getVersion: require('./swift').getVersion,
+	generateSwiftMangledClassName: require('./swift').generateSwiftMangledClassName
 };
 exports.cocoapods = require('./cocoapods');
 exports.resources = require('./resources');

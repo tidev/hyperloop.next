@@ -14,7 +14,7 @@ const hm = require('hyperloop-metabase');
  * @return {Promise<object>}
  */
 function generateMetabase(sdk, frameworkMap, usedFrameworkNames) {
-	return hm.unifiedMetabase(sdk, frameworkMap, filteredFrameworks);
+	return hm.unifiedMetabase(sdk, frameworkMap, usedFrameworkNames);
 }
 
 exports.generateMetabase = generateMetabase;
