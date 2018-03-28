@@ -440,20 +440,21 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 			if (!value.value) {
 				return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + name + ' encoding:@encode(void *)];';
 			}
+			let structName = value.value;
 			// How do we handle a case where the value is "struct CGAffineTransform"?
 			if (value.value.indexOf('struct ') === 0) {
-				const structName = value.value.substring(7).replace(/^_+/, '').trim();
-				const struct = json.structs[structName];
-				if (!struct) {
-					throw new Error('Unable to find struct in metabase: ' + structName);
-				}
-				return getObjCReturnResult(json, {
-					filename: value.filename,
-					framework: value.framework,
-					type: 'struct',
-					value: structName
-				}, name, returns, asPointer);
+				structName = value.value.substring(7).replace(/^_+/, '').trim();
 			}
+			const struct = json.structs[structName];
+			if (!struct) {
+				throw new Error('Unable to find struct in metabase: ' + structName);
+			}
+			return getObjCReturnResult(json, {
+				filename: value.filename,
+				framework: value.framework,
+				type: 'struct',
+				value: structName
+			}, name, returns, asPointer);
 			break;
 		}
 		case 'id':

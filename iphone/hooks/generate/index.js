@@ -236,6 +236,24 @@ function generateFromJSON(name, json, state, callback, includes) {
 		json.classes.NSObject.framework = 'Foundation';
 		json.protocols.NSObject.framework = 'Foundation';
 
+		// For some reason Foundation framework makes reference to
+		// ObjectType and KeyType in their APIs and we *think* it's a typedef, but it's not
+		// So we hack it here to add typedefs for these that basically point to NSObject
+		// Note that the online docs mention these are "AnyObject"
+		// I would prefer to fix the metabase generation binary to handle this if we can...
+		json.typedefs.ObjectType = {
+			encoding: '@',
+			framework: 'Foundation',
+			type: 'objc_pointer',
+			value: 'NSObject *'
+		};
+		json.typedefs.KeyType = {
+			encoding: '@',
+			framework: 'Foundation',
+			type: 'objc_pointer',
+			value: 'NSObject *'
+		};
+
 		// create an inverse map of custom classfiles to framework
 		const custom_frameworks = {};
 		if (includes) {
