@@ -250,7 +250,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						echo 'Building Windows module...'
 						// FIXME How the hell is Windows OK with these shell commands?
 						dir('windows') {
-							sh "sed -i '' 's/VERSION/${packageVersion}/g' ./manifest"
+							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
 							// FIXME We should have a module clean command!
 							// manually clean
 							sh 'rm -rf build/'
