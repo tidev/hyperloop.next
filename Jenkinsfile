@@ -48,6 +48,7 @@ stage('Build') {
 	parallel(
 		'android': {
 			node('android-sdk && android-ndk && osx') { // FIXME Support linux or windows!
+				sh 'rm -rf android'
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
@@ -147,6 +148,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 		},
 		'iOS': {
 			node('osx && xcode-9') { // need xcode 9 to match expected metabase values for ios sdk
+				sh 'rm -rf packages'
+				sh 'rm -rf iphone'
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
@@ -156,7 +159,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 
 					echo 'Testing iOS metabase generator...'
 					dir('packages/hyperloop-ios-metabase') {
-						sh 'npm install' // TODO Use npm ci?
+						sh 'npm ci'
 						try {
 							sh 'npm test'
 						} finally {
@@ -167,8 +170,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							if (fileExists('coverage/cobertura-coverage.xml')) {
 								step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
 							}
-							sh 'npm prune --production'
 						}
+						sh 'npm ci --production'
 					}
 
 
@@ -177,7 +180,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						// Run hook tests
 						sh "sed -i '' 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
 						dir('hooks') {
-							sh 'npm install' // TODO Use npm ci?
+							sh 'npm ci'
 							try {
 								sh 'npm test'
 							} finally {
@@ -188,8 +191,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 								if (fileExists('coverage/cobertura-coverage.xml')) {
 									step([$class: 'CoberturaPublisher', autoUpdateHealth: false, autoUpdateStability: false, coberturaReportFile: 'coverage/cobertura-coverage.xml', failUnhealthy: false, failUnstable: false, maxNumberOfBuilds: 0, onlyStable: false, sourceEncoding: 'ASCII', zoomCoverageChart: false])
 								}
-								sh 'npm prune --production'
 							}
+							sh 'npm ci --production'
 						} // dir('hooks')
 
 						echo 'Building iOS module...'
