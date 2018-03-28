@@ -4,7 +4,7 @@
  */
 var fs = require('fs'),
 	util = require('util'),
-	utillib = require('./generate/util'),
+	utillib = require('./util'),
 	spawn = require('child_process').spawn;
 
 /**

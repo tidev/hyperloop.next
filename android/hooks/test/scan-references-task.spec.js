@@ -17,7 +17,7 @@ const noopBunyanLogger = {
 let task = null;
 let testReferenceMetadata = {
 	usedClasses: [ 'android.app.Activity' ],
-	replacedContent: 'require(\'hyperloop/android.app.Activity\');'
+	replacedContent: 'require("hyperloop/android.app.Activity");'
 };
 
 chai.use(chaiAsPromised);
@@ -31,11 +31,14 @@ describe('ScanReferencesTask', () => {
 			},
 			'input': {
 				'activity-type.js': 'require("android.app.Activity");',
+				'activity-type-import.js': 'import Activity from "android.app.Activity";',
 				'context-type.js': 'require("android.content.Context");',
+				'context-type-import.js': 'import * as Context from "android.content.Context";',
 				'non-existing-type.js': 'require("does.not.exists");',
 				'package-require.js': 'require("android.app.*");',
+				'package-import.js': 'import { Activity } from "android.app.*";',
 				'non-existing-package.js': 'require("does.not.exists.*");',
-				'nested-type.js': 'require("hyperloop.test.NestedClass");'
+				'nested-type.js': 'require("hyperloop.test.NestedClass");',
 			},
 			'output': {
 				'references.json': JSON.stringify({
@@ -122,7 +125,7 @@ describe('ScanReferencesTask', () => {
 			task.addInputDirectory('input');
 
 			let scanFileExpectations = sinon.mock(task).expects('scanFileForHyperloopRequires');
-			scanFileExpectations.exactly(6);
+			scanFileExpectations.exactly(9);
 			return expect(task.doFullTaskRun().then(() => {
 				scanFileExpectations.verify();
 			})).eventually.be.fulfilled;
@@ -233,7 +236,7 @@ describe('ScanReferencesTask', () => {
 			expect(task.references).to.be.a('map').that.has.key(pathAndFilename);
 			expect(task.references.get(pathAndFilename)).to.be.deep.equal({
 				usedClasses: [ 'android.app.Activity' ],
-				replacedContent: 'require(\'hyperloop/android.app.Activity\');'
+				replacedContent: 'require("hyperloop/android.app.Activity");'
 			});
 		});
 	});
@@ -275,7 +278,17 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('require(\'hyperloop/android.app\');');
+			expect(result.replacedContent).to.be.equal('require("hyperloop/android.app");');
+		});
+
+		it('should find and replace imports of native packages', () => {
+			let pathAndFilename = path.join('input', 'package-import.js');
+			let result = task.extractAndReplaceHyperloopRequires(pathAndFilename);
+			expect(result).to.be.not.null;
+			expect(result.usedClasses).to.be.an('array');
+			expect(result.usedClasses).to.have.lengthOf(1);
+			expect(result.usedClasses).to.include('android.app.Activity');
+			expect(result.replacedContent).to.be.equal('import { Activity } from "hyperloop/android.app";');
 		});
 
 		it('should ignore requires to non-existing native packages', () => {
@@ -292,7 +305,27 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('require(\'hyperloop/android.app.Activity\');');
+			expect(result.replacedContent).to.be.equal('require("hyperloop/android.app.Activity");');
+		});
+
+		it('should find and replace imports to native types', () => {
+			let pathAndFilename = path.join('input', 'activity-type-import.js');
+			let result = task.extractAndReplaceHyperloopRequires(pathAndFilename);
+			expect(result).to.be.not.null;
+			expect(result.usedClasses).to.be.an('array');
+			expect(result.usedClasses).to.have.lengthOf(1);
+			expect(result.usedClasses).to.include('android.app.Activity');
+			expect(result.replacedContent).to.be.equal('import Activity from "hyperloop/android.app.Activity";');
+		});
+
+		it('should find and replace aliased imports to native types', () => {
+			let pathAndFilename = path.join('input', 'context-type-import.js');
+			let result = task.extractAndReplaceHyperloopRequires(pathAndFilename);
+			expect(result).to.be.not.null;
+			expect(result.usedClasses).to.be.an('array');
+			expect(result.usedClasses).to.have.lengthOf(1);
+			expect(result.usedClasses).to.include('android.content.Context');
+			expect(result.replacedContent).to.be.equal('import * as Context from "hyperloop/android.content.Context";');
 		});
 
 		it('should ignore requires to non-existing native types ', () => {
@@ -309,17 +342,18 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('hyperloop.test$NestedClass');
-			expect(result.replacedContent).to.be.equal('require(\'hyperloop/hyperloop.test$NestedClass\');');
+			expect(result.replacedContent).to.be.equal('require("hyperloop/hyperloop.test$NestedClass");');
 		});
 	});
 
-	describe('replaceAll', () => {
-		it('should replace all occurrences of a string', () => {
-			let needle = 'aa';
-			let haystack = 'aaabcbaabea';
-			let replaceWith = 'z';
-			let replacedString = 'zabcbzbea';
-			expect(task.replaceAll(haystack, needle, replaceWith)).to.be.equal(replacedString);
-		});
-	});
+	// TODO Add tests for detectUsedClasses and validateTypeName?
+	// describe('replaceAll', () => {
+	// 	it('should replace all occurrences of a string', () => {
+	// 		let needle = 'aa';
+	// 		let haystack = 'aaabcbaabea';
+	// 		let replaceWith = 'z';
+	// 		let replacedString = 'zabcbzbea';
+	// 		expect(task.replaceAll(haystack, needle, replaceWith)).to.be.equal(replacedString);
+	// 	});
+	// });
 });

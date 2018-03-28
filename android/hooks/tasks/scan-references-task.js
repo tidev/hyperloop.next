@@ -3,6 +3,10 @@
 const fs =  require('fs-extra');
 const IncrementalFileTask = require('appc-tasks').IncrementalFileTask;
 const path = require('path');
+const babylon = require('babylon');
+const t = require('babel-types');
+const generate = require('babel-generator').default;
+const traverse = require('babel-traverse').default;
 
 const REFERENCES_FILENAME = 'references.json';
 
@@ -208,56 +212,118 @@ class ScanReferencesTask extends IncrementalFileTask {
 			return null;
 		}
 
-		let originalSource = fs.readFileSync(file, 'UTF-8');
-		let modifiedSource = originalSource;
+		const originalSource = fs.readFileSync(file, 'UTF-8');
 		let usedClasses = [];
-		const requireRegex = /require\s*\(\s*[\\"']+([\w_/-\\.\\*]+)[\\"']+\s*\)/ig;
+
+		// For typical require calls:
+		// Look for CallExpression with callee Identifier whose name property is "require"
+		//
+		// For imports like this: import { AlertDialog, Builder, Activity } from 'android.app.*';
+		// Look for ImportDeclaration whose 'source' property is a Literal with 'value' property holds the package name ('android.app.*')
+		// 'specifiers' property is an array holding multiple elements of type ImportSpecifier
+		// Each has an 'imported' and 'local' property is an Identifier whose 'name' is the imported class name ("AlertDialog", "Builder", "Activity")
+		// Variant on this may be: import { AlertDialog as MyLocalName } where 'imported' would be 'AlertDialog', 'local' would be 'MyLocalName'
+		//
+		// import * as OnClickListener from "android.content.DialogInterface.OnClickListener";
+		// Look for ImportDeclaration whose 'source' property is a Literal with 'value' property holds the full class name ("android.content.DialogInterface.OnClickListener")
+		// specifiers property is an array holding one element: an ImportNamespaceSpecifier whose 'local' property is an Identifier whose 'name' is the import class name ("OnClickListener")
+		//
+		// import OnClickListener from "android.content.DialogInterface.OnClickListener";
+		// Look for ImportDeclaration whose 'source' property is a Literal with value property holds the full class name ("android.content.DialogInterface.OnClickListener")
+		// specifiers property is an array holding one element: an ImportDefaultSpecifier whose 'local' property is an Identifier whose 'name' is the import class name ("OnClickListener")
+		//
+		// import 'module-name';
+		// This can be ignored in our case as nothing is imported locally, so basically it's like a require with no assign, imported only for running/side-effects.
+
+		const classOrPackageRegexp = /[\w_/-\\.\\*]+/ig;
 		this._logger.trace('Searching for hyperloop requires in: ' + file);
-		let requireMatch;
-		while ((requireMatch = requireRegex.exec(originalSource)) !== null) {
-			let requireStatement = requireMatch[0];
-			let className = requireMatch[1];
+		const logger = this.logger;
+		const self = this;
+		const HyperloopVisitor = {
+			// ES5-style require calls
+			CallExpression: function(p) {
+				const theString = p.node.arguments[0];
+				let requireMatch;
+				if (p.get('callee').isIdentifier({name: 'require'}) && // Is this a require call?
+					theString && t.isStringLiteral(theString) &&     // Is the 1st param a literal string?
+					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null // Is it a hyperloop require?
+				) {
+					// Found a valid require...
+					const className = requireMatch[0];
 
-			// Is this a Java type we found in the JARs/APIs?
-			this._logger.trace('Checking require for: ' + className);
+					// Is this a Java type we found in the JARs/APIs?
+					logger.trace('Checking require for: ' + className);
 
-			// Look for requires using wildcard package names and assume all types under that namespace!
-			if (className.indexOf('.*') == className.length - 2) {
-				const packageRegexp = new RegExp('^' + className.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
-				let validPackage = false;
-				// Check that it's a valid package name and search for all the classes directly under that package!
-				for (let mClass in this.metabase.classes) {
-					if (mClass.match(packageRegexp)) {
-						usedClasses.push(mClass);
-						validPackage = true;
+					// Look for requires using wildcard package names and assume all types under that namespace!
+					if (className.indexOf('.*') == className.length - 2) {
+						const used = self.detectUsedClasses(className);
+						if (used.length > 0) {
+							usedClasses = usedClasses.concat(used); // add to our full listing
+							const packageName = className.slice(0, className.length - 2); // drop the .* ending
+							// Replace required with hacked version!
+							p.replaceWith(
+								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + packageName)])
+							);
+						}
+					} else {
+						// single type
+						const validatedClassName = self.validateTypeName(className);
+						if (validatedClassName) {
+							// Looks like it's a Java type, so let's hack it and add it to our list!
+							usedClasses.push(validatedClassName);
+							p.replaceWith(
+								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + validatedClassName)])
+							);
+						}
 					}
 				}
-				if (validPackage) {
-					const ref = 'hyperloop/' + className.slice(0, className.length - 2); // drop the .* ending
-					let str = 'require(\'' + ref + '\')';
-					modifiedSource = this.replaceAll(modifiedSource, requireStatement, str);
-				}
-			} else {
-				// single type
-				let lastIndex;
-				let type = this.metabase.classes[className];
-				if (!type) {
-					// fallback for using dot notation to refer to nested class
-					lastIndex = className.lastIndexOf('.');
-					className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
-					type = this.metabase.classes[className];
-					if (!type) {
-						continue;
+			},
+			// ES6+-style imports
+			ImportDeclaration: function(p) {
+				const theString = p.node.source;
+				let requireMatch;
+				if (theString && t.isStringLiteral(theString) &&   // module name is a string literal
+					(requireMatch = theString.value.match(classOrPackageRegexp)) !== null // Is it a hyperloop require?
+				) {
+					// Found an import that acts the same as a require...
+					const className = requireMatch[0];
+					// Is this a Java type we found in the JARs/APIs?
+					logger.trace('Checking require for: ' + className);
+
+					// Look for requires using wildcard package names and assume all types under that namespace!
+					if (className.indexOf('.*') == className.length - 2) {
+						const used = self.detectUsedClasses(className); // TODO pass along the specifiers to narrow the used class listing!
+						if (used.length > 0) {
+							usedClasses = usedClasses.concat(used); // add to our full listing
+							// FIXME: Validate that the types listed in the specifiers exist underneath the package!
+							// If we pass in the specifiers, we can probably just check that the returned array length === the specifiers length
+							const packageName = className.slice(0, className.length - 2); // drop the .* ending
+							// Replace required with hacked version!
+							p.replaceWith(
+								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + packageName))
+							);
+						}
+					} else {
+						// single type
+						const validatedClassName = self.validateTypeName(className);
+						if (validatedClassName) { // FIXME: If name is invalid/can't be found, should we raise an error?
+							usedClasses.push(validatedClassName);
+							// Looks like it's a Java type, so let's hack it and add it to our list!
+							// replace the require to point to our generated file path
+							// Replace required with hacked version!
+							p.replaceWith(
+								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + validatedClassName))
+							);
+						}
 					}
 				}
-				// Looks like it's a Java type, so let's hack it and add it to our list!
-				// replace the require to point to our generated file path
-				const ref = 'hyperloop/' + className;
-				let str = 'require(\'' + ref + '\')';
-				modifiedSource = this.replaceAll(modifiedSource, requireStatement, str);
-				usedClasses.push(className);
 			}
-		}
+		};
+
+		// Now traverse the AST and generate modified source
+		const ast = babylon.parse(originalSource, { sourceFilename: file, sourceType: 'module' });
+		traverse(ast, HyperloopVisitor);
+		const modifiedSource = generate(ast, {}).code;
 
 		return {
 			usedClasses: usedClasses,
@@ -266,25 +332,46 @@ class ScanReferencesTask extends IncrementalFileTask {
 	}
 
 	/**
-	 * Replaces all occurrences of needle in haystack
-	 *
-	 * @param {String} haystack The string to search in
-	 * @param {String} needle String that should be replaced
-	 * @param {String} replaceStr String used to replace all occurrences of needle
-	 * @return {String} New string which has all occurrences of needle replaced
+	 * Given a java package import/require, returns the array of all types underneath that package.
+	 * Returns empty array is there are no types (which means the package import is invalid).
+	 * @param  {String} packageName The java package name
+	 * @return {String[]}         Array of type names living under the package.
 	 */
-	replaceAll(haystack, needle, replaceStr) {
-		const length = needle.length;
-		let newBuffer = haystack;
-		let index = -1;
-
-		while ((index = newBuffer.indexOf(needle)) >= 0) {
-			const before = newBuffer.substring(0, index);
-			const after = newBuffer.substring(index + length);
-			newBuffer = before + replaceStr + after;
+	detectUsedClasses(packageName) {
+		const usedClasses = [];
+		// Look for wildcard package names and assume all types under that namespace!
+		const packageRegexp = new RegExp('^' + packageName.replace('.', '\\.').replace('*', '[A-Z]+[a-zA-Z0-9]+') + '$');
+		// Search for all the classes directly under that package!
+		for (let mClass in this.metabase.classes) {
+			if (mClass.match(packageRegexp)) {
+				usedClasses.push(mClass);
+			}
 		}
 
-		return newBuffer;
+		return usedClasses;
+	}
+
+	/**
+	 * Given a possible single type name, tries to look up the name used by hyperloop and return it.
+	 * In most cases they're the same. If it's a nested class the name may change slightly.
+	 * If the type can't be foudn in the metabase, we return null.
+	 * @param  {String} className origin type name
+	 * @return {String|null}      name used by hyperloop internally.
+	 */
+	validateTypeName(className) {
+		// single type
+		let type = this.metabase.classes[className];
+		if (!type) {
+			// fallback for using dot notation to refer to nested class
+			const lastIndex = className.lastIndexOf('.');
+			className = className.slice(0, lastIndex) + '$' + className.slice(lastIndex + 1);
+			type = this.metabase.classes[className];
+			if (!type) {
+				return null;
+			}
+		}
+		// Return valid type name
+		return className;
 	}
 
 }

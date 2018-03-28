@@ -1,10 +1,11 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var util = require('./util');
+'use strict';
+const util = require('./util');
 
-function generateStructField (state, json, prop, index) {
+function generateStructField(state, json, prop, index) {
 	var result = {name:prop.name};
 	var sep = util.repeat('\t', 4);
 	result.getter = '\t' + util.generateFieldGetter(state, json, prop, index);
@@ -12,7 +13,7 @@ function generateStructField (state, json, prop, index) {
 	return result;
 }
 
-function makeStruct (json, struct) {
+function makeStruct(json, struct) {
 	var entry = {
 		class: {
 			name: struct.name,
@@ -60,7 +61,7 @@ function makeStruct (json, struct) {
 /**
  * Generates the source template data for a struct file
  */
-function generate (json, struct) {
+function generate(json, struct) {
 	return makeStruct(json, struct);
 }
 

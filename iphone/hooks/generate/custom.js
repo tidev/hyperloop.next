@@ -1,25 +1,27 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var acorn = require('acorn'),
-	fs = require('fs'),
-	path = require('path'),
-	util = require('util'),
-	utillib = require('./util'),
-	walk = require('walk-ast'),
-	escodegen = require('escodegen'),
-	classgen = require('./class');
+'use strict';
+const fs = require('fs');
+const path = require('path');
+const util = require('util');
+const utillib = require('./util');
+const classgen = require('./class');
+const babylon = require('babylon');
+const t = require('babel-types');
+const generate = require('babel-generator').default;
+const traverse = require('babel-traverse').default;
 
-function Parser () {
+function Parser() {
 }
 
-function ParserState (state, code) {
+function ParserState(state, code) {
 	this.state = state || {};
 	this.code = code || '';
 }
 
-function JSParseError (message, node) {
+function JSParseError(message, node) {
 	this.line = (node.loc  || node.location).start.line;
 	this.column = (node.loc || node.location).start.column;
 	this.filename = (node.loc || node.location).filename;
@@ -63,7 +65,7 @@ ParserState.prototype.getReferences = function () {
 	return this.state.References;
 };
 
-function count (str, find) {
+function count(str, find) {
 	var re = new RegExp(find, 'g');
 	var found = str.match(re);
 	return found && found.length || 0;
@@ -82,7 +84,7 @@ function decodeStruct(str, offset) {
 	return str;
 }
 
-function getEncoding (state, metabase, imports, str, index) {
+function getEncoding(state, metabase, imports, str, index) {
 	var ch = str.charAt(index),
 		skip,
 		enc,
@@ -222,7 +224,7 @@ function getEncoding (state, metabase, imports, str, index) {
 	throw new Error("unknown encoding " + str + ' start at index ' + index);
 }
 
-function parseEncoding (state, metabase, imports, encoding) {
+function parseEncoding(state, metabase, imports, encoding) {
 	var i = encoding.indexOf('@:');
 	var rt = encoding.substring(0, i);
 	var argtypes = encoding.substring(i + 2);
@@ -238,11 +240,12 @@ function parseEncoding (state, metabase, imports, encoding) {
 	};
 }
 
-function generateIdentifier (selector, instance, cls) {
+function generateIdentifier(selector, instance, cls) {
 	return utillib.generateSafeSymbol(cls.name + '_' + selector + '_' + (instance ? '1': '0'));
 }
 
-function generateMethod (state, metabase, imports, cls, classDef, selector, encoding, instance, body) {
+// FIXME: Move this out to a template?
+function generateMethod(state, metabase, imports, cls, classDef, selector, encoding, instance, body) {
 	var details = parseEncoding(state, metabase, imports, encoding),
 		argnames = selector.split(':'),
 		code = [],
@@ -591,92 +594,83 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	var ast = acorn.parse(buf, { ecmaVersion: 6, locations: true }),
-		mutated,
-		prop;
+	const ast = babylon.parse(buf, { sourceFilename: fn, sourceType: 'module' });
+	let mutated = false;
+	const ASTWalker = {
+		ExpressionStatement: function(p) {
+			p.node.expression && addSymbolReference(state, p.node.expression, 'getter');
+		},
+		CallExpression: function(p) {
+			// do symbol detection first
+			addSymbolReference(state, p.node.callee, 'getter');
+			if (p.node.callee.property) {
+				const prop = p.node.callee.property.name;
+				isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+			}
+			if (p.node.arguments && p.node.arguments.length) {
+				p.node.arguments.forEach(function (arg) {
+					addSymbolReference(state, arg, 'getter');
+				});
+			}
+			if (p.node.callee.name) {
+				const prop = p.node.callee.name;
+				isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+			}
+			addMigrationHelpIfNeeded(state, p.node);
 
-	walk(ast, function (node) {
-		// console.log(node.type);
-		node.loc.filename = fn;
-
-		// do symbol detection first
-		switch (node.type) {
-			case 'ExpressionStatement': {
-				node.expression && addSymbolReference(state, node.expression, 'getter');
-				break;
-			}
-			case 'CallExpression': {
-				addSymbolReference(state, node.callee, 'getter');
-				if (node.callee.property) {
-					prop = node.callee.property.name;
-					isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+			if (isHyperloopMethodCall(p.node, 'defineClass')) {
+				if (p.parent.type !== 'VariableDeclaration' && p.parent.type !== 'VariableDeclarator') {
+					throw new JSParseError('Hyperloop.defineClass must return a class definition into a variable', p.node);
 				}
-				if (node.arguments && node.arguments.length) {
-					node.arguments.forEach(function (arg) {
-						addSymbolReference(state, arg, 'getter');
-					});
+				var classSpec = makeHyperloopClassFromCall(state, p);
+				if (classSpec.name in state.classesByName) {
+					throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same name "' + classSpec.name + '"', p.node);
 				}
-				if (node.callee.name) {
-					prop = node.callee.name;
-					isValidSymbol(prop) && (state.References.functions[prop] = (state.References.functions[prop] || 0) + 1);
+				if (classSpec.variable in state.classesByVariable) {
+					throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same variable name "' + classSpec.variable + '"', p.node);
 				}
-				addMigrationHelpIfNeeded(state, node);
-				break;
+				state.classesByName[classSpec.name] = classSpec;
+				state.classesByVariable[classSpec.variable] = classSpec;
+			} else if (isHyperloopAddMethodCall(p.node, state)) {
+				mutated = true;
+				addHyperloopMethodToClass(p, state);
 			}
-			case 'VariableDeclaration': {
-				// console.log(util.inspect(node, {colors:true, depth:10}));
-				if (node.declarations && node.declarations.length) {
-					node.declarations.forEach(function (decl) {
-						decl.init && addSymbolReference(state, decl.init, 'getter');
-					});
-				}
-				break;
+		},
+		VariableDeclaration: function(p) {
+			if (p.node.declarations && p.node.declarations.length) {
+				p.node.declarations.forEach(function (decl) {
+					decl.init && addSymbolReference(state, decl.init, 'getter');
+				});
 			}
-			case 'MemberExpression': {
-				if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(node.parentNode.type)) {
-					addSymbolReference(state, node, 'getter');
-					addMigrationHelpIfNeeded(state, node);
-				}
-				break;
+		},
+		MemberExpression: function(p) {
+			if (!/^(AssignmentExpression|CallExpression|ExpressionStatement|VariableDeclaration)$/.test(p.parent.type)) {
+				addSymbolReference(state, p.node, 'getter');
+				addMigrationHelpIfNeeded(state, p.node);
 			}
-			case 'AssignmentExpression': {
-				addSymbolReference(state, node.left, 'setter');
-				addSymbolReference(state, node.right, 'getter');
-				break;
+		},
+		AssignmentExpression: function(p) {
+			addSymbolReference(state, p.node.left, 'setter');
+			addSymbolReference(state, p.node.right, 'getter');
+		},
+		Identifier: function(p) {
+			if (isHyperloopReferenced(p, state)) {
+				// just record
 			}
-			default: break;
 		}
-		if (isHyperloopMethodCall(node, 'defineClass')) {
-			if (node.parentNode.type !== 'VariableDeclaration') {
-				throw new JSParseError('Hyperloop.defineClass must return a class definition into a variable', node);
-			}
-			var classSpec = makeHyperloopClassFromCall(state, node);
-			if (classSpec.name in state.classesByName) {
-				throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same name "' + classSpec.name + '"', node);
-			}
-			if (classSpec.variable in state.classesByVariable) {
-				throw new JSParseError('Hyperloop.defineClass cannot define multiple classes with the same variable name "' + classSpec.variable + '"', node);
-			}
-			state.classesByName[classSpec.name] = classSpec;
-			state.classesByVariable[classSpec.variable] = classSpec;
-		} else if (isHyperloopAddMethodCall(node, state)) {
-			mutated = true;
-			return addHyperloopMethodToClass(node, state);
-		} else if (isHyperloopReferenced(node, state)) {
-			// just record
-		}
-	});
+	};
+	traverse(ast, ASTWalker);
 
 	var code;
 	// re-generate if it changed, otherwise we can skip and use original content
 	if (mutated) {
-		code = escodegen.generate(ast);
+		code = generate(ast, {}).code;
 	}
 
 	return new ParserState(state, code);
 };
 
-function isHyperloopMethodCall (node, method) {
+function isHyperloopMethodCall(node, method) {
 	return node &&
 		node.type === 'CallExpression' &&
 		node.callee &&
@@ -689,7 +683,7 @@ function isHyperloopMethodCall (node, method) {
 		node.callee.property.name === method;
 }
 
-function isHyperloopAddMethodCall (node, state) {
+function isHyperloopAddMethodCall(node, state) {
 	return node &&
 		node.type === 'CallExpression' &&
 		node.callee &&
@@ -702,16 +696,30 @@ function isHyperloopAddMethodCall (node, state) {
 		node.callee.object.name in state.classesByVariable;
 }
 
-function isHyperloopReferenced (node, state) {
+/**
+ * [isHyperloopReferenced description]
+ * @param  {Object}  p  Babylon AST node path
+ * @param  {[type]}  state [description]
+ * @return {Boolean}       [description]
+ */
+function isHyperloopReferenced(p, state) {
+	const node = p.node;
 	if (node.type === 'Identifier' && node.name in state.classesByVariable) {
-		if (!isHyperloopAddMethodCall(node.parentNode && node.parentNode.parentNode, state)) {
+		if (!isHyperloopAddMethodCall(p.parent && p.parentPath.parent, state)) {
 			var classDef = state.classesByVariable[node.name];
 			state.referencedClasses[classDef.name] = (state.referencedClasses[classDef.name] || 0) + 1;
 		}
 	}
 }
 
-function findVariableDefinition (program, name, def) {
+/**
+ * [findVariableDefinition description]
+ * @param  {Object} program Babylon AST node for the program/file
+ * @param  {String} name    variable name
+ * @param  {String} def     default value
+ * @return {String}         [description]
+ */
+function findVariableDefinition(program, name, def) {
 	var body = program.body;
 	for (var c = 0; c < body.length; c++) {
 		var node = body[c];
@@ -730,10 +738,22 @@ function findVariableDefinition (program, name, def) {
 	throw new JSParseError('could not find variable "' + name + '"', program);
 }
 
-function toJSObject (ref, node, def) {
+/**
+ * [toJSObject description]
+ * @param  {Object} ref  Babylon AST node for program/file
+ * @param  {Object} node Babylon AST node
+ * @param  {String|Object|Number} def default value
+ * @return {String|Object|Number}      [description]
+ */
+function toJSObject(ref, node, def) {
 	if (node) {
 		switch (node.type) {
-			case 'Literal': {
+			case 'Literal': // ESTree
+			case 'StringLiteral': // Babylon replacements
+			case 'NumericLiteral':
+			case 'BooleanLiteral':
+			case 'NullLiteral':
+			case 'RegExpLiteral': {
 				return node.value;
 			}
 			case 'ArrayExpression': {
@@ -768,7 +788,7 @@ function toJSObject (ref, node, def) {
 						return !+right;
 					}
 				}
-				return eval (op + right);
+				return eval(op + right);
 			}
 		}
 		throw new JSParseError("Not sure what to do with this node: " + node.type, node);
@@ -781,25 +801,36 @@ function toJSObject (ref, node, def) {
  * example call:
  *
  * var MyUIView = Hyperloop.defineClass('MyUIView', 'UIView', ['Foo']);
+ * @param {Object} state
+ * @param {Object} p - Babylon Path: https://github.com/thejameskyle/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-paths
  */
-function makeHyperloopClassFromCall (state, node) {
-	var classSpec = {};
+function makeHyperloopClassFromCall(state, p) {
+	const node = p.node;
 	if (node.arguments.length < 1) {
 		throw new JSParseError('Hyperloop.defineClass requires at least 1 argument "className"', node);
 	}
-	var program = findProgramNode(node);
+
+	const program = findProgramNode(p);
+
+	const classSpec = {};
 	classSpec.name = toJSObject(program, node.arguments[0]);
 	classSpec.extends = toJSObject(program, node.arguments[1], 'NSObject');
 	classSpec.implements = toJSObject(program, node.arguments[2]);
-	var declarationNode = null;
-	node.parentNode.declarations.forEach(function(declNode) {
-		if (declNode.init === node) {
-			declarationNode = declNode;
-		}
-	});
+
+	let declarationNode = null;
+	if (p.parent.type === 'VariableDeclarator') {
+		declarationNode = p.parent;
+	} else { // VariableDeclaration is parent
+		p.parent.declarations.forEach(function(declNode) {
+			if (declNode.init === node) {
+				declarationNode = declNode;
+			}
+		});
+	}
 	if (declarationNode === null) {
 		throw new JSParseError('Unable determine designated variable for Hyperloop.defineClass call.');
 	}
+
 	classSpec.variable = declarationNode.id.name;
 	classSpec.location = node.loc;
 	classSpec.importClasses = {};
@@ -818,15 +849,19 @@ function makeHyperloopClassFromCall (state, node) {
 	return classSpec;
 }
 
-function findProgramNode (node) {
-	var parent = node;
-	while (parent && parent.type !== 'Program') {
-		parent = parent.parentNode;
-	}
-	return parent;
+/**
+ * [findProgramNode description]
+ * @param  {Object} nodePath Babylon AST path for a given node
+ * @return {Node}          Node for the Program
+ */
+function findProgramNode(nodePath) {
+	const programPath = nodePath.findParent(function(p) {
+		return p.isProgram();
+	});
+	return programPath.node;
 }
 
-function encodeFriendlyType (type, imports) {
+function encodeFriendlyType(type, imports) {
 	switch (type) {
 		case 'long': return 'l';
 		case 'int': return 'i';
@@ -864,14 +899,20 @@ function encodeFriendlyType (type, imports) {
 	}
 }
 
-function addHyperloopMethodToClass (node, state) {
+/**
+ * [addHyperloopMethodToClass description]
+ * @param {Object} p  Babylon AST node path
+ * @param {[type]} state [description]
+ */
+function addHyperloopMethodToClass(p, state) {
+	const node = p.node;
 	var name = node.callee.object.name;
 	var classSpec = state.classesByVariable[name];
 	classSpec.methods = classSpec.methods || {};
 	if (!node.arguments || !node.arguments.length) {
 		throw new JSParseError('addMethod requires at least 1 argument (methodSpec)', node);
 	}
-	var methodSpec = toJSObject(findProgramNode(node), node.arguments[0]);
+	var methodSpec = toJSObject(findProgramNode(p), node.arguments[0]);
 
 	// allow signature instead of selector:
 	// signature: 'tableView:heightForRowAtIndexPath:',
@@ -934,54 +975,11 @@ function addHyperloopMethodToClass (node, state) {
 
 	// update the properties
 	node.arguments[0].properties = [
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'selector'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.selector,
-				raw: "'" + methodSpec.selector + "'"
-			}
-		},
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'encoding'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.encoding,
-				raw: "'" + methodSpec.encoding + "'"
-			}
-		},
-		{
-			type: 'Property',
-			loc: node.loc,
-			key:  {
-				loc: node.loc,
-				type: 'Identifier',
-				name: 'instance'
-			},
-			value: {
-				loc: node.loc,
-				type: 'Literal',
-				value: methodSpec.instance,
-				raw:  methodSpec.instance
-			}
-		},
+		t.objectProperty(t.identifier('selector'), t.stringLiteral(methodSpec.selector)),
+		t.objectProperty(t.identifier('encoding'), t.stringLiteral(methodSpec.encoding)),
+		t.objectProperty(t.identifier('instance'), t.booleanLiteral(methodSpec.instance)),
 		callback
 	];
-
 	return node;
 }
 

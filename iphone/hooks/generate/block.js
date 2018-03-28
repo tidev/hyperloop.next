@@ -2,7 +2,8 @@
  * Hyperloop Metabase Generator
  * Copyright (c) 2015 by Appcelerator, Inc.
  */
-var util = require('./util');
+'use strict';
+const util = require('./util');
 
 function getBlockAsReturnVariable (name, block) {
 	var i = block.indexOf('(^)');
@@ -10,7 +11,7 @@ function getBlockAsReturnVariable (name, block) {
 }
 
 //FIXME this needs to be refactored along with the method above
-function generateBlockCallback (state, json, block, arg, tab, define) {
+function generateBlockCallback(state, json, block, arg, tab, define) {
 	// TODO: do we need to wrap the callback in a managed object and then
 	// JS protect/unprotect?
 	// see http://thirdcog.eu/pwcblocks/#objcblocks
@@ -39,11 +40,11 @@ function generateBlockCallback (state, json, block, arg, tab, define) {
 /**
  * return a suitable (and unique )method name for a block signature
  */
-function generateBlockMethodName (signature) {
+function generateBlockMethodName(signature) {
 	return 'Block_' + util.generateSafeSymbol(signature);
 }
 
-function getType (state, json, arg, argname, obj) {
+function getType(state, json, arg, argname, obj) {
 	switch (arg.value) {
 		case 'ObjectType':
 		case 'KeyType':
@@ -59,7 +60,7 @@ function getType (state, json, arg, argname, obj) {
 	}
 }
 
-function addImport (state, json, type, value, encoding) {
+function addImport(state, json, type, value, encoding) {
 	switch (type) {
 		case 'id':
 		case 'objc_pointer':
@@ -85,7 +86,8 @@ function addImport (state, json, type, value, encoding) {
 	}
 }
 
-function generateBlockWrapper (state, json, block) {
+// TODO: Move to template!
+function generateBlockWrapper(state, json, block) {
 	var code = [], argnames = [];
 	var name = generateBlockMethodName(block.signature);
 	code.push('+ (id) ' + name + ':(KrollCallback *) callback {');

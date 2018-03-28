@@ -1,11 +1,12 @@
 /**
  * Hyperloop Metabase Generator
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  */
-var util = require('./util'),
-	swift = require('../swift');
+'use strict';
+const util = require('./util');
+const swift = require('hyperloop-metabase').swift;
 
-function makeClass (json, cls, state) {
+function makeClass(json, cls, state) {
 	var entry = {
 		class: {
 			name: cls.name,
@@ -127,7 +128,7 @@ function isClassProperty(propertyMetadata) {
 /**
  * Generates the source template data for a class file
  */
-function generate (json, cls, state) {
+function generate(json, cls, state) {
 	return makeClass(json, cls, state);
 }
 
