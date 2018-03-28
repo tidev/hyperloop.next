@@ -1,9 +1,20 @@
+/**
+ * Hyperloop ® builder for Windows
+ * Copyright (c) 2018 by Appcelerator, Inc.
+ * All Rights Reserved. This library contains intellectual
+ * property protected by patents and/or patents pending.
+ *
+ *
+ * THIS IS A PLUGIN FOR "BUILDING HYPERLOOP MODULE" BINARY
+ * THIS IS NOT A PLUGIN HOOK FOR BUILDING TITANIUM APP!
+ */
 var spawn = require('child_process').spawn,
     async = require('async'),
     path = require('path'),
     fs   = require('fs'),
     ejs  = require('ejs'),
-    appc = require('node-appc');
+    appc = require('node-appc'),
+    wrench = require('wrench');
 
 function isVS2017(data) {
     if (data.windowsInfo && data.windowsInfo.selectedVisualStudio) {
@@ -21,12 +32,6 @@ exports.init = function(logger, config, cli, nodeappc) {
         var tasks = [
             function(next) {
                 generateCMakeList(data, next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsStore', 'Win32', '10.0', next);
-            },
-            function(next) {
-                runCmake(data, 'WindowsStore', 'ARM', '10.0', next);
             },
         ];
 
@@ -81,10 +86,13 @@ exports.init = function(logger, config, cli, nodeappc) {
             });
         });
 
-        var sharedInitHook = path.join(data.projectDir, '..', 'hooks', 'hyperloop-init.js');
-        if (fs.existsSync(sharedInitHook)) {
-          fs.createReadStream(sharedInitHook).pipe(fs.createWriteStream(path.join(data.projectDir, 'hooks', 'hyperloop-init.js')));
-        }
+        // Copy hooks
+        var hooksFrom = path.join(data.projectDir, 'hooks'),
+            hooksTo   = path.join(data.projectDir, 'build', 'hyperloop', data.manifest.version, 'hooks')
+        fs.existsSync(hooksTo) || wrench.mkdirSyncRecursive(hooksTo);
+        wrench.copyDirSyncRecursive(hooksFrom, hooksTo, {
+            forceDelete: true
+        });
 
         callback(null, data);
     });
@@ -116,47 +124,6 @@ function generateCMakeList(data, next) {
         });
     });
 
-}
-
-function runCmake(data, platform, arch, sdkVersion, next) {
-    var logger = data.logger,
-        generatorName = (isVS2017(data) ? 'Visual Studio 15 2017' : 'Visual Studio 14 2015')  + (arch==='ARM' ? ' ARM' : ''),
-        cmakeProjectName = (sdkVersion === '10.0' ? 'Windows10' : platform) + '.' + arch,
-        cmakeWorkDir = path.resolve(__dirname,'..','..',cmakeProjectName);
-
-    logger.debug('Run CMake on ' + cmakeWorkDir);
-
-    if (!fs.existsSync(cmakeWorkDir)) {
-        fs.mkdirSync(cmakeWorkDir);
-    }
-
-    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','cmake','bin','cmake.exe'),
-        [
-            '-G', generatorName,
-            '-DCMAKE_SYSTEM_NAME=' + platform,
-            '-DCMAKE_SYSTEM_VERSION=' + sdkVersion,
-            '-DCMAKE_BUILD_TYPE=Debug',
-            path.resolve(__dirname,'..','..')
-        ],
-        {
-            cwd: cmakeWorkDir
-        });
-    p.on('error', function(err) {
-        logger.error(cmake);
-        logger.error(err);
-    });
-    p.stdout.on('data', function (data) {
-        logger.info(data.toString().trim());
-    });
-    p.stderr.on('data', function (data) {
-        logger.warn(data.toString().trim());
-    });
-    p.on('close', function (code) {
-        if (code != 0) {
-            process.exit(1); // Exit with code from cmake?
-        }
-        next();
-    });
 }
 
 function buildSolution(data, dest, platform, buildConfig, callback) {
