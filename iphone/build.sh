@@ -49,6 +49,24 @@ echo "Installing npm dependencies..."
 cd hooks
 npm i --production
 rm -rf node_modules/findit/test
+# FIXME: We're manually removing crap here. Why doesn't it use npmignore when using file reference for dependency? So it can symlink?
+# We could do: `npx npm-ignore-delete delete node_modules/hyperloop-metabase` if that package gets the bug fixed!
+# Or I guess we can go back to npm pack? But then how do we handle the file uri in hook's package.json?
+rm -rf node_modules/hyperloop-metabase/build
+rm -rf node_modules/hyperloop-metabase/coverage
+rm -rf node_modules/hyperloop-metabase/data
+rm -rf node_modules/hyperloop-metabase/hyperloop-metabase.xcodeproj
+rm -rf node_modules/hyperloop-metabase/include
+rm -rf node_modules/hyperloop-metabase/src
+rm -rf node_modules/hyperloop-metabase/test
+rm -rf node_modules/hyperloop-metabase/tmp
+rm -rf node_modules/hyperloop-metabase/unittest
+rm -rf node_modules/hyperloop-metabase/build.sh
+rm -rf node_modules/hyperloop-metabase/Gruntfile.js
+rm -rf node_modules/hyperloop-metabase/junit_report.xml
+rm -rf node_modules/hyperloop-metabase/package-lock.json
+rm -rf node_modules/hyperloop-metabase/run.sh
+rm -rf node_modules/hyperloop-metabase/retirejs.output.json
 cd $CWD
 
 echo "\nPackaging iOS module..."
