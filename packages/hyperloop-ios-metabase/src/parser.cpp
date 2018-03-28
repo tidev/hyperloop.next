@@ -8,6 +8,7 @@
 #include <ctime>
 #include "parser.h"
 #include "util.h"
+#include "BlockParser.h"
 #include "class.h"
 #include "typedef.h"
 #include "enum.h"
@@ -19,10 +20,6 @@
 #define APIVERSION "1"
 
 namespace hyperloop {
-
-	// TODO: normally this should be a member variable to ParserTree but I'm having a weird
-	// crash on some libraries that i can't yet figure out but moving outside works fine. c'est la vie
-	static Blocks blocks;
 
 	ParserTree::ParserTree () : context(nullptr) {
 	}
@@ -96,11 +93,13 @@ namespace hyperloop {
 		}
 	}
 
-	void ParserTree::addBlock (const std::string &framework, const std::string & def) {
-		if (!def.empty() && !framework.empty()) {
-			auto set = blocks[framework];
-			set.insert(def);
-			blocks[framework] = set;
+	void ParserTree::addBlock (BlockDefinition *definition) {
+		auto key = definition->getName();
+		auto signature = definition->getSignature();
+		if (!key.empty() && !signature.empty()) {
+			auto map = blocks[key];
+			map[signature] = definition;
+			this->blocks[key] = map;
 		}
 	}
 
@@ -150,17 +149,136 @@ namespace hyperloop {
 	}
 
 	Json::Value ParserTree::toJSON() const {
-
 		Json::Value kv;
-		Json::Value metadata;
 
+		// Do post-filtering of entries. We need to visit them and store them to look up typedefs/structs/etc
+		// that are used by our framework but defined in upstream dependencies
+		if (types.size() > 0) {
+			Json::Value typesKV;
+			for (auto it = types.begin(); it != types.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					typesKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!typesKV.empty()) {
+				kv["typedefs"] = typesKV;
+			}
+		}
+
+		if (classes.size() > 0) {
+			Json::Value classesKV;
+			for (auto it = classes.begin(); it != classes.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					classesKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!classesKV.empty()) {
+				kv["classes"] = classesKV;
+			}
+		}
+
+		if (protocols.size() > 0) {
+			Json::Value protocolsKV;
+			for (auto it = protocols.begin(); it != protocols.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					protocolsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!protocolsKV.empty()) {
+				kv["protocols"] = protocolsKV;
+			}
+		}
+
+		if (enums.size() > 0) {
+			Json::Value enumsKV;
+			for (auto it = enums.begin(); it != enums.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					enumsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!enumsKV.empty()) {
+				kv["enums"] = enumsKV;
+			}
+		}
+
+		if (vars.size() > 0) {
+			Json::Value varsKV;
+			for (auto it = vars.begin(); it != vars.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					varsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!varsKV.empty()) {
+				kv["vars"] = varsKV;
+			}
+		}
+
+		if (functions.size() > 0) {
+			Json::Value functionsKV;
+			for (auto it = functions.begin(); it != functions.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					functionsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!functionsKV.empty()) {
+				kv["functions"] = functionsKV;
+			}
+		}
+
+		if (structs.size() > 0) {
+			Json::Value structsKV;
+			for (auto it = structs.begin(); it != structs.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					structsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!structsKV.empty()) {
+				kv["structs"] = structsKV;
+			}
+		}
+
+		if (unions.size() > 0) {
+			Json::Value unionsKV;
+			for (auto it = unions.begin(); it != unions.end(); it++) {
+				if (!context->excludeLocation(it->second->getFileName())) {
+					unionsKV[it->first] = it->second->toJSON();
+				}
+			}
+			if (!unionsKV.empty()) {
+				kv["unions"] = unionsKV;
+			}
+		}
+
+		if (blocks.size() > 0) {
+			Json::Value blockSet;
+			for (auto it = blocks.begin(); it != blocks.end(); it++) {
+				auto key = it->first;
+				Json::Value set;
+				auto add = false;
+				for (auto iit = it->second.begin(); iit != it->second.end(); iit++) {
+					if (!context->excludeLocation(iit->second->getFileName())) {
+						set.append(iit->second->toJSON());
+						add = true;
+					}
+				}
+				if (add) {
+					blockSet[key] = set;
+				}
+			}
+			if (!blockSet.empty()) {
+				kv["blocks"] = blockSet;
+			}
+		}
+
+		// Set up metadata
+		Json::Value metadata;
 		metadata["api-version"] = APIVERSION;
 		if (context->getSDKPath().find("iPhone") != std::string::npos) {
 			metadata["platform"] = "ios";
 		}
 		metadata["sdk-path"] = context->getSDKPath();
 		metadata["min-version"] = context->getMinVersion();
-
+		// This must happen *after* we filter above because the filtering records the dependencies
 		metadata["dependencies"] = Json::Value(Json::arrayValue);
 		auto dependencies = context->getDependentFrameworks();
 		if (dependencies.size() > 0) {
@@ -176,84 +294,6 @@ namespace hyperloop {
 		}
 		metadata["system-generated"] = context->excludeSystemAPIs() ? "false" : "true";
 		kv["metadata"] = metadata;
-
-		if (types.size() > 0) {
-			Json::Value typesKV;
-			for (auto it = types.begin(); it != types.end(); it++) {
-				typesKV[it->first] = it->second->toJSON();
-			}
-			kv["typedefs"] = typesKV;
-		}
-
-		if (classes.size() > 0) {
-			Json::Value classesKV;
-			for (auto it = classes.begin(); it != classes.end(); it++) {
-				classesKV[it->first] = it->second->toJSON();
-			}
-			kv["classes"] = classesKV;
-		}
-
-		if (protocols.size() > 0) {
-			Json::Value protocolsKV;
-			for (auto it = protocols.begin(); it != protocols.end(); it++) {
-				protocolsKV[it->first] = it->second->toJSON();
-			}
-			kv["protocols"] = protocolsKV;
-		}
-
-		if (enums.size() > 0) {
-			Json::Value enumsKV;
-			for (auto it = enums.begin(); it != enums.end(); it++) {
-				enumsKV[it->first] = it->second->toJSON();
-			}
-			kv["enums"] = enumsKV;
-		}
-
-		if (vars.size() > 0) {
-			Json::Value varsKV;
-			for (auto it = vars.begin(); it != vars.end(); it++) {
-				varsKV[it->first] = it->second->toJSON();
-			}
-			kv["vars"] = varsKV;
-		}
-
-		if (functions.size() > 0) {
-			Json::Value functionsKV;
-			for (auto it = functions.begin(); it != functions.end(); it++) {
-				functionsKV[it->first] = it->second->toJSON();
-			}
-			kv["functions"] = functionsKV;
-		}
-
-		if (structs.size() > 0) {
-			Json::Value structsKV;
-			for (auto it = structs.begin(); it != structs.end(); it++) {
-				structsKV[it->first] = it->second->toJSON();
-			}
-			kv["structs"] = structsKV;
-		}
-
-		if (unions.size() > 0) {
-			Json::Value unionsKV;
-			for (auto it = unions.begin(); it != unions.end(); it++) {
-				unionsKV[it->first] = it->second->toJSON();
-			}
-			kv["unions"] = unionsKV;
-		}
-
-		if (blocks.size() > 0) {
-			Json::Value blockSet;
-			for (auto it = blocks.begin(); it != blocks.end(); it++) {
-				auto key = it->first;
-				Json::Value set;
-				for (auto iit = it->second.begin(); iit != it->second.end(); iit++) {
-					std::string block = *iit;
-					set.append(callbackToJSON(context, block));
-				}
-				blockSet[key] = set;
-			}
-			kv["blocks"] = blockSet;
-		}
 
 		return kv;
 	}
@@ -343,9 +383,11 @@ namespace hyperloop {
 		getSourceLocation(cursor, ctx, location);
 		ctx->updateLocation(location);
 
-		if (ctx->excludeLocation(location["filename"])) {
-			return CXChildVisit_Continue;
-		}
+				// We can't pre-filter here anymore, because we need the typedefs/sturcts/etc for reference to do type lookups
+				// I think *only* for block return types, though :(
+//        if (ctx->excludeLocation(location["filename"])) {
+//            return CXChildVisit_Continue;
+//        }
 
 		CXPlatformAvailability availability[10];
 		int always_deprecated, always_unavailable;

@@ -6,6 +6,7 @@ const should = require('should'),
 
 describe('block', function () {
 
+// TODO Add test for blocks in UIKit - that they grab correct typedefs/etc
 	it('should generate blocks', function (done) {
 		helper.generate(helper.getFixture('blocks.h'), helper.getTempFile('blocks.json'), function (err, json, sdk) {
 			if (err) {
@@ -179,6 +180,7 @@ describe('block', function () {
 						},
 						{
 							encoding: '@?',
+							name: 'levelTwoBlockHandler',
 							type: 'block',
 							value: 'void (^)(float)'
 						}

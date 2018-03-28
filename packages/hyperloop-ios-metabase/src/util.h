@@ -135,16 +135,7 @@ namespace hyperloop {
 	 */
 	void addBlockIfFound (Definition *definition, CXCursor cursor);
 
-	/**
-	 * parse a block signature and return the returns value and place any args in the
-	 * vector passed
-	 */
-	std::string parseBlock (const std::string &block, std::vector<std::string> &args);
-
-	/**
-	 * parse a block signature to JSON
-	 */
-	Json::Value callbackToJSON (ParserContext *context, const std::string &block);
+	std::string getEncodingFromType (const std::string &str);
 };
 
 #endif

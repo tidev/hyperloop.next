@@ -15,8 +15,8 @@ namespace hyperloop {
 		auto displayName = CXStringToString(clang_getCursorDisplayName(cursor));
 		auto kind = clang_getCursorKind(cursor);
 
-		std::map<std::string, std::string> location;
-		hyperloop::getSourceLocation(cursor, methodDef->getContext(), location);
+//        std::map<std::string, std::string> location;
+//        hyperloop::getSourceLocation(cursor, methodDef->getContext(), location);
 //		std::cout << "method: " << displayName << ", " << methodDef->getName() << ", kind: " << kind << ", location: "<< hyperloop::toJSON(location) << std::endl;
 
 		switch (kind) {

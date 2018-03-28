@@ -34,8 +34,8 @@ namespace hyperloop {
 			Type (ParserContext *ctx, const CXType &type, const std::string &value = "");
 			virtual ~Type();
 			virtual Json::Value toJSON() const;
-			inline std::string getType() { return type; }
-			inline std::string getValue() { return value; }
+			inline std::string getType() const { return type; }
+			inline std::string getValue() const { return value; }
 			void setType (const std::string &_type);
 			void setValue (const std::string &_value);
 			void swap(Type &other);
@@ -50,7 +50,7 @@ namespace hyperloop {
 			Argument(const std::string &name, Type *type, const std::string &encoding);
 			virtual ~Argument();
 			virtual Json::Value toJSON() const;
-			inline Type* getType () { return type; }
+			inline Type* getType() const { return type; }
 		private:
 			std::string name;
 			Type *type;
@@ -62,7 +62,7 @@ namespace hyperloop {
 			Arguments();
 			virtual ~Arguments();
 			void add(const std::string &name, Type *type, const std::string &encoding);
-			const Argument& get(size_t index);
+            const Argument& get(size_t index);
 			virtual Json::Value toJSON() const;
 			inline size_t count() const { return arguments.size(); }
 		private:
@@ -83,6 +83,7 @@ namespace hyperloop {
 			inline const std::string getLine() const { return line; }
 			inline const std::string getIntroducedIn() const { return introducedIn; }
 			void setIntroducedIn(const CXVersion version);
+			void setIntroducedIn(const std::string& version) { introducedIn = version; }
 			inline ParserContext* getContext() const { return context; }
 			inline CXCursor getCursor() { return cursor; }
 			std::string getFramework() const;

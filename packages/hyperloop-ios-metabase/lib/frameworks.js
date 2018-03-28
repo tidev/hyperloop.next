@@ -8,6 +8,8 @@ const ModuleMetadata = require('./module_metadata').ModuleMetadata;
 
 const TMP_DIR = process.env.TMPDIR || process.env.TEMP || '/tmp';
 
+// FIXME: Allow turning off caching for testing, or specifying an override!
+
 /**
  * Encapsulates the idea of a grouping of frameworks (ModuleMetadata).
  * This is a base class and is intended to be subclassed for each group "type":

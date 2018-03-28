@@ -20,7 +20,9 @@ namespace hyperloop {
 
 	Json::Value Argument::toJSON() const {
 		Json::Value kv;
-		kv["name"] = this->name;
+        if (!this->name.empty()) {
+            kv["name"] = this->name;
+        }
 		kv["type"] = type->getType();
 		kv["value"] = cleanString(type->getValue());
 		kv["encoding"] = this->encoding;

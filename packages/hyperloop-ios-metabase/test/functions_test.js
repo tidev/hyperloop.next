@@ -38,7 +38,6 @@ describe('function', function () {
 					arguments: [
 						{
 							encoding: 'f',
-							name: '',
 							type: 'float',
 							value: 'float'
 						}
@@ -86,7 +85,6 @@ describe('function', function () {
 					arguments: [
 						{
 							encoding: '@?',
-							name: '',
 							type: 'block',
 							value: 'void (^)(int)'
 						}
@@ -148,7 +146,6 @@ describe('function', function () {
 				Variadic: {
 					arguments: [ {
 						encoding: '*',
-						name: '',
 						type: 'pointer',
 						value: 'char *'
 					} ],
