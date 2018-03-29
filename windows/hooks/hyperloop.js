@@ -76,6 +76,7 @@ exports.cliVersion = '>=3.2';
 					traverse = data.args[3],
 					types    = data.args[4];
 
+				builder.native_namespaces || (builder.native_namespaces  = {});
 				builder.native_types  || (builder.native_types  = {});
 				builder.native_events || (builder.native_events = {});
 
@@ -105,8 +106,14 @@ exports.cliVersion = '>=3.2';
 								// check if the required type is "native"
 								var node_value = path.node.arguments[0].value;
 								if (t_.hasWindowsAPI(node_value)) {
-									logger.info("Detected native API reference: " + node_value);
-									builder.native_types[node_value] = {name: node_value};
+									if (t_.hasWindowsNamespace(node_value)) {
+										const packageName = node_value.slice(0, node_value.length - 2); // drop the .* ending
+										logger.debug("Detected native API namespace: " + packageName);
+										builder.native_namespaces[packageName] = {name: packageName};
+									} else {
+										logger.debug("Detected native API reference: " + node_value);
+										builder.native_types[node_value] = {name: node_value};
+									}
 								}
 							} else if (types.isMemberExpression(path.node.callee) && // are we calling 'addEventListener'?
 									types.isIdentifier(path.node.callee.property, { name: 'addEventListener' }) &&
@@ -136,7 +143,7 @@ exports.cliVersion = '>=3.2';
 											signature: event_name + '_' + detectedConstructorType.replace(/\./g, '_')
 										};
 										builder.native_events[native_event.signature] = native_event;
-										logger.info('Detected native API event: ' + native_event.name + ' for ' + detectedConstructorType);
+										logger.debug('Detected native API event: ' + native_event.name + ' for ' + detectedConstructorType);
 									}
 								}
 							}
@@ -147,10 +154,22 @@ exports.cliVersion = '>=3.2';
 						const nodeSource = p.node.source;
 						if (nodeSource && babel_types.isStringLiteral(nodeSource)) {  // module name is a string literal
 							// Found an import that acts the same as a require...
-							let className = nodeSource.value;
-							if (t_.hasWindowsAPI(className)) {
+							let classOrNamespace = nodeSource.value;
+							if (t_.hasWindowsAPI(classOrNamespace)) {
 								for (let i = 0; i < p.node.specifiers.length; i++) {
-									logger.info("Detected native API reference: " + className);
+									let className;
+									if (t_.hasWindowsNamespace(classOrNamespace)) {
+										const imported  = p.node.specifiers[i].imported.name;
+										const packageName = classOrNamespace.slice(0, classOrNamespace.length - 2); // drop the .* ending
+
+										logger.debug("Detected native API namespace: " + packageName);
+										builder.native_namespaces[packageName] = {name: packageName};
+
+										className = packageName + '.' + imported;
+									} else {
+										className = classOrNamespace;
+									}
+									logger.debug("Detected native API reference: " + className);
 									builder.native_types[className] = {name: className};
 									native_specifiers[p.node.specifiers[i].local.name] = className;
 								}
@@ -210,6 +229,10 @@ exports.cliVersion = '>=3.2';
 
 		next();
 
+	};
+
+	HyperloopWindowsBuilder.prototype.hasWindowsNamespace = function hasWindowsNamespace(node_value) {
+		return this.hasWindowsAPI(node_value) && node_value.endsWith(".*");
 	};
 
 	HyperloopWindowsBuilder.prototype.hasWindowsAPI = function hasWindowsAPI(node_value) {

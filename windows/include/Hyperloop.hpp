@@ -189,6 +189,35 @@ private:
 #pragma warning(pop)
 };
 
+class HYPERLOOP_EXPORT HyperloopNamespace : public Titanium::Module, public JSExport<HyperloopNamespace>
+{
+public:
+	HyperloopNamespace(const JSContext&) TITANIUM_NOEXCEPT;
+
+	virtual ~HyperloopNamespace()                            = default;
+	HyperloopNamespace(const HyperloopNamespace&)            = default;
+	HyperloopNamespace& operator=(const HyperloopNamespace&) = default;
+#ifdef TITANIUM_MOVE_CTOR_AND_ASSIGN_DEFAULT_ENABLE
+	HyperloopNamespace(HyperloopNamespace&&)                 = default;
+	HyperloopNamespace& operator=(HyperloopNamespace&&)      = default;
+#endif
+
+	bool HasProperty(const JSString& property_name) const;
+	JSValue GetProperty(const JSString& property_name);
+
+	static void JSExportInitialize();
+
+	void set_namespace(const std::string& name) TITANIUM_NOEXCEPT
+	{
+		namespace__ = name;
+	}
+private:
+#pragma warning(push)
+#pragma warning(disable : 4251)
+	std::string namespace__;
+#pragma warning(pop)
+};
+
 class HYPERLOOP_EXPORT HyperloopModule : public Titanium::Module, public JSExport<HyperloopModule>
 {
 	public:
