@@ -108,10 +108,10 @@ exports.cliVersion = '>=3.2';
 								if (t_.hasWindowsAPI(node_value)) {
 									if (t_.hasWindowsNamespace(node_value)) {
 										const packageName = node_value.slice(0, node_value.length - 2); // drop the .* ending
-										logger.debug("Detected native API namespace: " + packageName);
+										logger.debug('Detected native API namespace: ' + packageName);
 										builder.native_namespaces[packageName] = {name: packageName};
 									} else {
-										logger.debug("Detected native API reference: " + node_value);
+										logger.debug('Detected native API reference: ' + node_value);
 										builder.native_types[node_value] = {name: node_value};
 									}
 								}
@@ -162,14 +162,14 @@ exports.cliVersion = '>=3.2';
 										const imported  = p.node.specifiers[i].imported.name;
 										const packageName = classOrNamespace.slice(0, classOrNamespace.length - 2); // drop the .* ending
 
-										logger.debug("Detected native API namespace: " + packageName);
+										logger.debug('Detected native API namespace: ' + packageName);
 										builder.native_namespaces[packageName] = {name: packageName};
 
 										className = packageName + '.' + imported;
 									} else {
 										className = classOrNamespace;
 									}
-									logger.debug("Detected native API reference: " + className);
+									logger.debug('Detected native API reference: ' + className);
 									builder.native_types[className] = {name: className};
 									native_specifiers[p.node.specifiers[i].local.name] = className;
 								}
@@ -312,7 +312,7 @@ exports.cliVersion = '>=3.2';
 
 		// Now we'll add all the types we know about as includes into our TypeHelper class
 		// This let's us load these types by name using C# Reflection
-		logger.trace("Adding native API type listing to TypeHelper.cs...");
+		logger.trace('Adding native API type listing to TypeHelper.cs...');
 		fs.readFile(template, 'utf8', function (err, data) {
 			if (err) throw err;
 
@@ -323,7 +323,7 @@ exports.cliVersion = '>=3.2';
 
 			// if contents haven't changed, don't overwrite so we don't recompile the file
 			if (fs.existsSync(helper_cs) && fs.readFileSync(helper_cs, 'utf8').toString() == data) {
-				logger.debug("TypeHelper.cs contents unchanged, retaining existing file.");
+				logger.debug('TypeHelper.cs contents unchanged, retaining existing file.');
 				next();
 				return;
 			}
