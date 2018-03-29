@@ -1,6 +1,6 @@
 /**
  * Hyperloop ® plugin for Windows
- * Copyright (c) 2015-2017 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -101,7 +101,7 @@ exports.cliVersion = '>=3.2';
 							// if we're calling require with one string literal argument...
 							// FIXME What if it is a requires, but not a string? What if it is a dynamically built string?
 							if (types.isIdentifier(path.node.callee, { name: 'require' }) &&
-									path.node.arguments && path.node.arguments.length == 1 &&
+									path.node.arguments && path.node.arguments.length === 1 &&
 									types.isStringLiteral(path.node.arguments[0])) {
 								// check if the required type is "native"
 								var node_value = path.node.arguments[0].value;
@@ -109,10 +109,10 @@ exports.cliVersion = '>=3.2';
 									if (t_.hasWindowsNamespace(node_value)) {
 										const packageName = node_value.slice(0, node_value.length - 2); // drop the .* ending
 										logger.debug('Detected native API namespace: ' + packageName);
-										builder.native_namespaces[packageName] = {name: packageName};
+										builder.native_namespaces[packageName] = { name: packageName };
 									} else {
 										logger.debug('Detected native API reference: ' + node_value);
-										builder.native_types[node_value] = {name: node_value};
+										builder.native_types[node_value] = { name: node_value };
 									}
 								}
 							} else if (types.isMemberExpression(path.node.callee) && // are we calling 'addEventListener'?
@@ -163,14 +163,14 @@ exports.cliVersion = '>=3.2';
 										const packageName = classOrNamespace.slice(0, classOrNamespace.length - 2); // drop the .* ending
 
 										logger.debug('Detected native API namespace: ' + packageName);
-										builder.native_namespaces[packageName] = {name: packageName};
+										builder.native_namespaces[packageName] = { name: packageName };
 
 										className = packageName + '.' + imported;
 									} else {
 										className = classOrNamespace;
 									}
 									logger.debug('Detected native API reference: ' + className);
-									builder.native_types[className] = {name: className};
+									builder.native_types[className] = { name: className };
 									native_specifiers[p.node.specifiers[i].local.name] = className;
 								}
 							}
@@ -322,7 +322,7 @@ exports.cliVersion = '>=3.2';
 			}, {});
 
 			// if contents haven't changed, don't overwrite so we don't recompile the file
-			if (fs.existsSync(helper_cs) && fs.readFileSync(helper_cs, 'utf8').toString() == data) {
+			if (fs.existsSync(helper_cs) && fs.readFileSync(helper_cs, 'utf8').toString() === data) {
 				logger.debug('TypeHelper.cs contents unchanged, retaining existing file.');
 				next();
 				return;
