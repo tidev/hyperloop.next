@@ -160,7 +160,7 @@ function clearNuGetCache(data, callback) {
     });
     p.on('close', function (code) {
         if (code != 0) {
-            process.exit(1); // Exit with code from nuget?
+            //process.exit(1); // Exit with code from nuget?
         }
         callback();
     });
@@ -187,7 +187,7 @@ function runNuGet(data, slnFile, callback) {
     });
     p.on('close', function (code) {
         if (code != 0) {
-            process.exit(1); // Exit with code from nuget?
+            //process.exit(1); // Exit with code from nuget?
         }
         callback();
     });
