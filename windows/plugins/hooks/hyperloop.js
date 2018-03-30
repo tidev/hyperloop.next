@@ -128,14 +128,46 @@ function generateCMakeList(data, next) {
 
 function buildSolution(data, dest, platform, buildConfig, callback) {
     var slnFile = path.join(dest, platform, 'HyperloopInvocation.sln');
-    runNuGet(data, slnFile, function(err) {
+
+    clearNuGetCache(data, function(err) {
         if (err) throw err;
-        runMSBuild(data, slnFile, buildConfig, callback);
+        runNuGet(data, slnFile, function(err) {
+            if (err) throw err;
+            runMSBuild(data, slnFile, buildConfig, callback);
+        });
     });
 }
 
+function clearNuGetCache(data, callback) {
+    var logger = data.logger;
+    logger.info('Nuget clear cache');
+    // Make sure to clear NuGet cache
+    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['locals', 'all', '-clear']);
+    p.stdout.on('data', function (data) {
+        var line = data.toString().trim();
+        if (line.indexOf('error ') >= 0) {
+            logger.error(line);
+        } else if (line.indexOf('warning ') >= 0) {
+            logger.warn(line);
+        } else if (line.indexOf(':\\') === -1) {
+            logger.debug(line);
+        } else {
+            logger.trace(line);
+        }
+    });
+    p.stderr.on('data', function (data) {
+        logger.warn(data.toString().trim());
+    });
+    p.on('close', function (code) {
+        if (code != 0) {
+            process.exit(1); // Exit with code from nuget?
+        }
+        callback();
+    });
+}
 function runNuGet(data, slnFile, callback) {
     var logger = data.logger;
+    logger.info('Nuget restore');
     // Make sure project dependencies are installed via NuGet
     var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore', slnFile]);
     p.stdout.on('data', function (data) {
