@@ -137,7 +137,7 @@ function buildSolution(data, dest, platform, buildConfig, callback) {
 function runNuGet(data, slnFile, callback) {
     var logger = data.logger;
     // Make sure project dependencies are installed via NuGet
-    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore', slnFile]);
+    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore', slnFile, '-NoCache']);
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
