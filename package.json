@@ -1,6 +1,6 @@
 {
   "name": "hyperloop",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
     "appcelerator",
