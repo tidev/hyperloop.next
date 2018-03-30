@@ -128,16 +128,19 @@ function generateCMakeList(data, next) {
 
 function buildSolution(data, dest, platform, buildConfig, callback) {
     var slnFile = path.join(dest, platform, 'HyperloopInvocation.sln');
-    runNuGet(data, slnFile, function(err) {
+    runNuGet(data, dest, platform, slnFile, function(err) {
         if (err) throw err;
         runMSBuild(data, slnFile, buildConfig, callback);
     });
 }
 
-function runNuGet(data, slnFile, callback) {
+function runNuGet(data, dest, platform, slnFile, callback) {
     var logger = data.logger;
     // Make sure project dependencies are installed via NuGet
-    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore', slnFile]);
+    var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'), ['restore'],
+        {
+            cwd: path.join(dest, platform)
+        });
     p.stdout.on('data', function (data) {
         var line = data.toString().trim();
         if (line.indexOf('error ') >= 0) {
@@ -147,7 +150,7 @@ function runNuGet(data, slnFile, callback) {
         } else if (line.indexOf(':\\') === -1) {
             logger.debug(line);
         } else {
-            logger.trace(line);
+            logger.debug(line);
         }
     });
     p.stderr.on('data', function (data) {
