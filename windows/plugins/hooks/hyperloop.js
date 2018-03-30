@@ -147,7 +147,7 @@ function runNuGet(data, slnFile, callback) {
         } else if (line.indexOf(':\\') === -1) {
             logger.debug(line);
         } else {
-            logger.trace(line);
+            logger.debug(line);
         }
     });
     p.stderr.on('data', function (data) {
