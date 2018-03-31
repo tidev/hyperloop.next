@@ -205,7 +205,6 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -f hyperloop-windows-*.zip'
 							sh 'rm -rf reflection/HyperloopInvocation/win10/.vs'
 							sh 'rm -rf reflection/HyperloopInvocation/win10/obj'
-							sh 'nuget install Microsoft.CSharp'
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only -l debug'
 							} // appc.loggedIn
