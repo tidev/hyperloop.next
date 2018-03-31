@@ -17,7 +17,6 @@ project.xcworkspace
 *.bak
 npm-debug.log
 packages/hyperloop-ios-metabase/bin/metabase
-windows/hooks/hyperloop-init.js
 
 # Coverage directory and nyc output
 coverage
