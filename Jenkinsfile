@@ -203,8 +203,10 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf WindowsStore.Win32/'
 							sh 'rm -f CMakeLists.txt'
 							sh 'rm -f hyperloop-windows-*.zip'
+							sh 'rm -rf reflection/HyperloopInvocation/win10/.vs'
+							sh 'rm -rf reflection/HyperloopInvocation/win10/obj'
 							appc.loggedIn {
-								sh 'appc run -p windows --build-only'
+								sh 'appc run -p windows --build-only -l debug'
 							} // appc.loggedIn
 
 							sh 'rm -rf zip/'
