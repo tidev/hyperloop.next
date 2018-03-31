@@ -138,7 +138,7 @@ function runNuGet(data, dest, platform, slnFile, callback) {
     var logger = data.logger;
     // Make sure project dependencies are installed via NuGet
     var p = spawn(path.join(data.titaniumSdkPath,'windows','cli','vendor','nuget','nuget.exe'),
-        ['install', 'Microsoft.NETCore.Portable.Compatibility', '-Version', '1.0.0'],
+        ['restore', path.join(dest, platform, 'HyperloopInvocation.csproj')],
         {
            cwd: path.join(dest, platform) 
         });
