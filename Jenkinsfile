@@ -86,6 +86,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf build/'
 							sh 'rm -rf dist/'
 							sh 'rm -rf libs/'
+							
+							sh 'cat $ANDROID_NDK/RELEASE.txt'
 
 							// Run hook tests and then prune to production deps
 							dir('hooks') {
