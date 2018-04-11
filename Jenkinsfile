@@ -5,7 +5,7 @@ import com.axway.AppcCLI;
 def nodeVersion = '8.9.0'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-def sdkVersion = '7.0.0.v20171113131222' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
+def sdkVersion = '7.0.0.v20171113133758' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
 def sdkVersionForWindows = '7.1.1.v20180329185637' // Only used for Windows build
 def androidAPILevel = '26'
 
