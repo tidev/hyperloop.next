@@ -163,6 +163,34 @@ function runPodInstallIfRequired(basedir) {
 	}
 }
 
+function buildIfRequired(basedir, builder) {
+	const cacheFile = path.join(basedir, 'build', '.podbuildcache');
+	if (!fs.existsSync(cacheFile)) {
+		util.logger.trace('Cocoapods .podbuildcache doesnt exist, building...');
+		return runCocoaPodsBuild(basedir, builder);
+	}
+	// check if cached build is still valid
+	const podLockfilePathAndFilename = path.join(basedir, 'Podfile.lock');
+	const cacheKey = generateCacheTokenObjectFromPodLockfile(podLockfilePathAndFilename);
+	cacheKey.configuration = builder.xcodeTarget;
+	cacheKey.sdkVersion = builder.iosSdkVersion;
+	cacheKey.sdkType = builder.xcodeTargetOS;
+	cacheKey.minVersion = builder.minIosVer;
+	const cacheToken = util.createHashFromString(JSON.stringify(cacheKey));
+
+	return fs.readFile(cacheFile)
+		.then(contents => {
+			const existing = contents.toString();
+
+			if (existing !== cacheToken) {
+				util.logger.trace(`Cocoapods build cache file contents (${existing}) doesn't match expectations (${cacheToken}), rebuilding...`);
+				return runCocoaPodsBuild(basedir, builder, cacheToken);
+			}
+			// looks like we built before and nothing changed, just return
+			return Promise.resolve();
+		});
+}
+
 /**
 * Runs CocoaPods to build any required libraries
 *
@@ -175,9 +203,10 @@ function runPodInstallIfRequired(basedir) {
 * @param {object} builder.xcodeEnv.executables info on various xcode related executables
 * @param {string} builder.xcodeEnv.executables.xcodebuild path to xcodebuild
 * @param {string} builder.xcodeTarget 'Release' || 'Debug
+* @param {string} cacheToken contents to place in cache file to mark what this build was based on
 * @return {Promise}
 */
-function runCocoaPodsBuild(basedir, builder) {
+function runCocoaPodsBuild(basedir, builder, cacheToken) {
 	const sdkType = builder.xcodeTargetOS,
 		sdkVersion = builder.iosSdkVersion,
 		minSDKVersion = builder.minIosVer,
@@ -212,7 +241,15 @@ function runCocoaPodsBuild(basedir, builder) {
 				return reject(new Error('xcodebuild did not produce the expected CocoaPods libraries at ' + buildOutDir));
 			}
 
-			return resolve();
+			// Now write the cache token to file in output dir so we can skip builds if nothing changed
+			const cacheFile = path.join(basedir, 'build', '.podbuildcache');
+			fs.writeFile(cacheFile, cacheToken, (err) => {
+				if (err) {
+					reject(err);
+					return;
+				}
+				resolve();
+			});
 		});
 	});
 }
@@ -226,9 +263,9 @@ function runCocoaPodsBuild(basedir, builder) {
  * CocoaPods symbol mapping will be regenerated.
  *
  * @param {string} podLockfilePathAndFilename absolute path to the Pod.lock file
- * @return {string} The generated cache token
+ * @return {object} The generated cache token object
  */
-function calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename) {
+function generateCacheTokenObjectFromPodLockfile(podLockfilePathAndFilename) {
 	if (!fs.existsSync(podLockfilePathAndFilename)) {
 		throw new Error('No Podfile.lock found in your project root. ');
 	}
@@ -248,7 +285,23 @@ function calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename) {
 		throw new Error('Could not read Podfile checksum from Podfile.lock');
 	}
 	cacheTokenData.podfile = podfileChecksumMatch[1];
-	return util.createHashFromString(JSON.stringify(cacheTokenData));
+	return cacheTokenData;
+}
+
+/**
+ * Calculates a cache token based on the Podfile checksum and all installed pod
+ * specs checksums.
+ *
+ * If one of these checksums change, either the Podfile changed or a Pod was
+ * updated/installed/removed, resulting in a changed cache token and the
+ * CocoaPods symbol mapping will be regenerated.
+ *
+ * @param {string} podLockfilePathAndFilename absolute path to the Podfile.lock file
+ * @return {string} The generated cache token
+ */
+function calculateCacheTokenFromPodLockfile(podLockfilePathAndFilename) {
+	const cacheKeyObject = generateCacheTokenObjectFromPodLockfile(podLockfilePathAndFilename);
+	return util.createHashFromString(JSON.stringify(cacheKeyObject));
 }
 
 /**
@@ -280,7 +333,7 @@ function installPodsAndGetSettings(builder) {
 	}
 
 	return runPodInstallIfRequired(basedir)
-		.then(() => runCocoaPodsBuild(basedir, builder))
+		.then(() => buildIfRequired(basedir, builder))
 		.then(() => {
 			const settings = getCocoaPodsXCodeSettings(basedir);
 			util.logger.trace(`${chalk.green('CocoaPods')} Xcode settings will be: ${JSON.stringify(settings, null, 2)}`);
