@@ -58,7 +58,7 @@ stage('Build') {
 
 					// We have to hack to make sure we pick up correct ANDROID_SDK/NDK values from the node that's currently running this section of the build.
 					def androidSDK = env.ANDROID_SDK // default to what's in env (may have come from jenkins env vars set on initial node)
-					def androidNDK = env.ANDROID_NDK
+					def androidNDK = env.ANDROID_NDK_R12B
 					withEnv(['ANDROID_SDK=', 'ANDROID_NDK=']) {
 						try {
 							androidSDK = sh(returnStdout: true, script: 'printenv ANDROID_SDK')
@@ -66,7 +66,7 @@ stage('Build') {
 							// squash, env var not set at OS-level
 						}
 						try {
-							androidNDK = sh(returnStdout: true, script: 'printenv ANDROID_NDK')
+							androidNDK = sh(returnStdout: true, script: 'printenv ANDROID_NDK_R12B')
 						} catch (e) {
 							// squash, env var not set at OS-level
 						}
