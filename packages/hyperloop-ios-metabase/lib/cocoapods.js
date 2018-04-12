@@ -87,24 +87,28 @@ function getCocoaPodsVersion() {
 }
 
 /**
- * Resturns an already resolved or rejected Promise
+ * Returns an already resolved or rejected Promise
  * @param  {string} podfilePath path to 'Podfile' file
  * @param  {string} version     Pod version
  * @return {Promise}
  */
 function validatePodfile(podfilePath, version) {
-	const podfileContent = fs.readFileSync(podfilePath);
-	if (semver.gte(version, '1.0.0')) {
-		if (!/:integrate_targets\s*=>\s*false/.test(podfileContent)) {
-			util.logger.error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option:');
-			util.logger.error('');
-			util.logger.error('    install! \'cocoapods\', :integrate_targets => false');
-			util.logger.error('');
-			util.logger.error('For more information please see https://guides.cocoapods.org/syntax/podfile.html#install_bang');
-			return Promise.reject(new Error('Your Podfile requires changes to use it with Hyperloop. Please see the note above on how to fix it.'));
-		}
+	if (!semver.gte(version, '1.0.0')) {
+		return Promise.resolve();
 	}
-	return Promise.resolve();
+
+	return fs.readFile(podfilePath)
+		.then(contents => {
+			if (!/:integrate_targets\s*=>\s*false/.test(contents.toString())) {
+				util.logger.error('Hyperloop requires your Podfile to include :integrate_target => false as an installation option:');
+				util.logger.error('');
+				util.logger.error('    install! \'cocoapods\', :integrate_targets => false');
+				util.logger.error('');
+				util.logger.error('For more information please see https://guides.cocoapods.org/syntax/podfile.html#install_bang');
+				return Promise.reject(new Error('Your Podfile requires changes to use it with Hyperloop. Please see the note above on how to fix it.'));
+			}
+			return Promise.resolve();
+		});
 }
 
 /**
@@ -130,46 +134,51 @@ function podInstall(basedir, podBinary) {
 }
 
 function runPodInstallIfRequired(basedir) {
-	const Pods = path.join(basedir, 'Pods'),
-		Podfile = path.join(basedir, 'Podfile'),
-		cacheToken =  util.createHashFromString(fs.readFileSync(Podfile)),
-		cacheFile = path.join(basedir, 'build', '.podcache');
+	const podfileLock = path.join(basedir, 'Podfile.lock');
+	const manifestLock = path.join(basedir, 'Pods', 'Manifest.lock');
 
-	fs.ensureDirSync(path.dirname(cacheFile));
-
-	if (!fs.existsSync(Pods) || !fs.existsSync(cacheFile) || (fs.existsSync(cacheFile) && fs.readFileSync(cacheFile).toString() !== cacheToken)) {
-		let podBinary;
-		let podVersion;
-		return isPodInstalled()
-			.then(pod => {
-				podBinary = pod;
-				return getCocoaPodsVersion();
-			})
-			.then(version => {
-				podVersion = version;
-				return validatePodfile(Podfile, version);
-			})
-			.then(() => {
-				util.logger.trace(`Found CocoaPods ${podVersion} (${podBinary})`);
-				if (semver.lt(podVersion, '1.0.0')) {
-					util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
-					return Promise.reject(new Error('Using a CocoaPods < 1.0.0 is not supported anymore.'));
-				}
-				return podInstall(basedir, podBinary);
-			})
-			.then(() => fs.writeFile(cacheFile, cacheToken));
-	} else {
-		return Promise.resolve();
-	}
+	let manifest;
+	return fs.readFile(manifestLock)
+		.then(manifestContents => {
+			manifest = manifestContents.toString();
+			return fs.readFile(podfileLock);
+		})
+		.then(podfileLockContents => {
+			if (podfileLockContents.toString() !== manifest) {
+				// They don't match! reject!
+				return Promise.reject();
+			}
+			// They do match! We're up to date
+			util.logger.trace('Podfile.lock and Manifest.lock agree on Pods, skipping pod install...');
+			return Promise.resolve();
+		})
+		// The Pods/Manifest.lock or Podfile.lock don't exist or don't agree, (re-)run pod install
+		.catch(() => {
+			const Podfile = path.join(basedir, 'Podfile');
+			let podBinary;
+			let podVersion;
+			return isPodInstalled()
+				.then(pod => {
+					podBinary = pod;
+					return getCocoaPodsVersion();
+				})
+				.then(version => {
+					podVersion = version;
+					return validatePodfile(Podfile, version);
+				})
+				.then(() => {
+					util.logger.trace(`Found CocoaPods ${podVersion} (${podBinary})`);
+					if (semver.lt(podVersion, '1.0.0')) {
+						util.logger.error('Using a CocoaPods < 1.0.0 is not supported anymore. Please update your CocoaPods installation with: ' + chalk.blue('sudo gem install cocoapods'));
+						return Promise.reject(new Error('Using a CocoaPods < 1.0.0 is not supported anymore.'));
+					}
+					return podInstall(basedir, podBinary);
+				});
+		});
 }
 
 function buildIfRequired(basedir, builder) {
 	const cacheFile = path.join(basedir, 'build', '.podbuildcache');
-	if (!fs.existsSync(cacheFile)) {
-		util.logger.trace('Cocoapods .podbuildcache doesnt exist, building...');
-		return runCocoaPodsBuild(basedir, builder);
-	}
-	// check if cached build is still valid
 	const podLockfilePathAndFilename = path.join(basedir, 'Podfile.lock');
 	const cacheKey = generateCacheTokenObjectFromPodLockfile(podLockfilePathAndFilename);
 	cacheKey.configuration = builder.xcodeTarget;
@@ -177,6 +186,13 @@ function buildIfRequired(basedir, builder) {
 	cacheKey.sdkType = builder.xcodeTargetOS;
 	cacheKey.minVersion = builder.minIosVer;
 	const cacheToken = util.createHashFromString(JSON.stringify(cacheKey));
+	// Sanity check that ti clean didn't run and wipe the pods build but not our cache file
+	const buildOutDir = path.join(basedir, 'build/iphone/build/Products', builder.xcodeTarget + '-' + builder.xcodeTargetOS);
+
+	if (!fs.pathExistsSync(cacheFile) || !fs.pathExistsSync(buildOutDir)) {
+		util.logger.trace('Cocoapods .podbuildcache doesnt exist, building...');
+		return runCocoaPodsBuild(basedir, builder, cacheFile, cacheToken);
+	}
 
 	return fs.readFile(cacheFile)
 		.then(contents => {
@@ -184,7 +200,7 @@ function buildIfRequired(basedir, builder) {
 
 			if (existing !== cacheToken) {
 				util.logger.trace(`Cocoapods build cache file contents (${existing}) doesn't match expectations (${cacheToken}), rebuilding...`);
-				return runCocoaPodsBuild(basedir, builder, cacheToken);
+				return runCocoaPodsBuild(basedir, builder, cacheFile, cacheToken);
 			}
 			// looks like we built before and nothing changed, just return
 			return Promise.resolve();
@@ -203,10 +219,11 @@ function buildIfRequired(basedir, builder) {
 * @param {object} builder.xcodeEnv.executables info on various xcode related executables
 * @param {string} builder.xcodeEnv.executables.xcodebuild path to xcodebuild
 * @param {string} builder.xcodeTarget 'Release' || 'Debug
+* @param {string} cacheFile location to write cache file
 * @param {string} cacheToken contents to place in cache file to mark what this build was based on
 * @return {Promise}
 */
-function runCocoaPodsBuild(basedir, builder, cacheToken) {
+function runCocoaPodsBuild(basedir, builder, cacheFile, cacheToken) {
 	const sdkType = builder.xcodeTargetOS,
 		sdkVersion = builder.iosSdkVersion,
 		minSDKVersion = builder.minIosVer,
@@ -242,7 +259,6 @@ function runCocoaPodsBuild(basedir, builder, cacheToken) {
 			}
 
 			// Now write the cache token to file in output dir so we can skip builds if nothing changed
-			const cacheFile = path.join(basedir, 'build', '.podbuildcache');
 			fs.writeFile(cacheFile, cacheToken, (err) => {
 				if (err) {
 					reject(err);
