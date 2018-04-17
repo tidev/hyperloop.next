@@ -50,30 +50,29 @@ function generateFrameworkMetabase(cacheDir, sdk, framework) {
 	const includes = framework.getHeaders();
 	const cacheToken = util.createHashFromString(framework.path);
 	const prefix = `metabase-${framework.name}-${cacheToken}`;
-	const header = path.resolve(path.join(cacheDir, prefix + '.h'));
 	const outfile = path.resolve(path.join(cacheDir, prefix + '.json'));
 
-	return new Promise((resolve, reject) => {
-		// check for cached version and attempt to return if found
-		if (fs.existsSync(header) && fs.existsSync(outfile)) {
-			const json = JSON.parse(fs.readFileSync(outfile));
+	return fs.readJson(outfile)
+		.then(json => {
 			json.$includes = includes;
-			return resolve(json);
-		}
-		reject();
-	})
-		// fall through and re-generate again
-		.catch(() => fs.ensureDir(cacheDir))
-		.then(() => generateInputHeader(header, includes))
-		.then(() => {
-			const args = [
-				'-framework', framework.path,
-				'-pretty'
-			];
-			return runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args)
-				.then(json => {
-					json.$includes = includes;
-					return Promise.resolve(json);
+			return json;
+		})
+		// generate metabase (we haven't before or it got corrupted)
+		.catch(() => {
+			const header = path.resolve(path.join(cacheDir, prefix + '.h'));
+			// must chain on the ensureDir call itself. If we chain one level higher (on this catch) it will always execute (meaning we'll generate a metabase when we read the cached one!)
+			return fs.ensureDir(cacheDir)
+				.then(() => generateInputHeader(header, includes))
+				.then(() => {
+					const args = [
+						'-framework', framework.path,
+						'-pretty'
+					];
+					return runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args)
+						.then(json => {
+							json.$includes = includes;
+							return Promise.resolve(json);
+						});
 				});
 		});
 }
