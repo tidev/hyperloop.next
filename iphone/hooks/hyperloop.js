@@ -38,6 +38,7 @@ const util = require('./lib/util');
 const ScanReferencesTask = require('./tasks/scan-references-task');
 const GenerateMetabaseTask = require('./tasks/generate-metabase-task');
 const GenerateSourcesTask = require('./tasks/generate-sources-task');
+const CopySourcesTask = require('./tasks/copy-sources-task');
 
 /**
  * The Hyperloop builder object. Contains the build logic and state.
@@ -77,7 +78,6 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.references = {};
 	this.usedFrameworks = new Map();
 	this.metabase = {};
-	this.nativeModules = {};
 	this.hasCocoaPods = false;
 	this.cocoaPodsBuildSettings = {};
 	this.cocoaPodsProducts = [];
@@ -588,9 +588,6 @@ HyperloopiOSBuilder.prototype.generateStubs = function generateStubs(callback) {
  * Copies Hyperloop generated JavaScript files into the app's `Resources/hyperloop` directory.
  */
 HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFiles() {
-	// TODO: Move to a copy-sources-task.js task file like on Android
-	// copy any native generated file references so that we can compile them
-	// as part of xcodebuild
 	const keys = Object.keys(this.references);
 
 	// only if we found references, otherwise, skip
@@ -598,68 +595,7 @@ HyperloopiOSBuilder.prototype.copyHyperloopJSFiles = function copyHyperloopJSFil
 		return;
 	}
 
-	// check to see if we have any specific file native modules and copy them in
-	keys.forEach(ref => {
-		const file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
-		if (fs.existsSync(file)) {
-			this.nativeModules[file] = 1;
-		}
-	});
-
-	// check to see if we have any package modules and copy them in
-	this.usedFrameworks.forEach(frameworkMetadata => {
-		const file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
-		if (fs.existsSync(file)) {
-			this.nativeModules[file] = 1;
-		}
-	});
-
-	fs.ensureDirSync(this.hyperloopResourcesDir);
-
-	const builder = this.builder,
-		logger = this.logger,
-		jsRegExp = /\.js$/;
-
-	(function scan(srcDir, destDir) {
-		fs.readdirSync(srcDir).forEach(function (name) {
-			var srcFile = path.join(srcDir, name),
-				srcStat = fs.statSync(srcFile);
-
-			if (srcStat.isDirectory()) {
-				return scan(srcFile, path.join(destDir, name));
-			}
-
-			if (!jsRegExp.test(name)) {
-				return;
-			}
-
-			var rel = path.relative(builder.projectDir, srcFile),
-				destFile = path.join(destDir, name),
-				destExists = fs.existsSync(destFile),
-				srcMtime = JSON.parse(JSON.stringify(srcStat.mtime)),
-				prev = builder.previousBuildManifest.files && builder.previousBuildManifest.files[rel],
-				contents = null,
-				hash = null,
-				changed = !destExists || !prev || prev.size !== srcStat.size || prev.mtime !== srcMtime || prev.hash !== (hash = builder.hash(contents = fs.readFileSync(srcFile).toString()));
-
-			builder.unmarkBuildDirFiles(destFile);
-
-			builder.currentBuildManifest.files[rel] = {
-				hash: contents === null && prev ? prev.hash : hash || builder.hash(contents || ''),
-				mtime: contents === null && prev ? prev.mtime : srcMtime,
-				size: contents === null && prev ? prev.size : srcStat.size
-			};
-
-			if (changed) {
-				logger.debug('Writing ' + chalk.cyan(destFile));
-				fs.ensureDirSync(destDir);
-				fs.writeFileSync(destFile, contents || fs.readFileSync(srcFile).toString());
-			} else {
-				logger.trace('No change, skipping ' + chalk.cyan(destFile));
-			}
-		});
-	}(this.hyperloopJSDir, this.hyperloopResourcesDir));
-
+	CopySourcesTask.copy(this.hyperloopJSDir, this.hyperloopResourcesDir);
 };
 
 /**
@@ -711,7 +647,27 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
 HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject() {
 	this.logger.info('updateXcodeProject');
 	const data = this.xcodeprojectdata;
-	const nativeModules = Object.keys(this.nativeModules);
+
+	// if we found references gather up "native modules"
+	const keys = Object.keys(this.references);
+	const nativeModules = new Set();
+	if (keys.length) {
+		// check to see if we have any specific file native modules and copy them in
+		keys.forEach(ref => {
+			const file = path.join(this.hyperloopJSDir, ref.replace(/^hyperloop\//, '') + '.m');
+			if (fs.existsSync(file)) {
+				nativeModules.add(file);
+			}
+		});
+
+		// check to see if we have any package modules and copy them in
+		this.usedFrameworks.forEach(frameworkMetadata => {
+			const file = path.join(this.hyperloopJSDir, frameworkMetadata.name.toLowerCase() + '/' + frameworkMetadata.name.toLowerCase() + '.m');
+			if (fs.existsSync(file)) {
+				nativeModules.add(file);
+			}
+		});
+	}
 
 	// third party libraries won't have an entry in native modules so we explicitly
 	// check for those here
@@ -728,7 +684,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		thirdPartyFrameworksUsed = true;
 	}
 
-	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
+	if (!nativeModules.size && !thirdPartyFrameworksUsed) {
 		return;
 	}
 
@@ -939,7 +895,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 	}
 
 	// add the source files to xcode to compile
-	if (nativeModules.length) {
+	if (nativeModules.size) {
 		groups['Native'] || (groups['Native'] = {});
 		nativeModules.forEach(function (mod) {
 			groups['Native'][mod] = 1;
