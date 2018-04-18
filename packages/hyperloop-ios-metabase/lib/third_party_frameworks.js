@@ -190,3 +190,4 @@ function arrayifyAndResolve(projectDir, it) {
 }
 
 exports.getThirdPartyFrameworks = getThirdPartyFrameworks;
+exports.ThirdPartyFramework = ThirdPartyFramework;

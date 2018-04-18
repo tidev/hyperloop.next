@@ -83,7 +83,7 @@ namespace hyperloop {
 	 */
 	class ParserContext {
 		public:
-			ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool exclude, const std::string &_frameworkFilter);
+			ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool exclude, const std::string &_frameworkFilter, const std::string &_frameworkName);
 			~ParserContext();
 			void updateLocation (const std::map<std::string, std::string> &location);
 			inline const std::string& getSDKPath() const { return sdkPath; }
@@ -94,6 +94,7 @@ namespace hyperloop {
 			inline const std::string& getCurrentFilename () const { return filename; }
 			inline const std::string& getCurrentLine () const { return line; }
 			inline ParserTree* getParserTree() { return &tree; }
+			std::string getFrameworkName() const;
 			void setCurrent (Definition *current);
 			inline Definition* getCurrent() { return current; }
 			inline Definition* getPrevious() { return previous; }
@@ -108,6 +109,7 @@ namespace hyperloop {
 			std::string filename;
 			std::string line;
 			std::string frameworkFilter;
+			std::string frameworkName;
 			ParserTree tree;
 			Definition* previous;
 			Definition* current;
@@ -117,7 +119,7 @@ namespace hyperloop {
 	/**
 	 * parse the translation unit and return a ParserContext
 	 */
-	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath,  std::string &minVersion, bool excludeSystemAPIs, std::string &frameworkFilter);
+	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath,  std::string &minVersion, bool excludeSystemAPIs, std::string &frameworkFilter, std::string &frameworkName);
 }
 
 

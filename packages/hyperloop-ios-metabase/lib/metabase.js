@@ -66,6 +66,7 @@ function generateFrameworkMetabase(cacheDir, sdk, framework) {
 				.then(() => {
 					const args = [
 						'-framework', framework.path,
+						'-framework-name', framework.name,
 						'-pretty'
 					];
 					return runMetabaseBinary(header, outfile, sdk.sdkPath, sdk.minVersion, args)

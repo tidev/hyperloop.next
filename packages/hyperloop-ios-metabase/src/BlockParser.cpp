@@ -52,7 +52,7 @@ namespace hyperloop {
 	 */
 	BlockDefinition* BlockParser::parseBlock(Definition *definition, CXCursor cursor, Type *type) {
 		auto context = definition->getContext();
-		auto framework = definition->getFramework();
+		auto framework = context->getFrameworkName();
 		auto signature = type->getValue();
 		auto blockDefinition = new BlockDefinition(cursor, framework, signature, context);
 		blockDefinition->setIntroducedIn(definition->getIntroducedIn());

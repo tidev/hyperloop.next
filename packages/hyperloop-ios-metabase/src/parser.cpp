@@ -298,7 +298,7 @@ namespace hyperloop {
 		return kv;
 	}
 
-	ParserContext::ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool _excludeSys, const std::string &_frameworkFilter) : sdkPath(_sdkPath), minVersion(_minVersion), excludeSys(_excludeSys), frameworkFilter(_frameworkFilter), previous(nullptr), current(nullptr) {
+	ParserContext::ParserContext (const std::string &_sdkPath, const std::string &_minVersion, bool _excludeSys, const std::string &_frameworkFilter, const std::string &_frameworkName) : sdkPath(_sdkPath), minVersion(_minVersion), excludeSys(_excludeSys), frameworkFilter(_frameworkFilter), frameworkName(_frameworkName), previous(nullptr), current(nullptr) {
 		this->tree.setContext(this);
 	}
 
@@ -315,6 +315,19 @@ namespace hyperloop {
 	void ParserContext::setCurrent (Definition *current) {
 		this->previous = this->current;
 		this->current = current;
+	}
+
+	std::string ParserContext::getFrameworkName () const {
+		if (!frameworkName.empty()) {
+			return frameworkName;
+		}
+		size_t frameworkPosition = filename.find(".framework");
+		if (frameworkPosition != std::string::npos) {
+			size_t slashBeforeFrameworkPosition = filename.find_last_of("/", frameworkPosition);
+			return filename.substr(slashBeforeFrameworkPosition + 1, frameworkPosition - (slashBeforeFrameworkPosition + 1));
+		}
+
+		return filename;
 	}
 
 	bool ParserContext::excludeLocation (const std::string &location) {
@@ -485,9 +498,9 @@ namespace hyperloop {
 	/**
 	 * parse the translation unit and output to outputFile
 	 */
-	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath, std::string &minVersion, bool excludeSys, std::string &frameworkFilter) {
+	ParserContext* parse (CXTranslationUnit tu, std::string &sdkPath, std::string &minVersion, bool excludeSys, std::string &frameworkFilter, std::string &frameworkName) {
 		auto cursor = clang_getTranslationUnitCursor(tu);
-		auto ctx = new ParserContext(sdkPath, minVersion, excludeSys, frameworkFilter);
+		auto ctx = new ParserContext(sdkPath, minVersion, excludeSys, frameworkFilter, frameworkName);
 		clang_visitChildren(cursor, begin, ctx);
 		ClassDefinition::complete(ctx);
 		return ctx;

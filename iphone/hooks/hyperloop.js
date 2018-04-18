@@ -645,7 +645,6 @@ HyperloopiOSBuilder.prototype.hookUpdateXcodeProject = function hookUpdateXcodeP
  * Injects frameworks and source files into the Xcode project and regenerates it
  */
 HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject() {
-	this.logger.info('updateXcodeProject');
 	const data = this.xcodeprojectdata;
 
 	// if we found references gather up "native modules"

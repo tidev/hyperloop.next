@@ -61,6 +61,7 @@ static void showHelp (const std::string& programName) {
     std::cout << "  -x                  exclude system APIs (false by default)                        " << std::endl;
     std::cout << "  -framework          filter to single framework (off by default, use absolute path " << std::endl;
     std::cout << "                        to framework dir as value)                                  " << std::endl;
+    std::cout << "  -framework-name     name of framework to use in generated metadata                " << std::endl;
     std::cout << "                                                                                    " << std::endl;
     std::cout << "Example                                                                             " << std::endl;
     std::cout << "  " << name << " -i objc.h -o metabase.json -sim-sdk-path /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator9.0.sdk -min-ios-ver 9.0" << std::endl;
@@ -100,6 +101,7 @@ int main(int argc, char* argv[]) {
 	auto min_ios_version = arguments["-min-ios-ver"];
 	auto iphone_sim_root = arguments["-sim-sdk-path"];
 	auto single_framework = arguments.count("-framework") ? arguments["-framework"] : "";
+	auto framework_name = arguments.count("-framework-name") ? arguments["-framework-name"] : "";
 	auto prettify = arguments.count("-pretty") > 0;
 	auto excludeSys = arguments.count("-x") > 0;
 	auto bitArch = arguments.count("-bit") ? arguments["-bit"] : "64";
@@ -163,7 +165,7 @@ int main(int argc, char* argv[]) {
 	}
 	auto index = clang_createIndex(1, 1);
 	auto tu = clang_parseTranslationUnit(index, nullptr, &args[0], (int)args.size(), nullptr, 0, 0);
-	auto ctx = hyperloop::parse(tu, iphone_sim_root, min_ios_version, excludeSys, single_framework);
+	auto ctx = hyperloop::parse(tu, iphone_sim_root, min_ios_version, excludeSys, single_framework, framework_name);
 	auto tree = ctx->getParserTree();
 	auto root = tree->toJSON();
 	Json::Reader reader;

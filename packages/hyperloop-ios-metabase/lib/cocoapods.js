@@ -467,6 +467,7 @@ class CocoapodStaticFramework extends ModuleMetadata {
 }
 
 class CocoapodFramework extends ModuleMetadata {
+	// TODO Include version here and use ~/.hyperloop as cache dir? We should be able to re-use the same framework/version/config across projects?
 	constructor(frameworkPath) {
 		super(path.basename(frameworkPath, '.framework'), frameworkPath, ModuleMetadata.MODULE_TYPE_DYNAMIC);
 		this.sniff();
