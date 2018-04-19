@@ -144,8 +144,7 @@ function runMetabaseBinary(header, outfile, sdkPath, iosMinVersion, extraArgs) {
  * @return {Object}  modified version of first metabase argument
  */
 function merge(a, b) {
-	// simplified merge metabase json
-	const topLevelKeys = [ 'blocks', 'classes', 'enums', 'functions', 'protocols', 'structs', 'typedefs', 'unions', 'vars' ];
+	const topLevelKeys = [ 'blocks', 'classes', 'enums', 'extensions', 'functions', 'protocols', 'structs', 'typedefs', 'unions', 'vars' ];
 	topLevelKeys.forEach(function (topLevelKey) {
 		if (topLevelKey in b) {
 			Object.keys(b[topLevelKey]).forEach(function (subkey) {
