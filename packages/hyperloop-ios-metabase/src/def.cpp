@@ -129,6 +129,10 @@ namespace hyperloop {
 		this->introducedIn = versionNumberStream.str();
 	}
 
+	bool Definition::shouldBeExcluded () {
+		return getContext()->excludeLocation(getFileName());
+	}
+
 	void Definition::toJSONBase (Json::Value &kv) const {
 		kv["name"] = name;
 		kv["framework"] = getContext()->getFrameworkName();

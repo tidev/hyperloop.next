@@ -41,6 +41,7 @@ namespace hyperloop {
 			virtual ~ParserTree();
 
 			void addClass (ClassDefinition *definition);
+			void addExtension (ClassDefinition *definition);
 			void addProtocol (ClassDefinition *definition);
 			void addType (TypeDefinition *definition);
 			void addEnum (EnumDefinition *definition);
@@ -51,12 +52,14 @@ namespace hyperloop {
 			void addBlock (BlockDefinition *definition);
 
 			ClassDefinition* getClass (const std::string &name);
+			ClassDefinition* getExtension (const std::string &name);
 			TypeDefinition* getType (const std::string &name);
 			StructDefinition* getStruct (const std::string &name);
 			UnionDefinition* getUnion (const std::string &name);
 			EnumDefinition* getEnum (const std::string &name);
 
 			bool hasClass (const std::string &name);
+			bool hasExtension (const std::string &name);
 			bool hasType (const std::string &name);
 			bool hasStruct (const std::string &name);
 			bool hasUnion (const std::string &name);
@@ -68,6 +71,7 @@ namespace hyperloop {
 		private:
 			ParserContext *context;
 			ClassMap classes;
+			ClassMap extensions;
 			ClassMap protocols;
 			TypeMap types;
 			EnumMap enums;

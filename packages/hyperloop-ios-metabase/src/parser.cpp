@@ -41,6 +41,11 @@ namespace hyperloop {
 		this->classes[key] = definition;
 	}
 
+	void ParserTree::addExtension (hyperloop::ClassDefinition *definition) {
+		auto key = definition->getName();
+		this->extensions[key] = definition;
+	}
+
 	void ParserTree::addProtocol (hyperloop::ClassDefinition *definition) {
 		auto key = definition->getName();
 		this->protocols[key] = definition;
@@ -107,6 +112,10 @@ namespace hyperloop {
 		return this->classes[name];
 	}
 
+	ClassDefinition* ParserTree::getExtension (const std::string &name) {
+		return this->extensions[name];
+	}
+
 	TypeDefinition* ParserTree::getType (const std::string &name) {
 		return this->types[name];
 	}
@@ -126,6 +135,11 @@ namespace hyperloop {
 	bool ParserTree::hasClass (const std::string &name) {
 		if (name.empty() || this->classes.empty()) { return false; }
 		return (this->classes.find(name) != this->classes.end());
+	}
+
+	bool ParserTree::hasExtension (const std::string &name) {
+		if (name.empty() || this->extensions.empty()) { return false; }
+		return (this->extensions.find(name) != this->extensions.end());
 	}
 
 	bool ParserTree::hasType (const std::string &name) {
@@ -156,8 +170,9 @@ namespace hyperloop {
 		if (types.size() > 0) {
 			Json::Value typesKV;
 			for (auto it = types.begin(); it != types.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					typesKV[it->first] = it->second->toJSON();
+				auto typeDef = it->second;
+				if (!typeDef->shouldBeExcluded()) {
+					typesKV[it->first] = typeDef->toJSON();
 				}
 			}
 			if (!typesKV.empty()) {
@@ -168,8 +183,9 @@ namespace hyperloop {
 		if (classes.size() > 0) {
 			Json::Value classesKV;
 			for (auto it = classes.begin(); it != classes.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					classesKV[it->first] = it->second->toJSON();
+				auto classDef = it->second;
+				if (!classDef->shouldBeExcluded()) {
+					classesKV[it->first] = classDef->toJSON();
 				}
 			}
 			if (!classesKV.empty()) {
@@ -177,11 +193,25 @@ namespace hyperloop {
 			}
 		}
 
+		if (extensions.size() > 0) {
+			Json::Value extensionsKV;
+			for (auto it = extensions.begin(); it != extensions.end(); it++) {
+				auto extensionDef = it->second;
+				if (!extensionDef->shouldBeExcluded()) {
+					extensionsKV[it->first] = extensionDef->toJSON();
+				}
+			}
+			if (!extensionsKV.empty()) {
+				kv["extensions"] = extensionsKV;
+			}
+		}
+
 		if (protocols.size() > 0) {
 			Json::Value protocolsKV;
 			for (auto it = protocols.begin(); it != protocols.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					protocolsKV[it->first] = it->second->toJSON();
+				auto protocolDef = it->second;
+				if (!protocolDef->shouldBeExcluded()) {
+					protocolsKV[it->first] = protocolDef->toJSON();
 				}
 			}
 			if (!protocolsKV.empty()) {
@@ -192,8 +222,9 @@ namespace hyperloop {
 		if (enums.size() > 0) {
 			Json::Value enumsKV;
 			for (auto it = enums.begin(); it != enums.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					enumsKV[it->first] = it->second->toJSON();
+				auto enumDef = it->second;
+				if (!enumDef->shouldBeExcluded()) {
+					enumsKV[it->first] = enumDef->toJSON();
 				}
 			}
 			if (!enumsKV.empty()) {
@@ -204,8 +235,9 @@ namespace hyperloop {
 		if (vars.size() > 0) {
 			Json::Value varsKV;
 			for (auto it = vars.begin(); it != vars.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					varsKV[it->first] = it->second->toJSON();
+				auto varDef = it->second;
+				if (!varDef->shouldBeExcluded()) {
+					varsKV[it->first] = varDef->toJSON();
 				}
 			}
 			if (!varsKV.empty()) {
@@ -216,8 +248,9 @@ namespace hyperloop {
 		if (functions.size() > 0) {
 			Json::Value functionsKV;
 			for (auto it = functions.begin(); it != functions.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					functionsKV[it->first] = it->second->toJSON();
+				auto functionDef = it->second;
+				if (!functionDef->shouldBeExcluded()) {
+					functionsKV[it->first] = functionDef->toJSON();
 				}
 			}
 			if (!functionsKV.empty()) {
@@ -228,8 +261,9 @@ namespace hyperloop {
 		if (structs.size() > 0) {
 			Json::Value structsKV;
 			for (auto it = structs.begin(); it != structs.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					structsKV[it->first] = it->second->toJSON();
+				auto structDef = it->second;
+				if (!structDef->shouldBeExcluded()) {
+					structsKV[it->first] = structDef->toJSON();
 				}
 			}
 			if (!structsKV.empty()) {
@@ -240,8 +274,9 @@ namespace hyperloop {
 		if (unions.size() > 0) {
 			Json::Value unionsKV;
 			for (auto it = unions.begin(); it != unions.end(); it++) {
-				if (!context->excludeLocation(it->second->getFileName())) {
-					unionsKV[it->first] = it->second->toJSON();
+				auto unionDef = it->second;
+				if (!unionDef->shouldBeExcluded()) {
+					unionsKV[it->first] = unionDef->toJSON();
 				}
 			}
 			if (!unionsKV.empty()) {
@@ -256,8 +291,9 @@ namespace hyperloop {
 				Json::Value set;
 				auto add = false;
 				for (auto iit = it->second.begin(); iit != it->second.end(); iit++) {
-					if (!context->excludeLocation(iit->second->getFileName())) {
-						set.append(iit->second->toJSON());
+					auto blockDef = iit->second;
+					if (!blockDef->shouldBeExcluded()) {
+						set.append(blockDef->toJSON());
 						add = true;
 					}
 				}

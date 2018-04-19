@@ -86,6 +86,7 @@ namespace hyperloop {
 			void setIntroducedIn(const std::string& version) { introducedIn = version; }
 			inline ParserContext* getContext() const { return context; }
 			inline CXCursor getCursor() { return cursor; }
+			bool shouldBeExcluded();
 
 		protected:
 			const CXCursor cursor;
