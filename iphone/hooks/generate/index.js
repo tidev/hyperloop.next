@@ -39,7 +39,7 @@ function makeModule(modules, e, state) {
 function merge(src, dest) {
 	if (src) {
 		dest =  dest || {};
-		for (var k in src) {
+		for (const k in src) {
 			if (!(k in dest)) {
 				dest[k] = src[k];
 			}
@@ -171,6 +171,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 	}
 
 	json.classes = json.classes || {};
+	json.extensions = json.extensions || {};
 
 	generateBuiltins(json, function (err) {
 		if (err) {
@@ -280,7 +281,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		// classes
 		Object.keys(json.classes).forEach(function (k) {
-			var cls = json.classes[k];
+			const cls = json.classes[k];
 			if (cls.filename === '/usr/include/objc/NSObject.h') {
 				cls.framework = 'Foundation';
 			}
@@ -298,6 +299,17 @@ function generateFromJSON(name, json, state, callback, includes) {
 						merge(protocol.methods, cls.methods);
 					}
 				});
+			}
+
+			// If there are extensions of the class from downstream frameworks, merge them in!
+			// Very similar to how protocols are merged in here
+			const extension = json.extensions[k];
+			if (extension) {
+				// Merge the extension into the class!
+				cls.properties = cls.properties || {};
+				cls.methods = cls.methods || {};
+				merge(extension.properties, cls.properties);
+				merge(extension.methods, cls.methods);
 			}
 			sourceSet.classes[k] = genclass.generate(json, cls, state);
 		});

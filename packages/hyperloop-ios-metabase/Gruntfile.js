@@ -13,7 +13,7 @@ module.exports = function (grunt) {
 				reportFormats: [ 'lcov', 'cobertura' ],
 				check: {
 					statements: 58,
-					branches: 47,
+					branches: 45,
 					functions: 55,
 					lines: 58
 				}
