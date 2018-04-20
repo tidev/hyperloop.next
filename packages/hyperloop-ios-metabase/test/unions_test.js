@@ -60,7 +60,6 @@ describe('union', function () {
 						],
 						framework: frameworkName,
 						introducedIn: '0.0.0',
-						thirdparty: true,
 						filename: helper.getFixture('unions.h'),
 						line: '1',
 						name: 'U'

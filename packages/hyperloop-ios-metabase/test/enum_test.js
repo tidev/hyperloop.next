@@ -63,7 +63,6 @@ describe('enum', () => {
 					encoding: 'i',
 					filename: filename,
 					framework: frameworkName,
-					thirdparty: true,
 					introducedIn: '0.0.0',
 					line: '8',
 					type: 'enum',

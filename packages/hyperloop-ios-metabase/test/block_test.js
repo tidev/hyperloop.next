@@ -63,8 +63,7 @@ describe('block', function () {
 								selector: 'do:'
 							}
 						},
-						name: 'A',
-						thirdparty: true
+						name: 'A'
 					},
 					Blockception: {
 						filename: helper.getFixture('blocks.h'),
@@ -92,8 +91,7 @@ describe('block', function () {
 								selector: 'blockWithin:'
 							}
 						},
-						name: 'Blockception',
-						thirdparty: true
+						name: 'Blockception'
 					},
 					C: {
 						filename: helper.getFixture('blocks.h'),
@@ -114,8 +112,7 @@ describe('block', function () {
 								selector: 'foo'
 							}
 						},
-						name: 'C',
-						thirdparty: true
+						name: 'C'
 					}
 				});
 				should(json).have.property('functions', {
@@ -130,7 +127,6 @@ describe('block', function () {
 						],
 						filename: helper.getFixture('blocks.h'),
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						line: '1',
 						name: 'B',
@@ -146,7 +142,6 @@ describe('block', function () {
 						encoding: '@?',
 						filename: helper.getFixture('blocks.h'),
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						line: '5',
 						type: 'block',

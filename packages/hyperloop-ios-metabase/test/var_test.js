@@ -39,7 +39,6 @@ describe('var', function () {
 				should(json).have.property('vars', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('vars.h'),
 						introducedIn: '0.0.0',
 						line: '1',
@@ -50,7 +49,6 @@ describe('var', function () {
 					},
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('vars.h'),
 						introducedIn: '0.0.0',
 						line: '2',

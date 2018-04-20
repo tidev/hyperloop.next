@@ -37,7 +37,6 @@ describe('typedef', () => {
 					i: {
 						encoding: 'i',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '2',
@@ -47,7 +46,6 @@ describe('typedef', () => {
 					s: {
 						encoding: 's',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '3',
@@ -57,7 +55,6 @@ describe('typedef', () => {
 					l: {
 						encoding: 'l',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '4',
@@ -67,7 +64,6 @@ describe('typedef', () => {
 					d: {
 						encoding: 'd',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '5',
@@ -77,7 +73,6 @@ describe('typedef', () => {
 					f: {
 						encoding: 'f',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '6',
@@ -87,7 +82,6 @@ describe('typedef', () => {
 					c: {
 						encoding: 'c',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '7',
@@ -97,7 +91,6 @@ describe('typedef', () => {
 					q: {
 						encoding: 'q',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '8',
@@ -107,7 +100,6 @@ describe('typedef', () => {
 					C: {
 						encoding: 'C',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '9',
@@ -117,7 +109,6 @@ describe('typedef', () => {
 					I: {
 						encoding: 'I',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '10',
@@ -127,7 +118,6 @@ describe('typedef', () => {
 					S: {
 						encoding: 'S',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '11',
@@ -137,7 +127,6 @@ describe('typedef', () => {
 					L: {
 						encoding: 'L',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '12',
@@ -147,7 +136,6 @@ describe('typedef', () => {
 					Q: {
 						encoding: 'Q',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '13',
@@ -157,7 +145,6 @@ describe('typedef', () => {
 					B: {
 						encoding: 'i',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '14',
@@ -167,7 +154,6 @@ describe('typedef', () => {
 					BB: {
 						encoding: 'B',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '15',
@@ -177,7 +163,6 @@ describe('typedef', () => {
 					v: {
 						encoding: 'v',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '16',
@@ -187,7 +172,6 @@ describe('typedef', () => {
 					vv: {
 						encoding: '^v',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '17',
@@ -197,7 +181,6 @@ describe('typedef', () => {
 					vvv: {
 						encoding: '^^v',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '18',
@@ -207,7 +190,6 @@ describe('typedef', () => {
 					CS: {
 						encoding: '*',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '19',
@@ -217,7 +199,6 @@ describe('typedef', () => {
 					CSS: {
 						encoding: '^*',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '20',
@@ -227,7 +208,6 @@ describe('typedef', () => {
 					ID: {
 						encoding: '@',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '21',
@@ -237,7 +217,6 @@ describe('typedef', () => {
 					SE: {
 						encoding: '^:',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '22',
@@ -270,7 +249,6 @@ describe('typedef', () => {
 					UIFloatRange: {
 						encoding: '{UIFloatRange=ff}',
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '4',

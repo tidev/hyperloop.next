@@ -49,7 +49,6 @@ describe('struct', () => {
 							}
 						],
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						filename: filename,
 						line: '1',
@@ -57,7 +56,6 @@ describe('struct', () => {
 					},
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						filename: filename,
 						line: '2',

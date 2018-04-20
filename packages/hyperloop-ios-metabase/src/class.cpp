@@ -250,10 +250,15 @@ namespace hyperloop {
 		clang_visitChildren(cursor, parseClassMember, this);
 		if (isProtocol) {
 			tree->addProtocol(this);
-			// If we're extending a class that is in anoher framework, record the extension here
+			// If we're extending a class that is in another framework, record the extension here
 		} else if (isCategory && tree->hasClass(this->getName()) && tree->getClass(this->getName())->shouldBeExcluded()) {
-			// TODO We need to merge extensions too
-			tree->addExtension(this);
+			if (!tree->hasExtension(this->getName())) {
+				tree->addExtension(this); // first extension for class
+			} else {
+				// multiple extensions of same base type. merge the extensions
+				auto classDef = tree->getExtension(this->getName());
+				ClassDefinition::copy(this, classDef);
+			}
 		} else {
 			if (!this->superClass.empty()) {
 				if (!tree->hasClass(this->getName())) {

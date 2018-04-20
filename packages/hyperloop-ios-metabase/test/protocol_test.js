@@ -62,7 +62,6 @@ describe('protocol', () => {
 				should(json).have.property('protocols', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '2',
@@ -111,7 +110,6 @@ describe('protocol', () => {
 				should(json).have.property('protocols', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '2',
@@ -161,7 +159,6 @@ describe('protocol', () => {
 				should(json).have.property('protocols', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '2',
@@ -210,7 +207,6 @@ describe('protocol', () => {
 				should(json).have.property('protocols', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: filename,
 						introducedIn: '0.0.0',
 						line: '2',
@@ -290,8 +286,7 @@ describe('protocol', () => {
 	// 					optional: false,
 	// 					type: { type: 'float', value: 'float' }
 	// 				}
-	// 			},
-	// 			thirdparty: true
+	// 			}
 	// 		};
 	// 		should(json).have.property('protocols', {
 	// 			BaseProtocol: baseProtocol,
@@ -311,8 +306,7 @@ describe('protocol', () => {
 	// 					}
 	// 				},
 	// 				name: 'MyProtocol',
-	// 				protocols: [ 'BaseProtocol' ],
-	// 				thirdparty: true
+	// 				protocols: [ 'BaseProtocol' ]
 	// 			}
 	// 		});
 	//
@@ -370,8 +364,7 @@ describe('protocol', () => {
 	// 						type: { type: 'float', value: 'float' }
 	// 					}
 	// 				},
-	// 				protocols: [ 'BaseProtocol' ],
-	// 				thirdparty: true
+	// 				protocols: [ 'BaseProtocol' ]
 	// 			}
 	// 		});
 	//

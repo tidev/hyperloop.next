@@ -33,9 +33,14 @@ describe('module metadata', () => {
 			SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0')
 				.then(sdkInfo => {
 					sdk = sdkInfo;
+					sdk.frameworks.cacheDir = tmpDir;
 					return sdk.getSystemFrameworks();
 				})
 				.then(frameworkMap => {
+					// Set the cacheDir to tmpDir on the frameworks!
+					frameworkMap.forEach(value => {
+						value.cacheDir = tmpDir;
+					});
 					systemFrameworks = frameworkMap;
 					done();
 				})

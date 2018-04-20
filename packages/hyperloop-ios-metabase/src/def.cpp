@@ -136,7 +136,6 @@ namespace hyperloop {
 	void Definition::toJSONBase (Json::Value &kv) const {
 		kv["name"] = name;
 		kv["framework"] = getContext()->getFrameworkName();
-		kv["thirdparty"] = !getContext()->isSystemLocation(filename);
 		kv["filename"] = filename;
 		kv["line"] = line;
 		kv["introducedIn"] = introducedIn;

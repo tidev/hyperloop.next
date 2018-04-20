@@ -86,7 +86,6 @@ describe('class', function () {
 					A: {
 						filename: helper.getFixture('simple_class.h'),
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						line: '1',
 						methods: {
@@ -129,7 +128,6 @@ describe('class', function () {
 				should(json).have.property('classes', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_protocol.h'),
 						introducedIn: '0.0.0',
 						line: '6',
@@ -154,7 +152,6 @@ describe('class', function () {
 				should(json).have.property('protocols', {
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_protocol.h'),
 						introducedIn: '0.0.0',
 						line: '2',
@@ -198,7 +195,6 @@ describe('class', function () {
 				should(json).have.property('classes', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_superclass.h'),
 						introducedIn: '0.0.0',
 						line: '6',
@@ -207,7 +203,6 @@ describe('class', function () {
 					},
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_superclass.h'),
 						introducedIn: '0.0.0',
 						line: '2',
@@ -251,7 +246,6 @@ describe('class', function () {
 				should(json).have.property('classes', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 						introducedIn: '0.0.0',
 						line: '10',
@@ -287,7 +281,6 @@ describe('class', function () {
 					},
 					C: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 						introducedIn: '0.0.0',
 						line: '6',
@@ -311,7 +304,6 @@ describe('class', function () {
 				should(json).have.property('protocols', {
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('simple_class_with_superclass_and_protocol.h'),
 						introducedIn: '0.0.0',
 						line: '2',
@@ -365,7 +357,6 @@ describe('class', function () {
 				should(json).have.property('classes', {
 					A: {
 						framework: frameworkName,
-						thirdparty: true,
 						filename: helper.getFixture('class_with_properties.h'),
 						introducedIn: '0.0.0',
 						line: '1',
@@ -464,7 +455,6 @@ describe('class', function () {
 						name: 'A',
 						filename: filename,
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						line: '1',
 						methods: {

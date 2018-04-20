@@ -38,7 +38,6 @@ describe('method args', () => {
 						name: 'A',
 						filename: filename,
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						line: '1',
 						methods: {
@@ -87,7 +86,6 @@ describe('method args', () => {
 					A: {
 						name: 'A',
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						filename: filename,
 						line: '1',
@@ -115,7 +113,6 @@ describe('method args', () => {
 					},
 					B: {
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						filename: filename,
 						line: '5',
@@ -184,7 +181,6 @@ describe('method args', () => {
 					A: {
 						name: 'A',
 						framework: frameworkName,
-						thirdparty: true,
 						introducedIn: '0.0.0',
 						filename: filename,
 						line: '1',
