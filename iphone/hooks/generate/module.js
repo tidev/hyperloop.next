@@ -116,9 +116,11 @@ function getObjCReturnType(value, json) {
 		case 'unknown':
 		case 'enum':
 		case 'pointer':
+		case 'function_callback':
 		case 'union':
 		case 'unexposed':
 		case 'vector':
+		case 'block':
 		case 'incomplete_array':
 		case 'struct': {
 			return value.value || 'void *';
@@ -156,9 +158,6 @@ function getObjCReturnType(value, json) {
 		return value.value || util.getPrimitiveValue(value.type);
 	}
 	throw new Error('cannot figure out objc return type: ' + JSON.stringify(value));
-	// console.log(value);
-	// logger.error('cannot figure out objc return type', value);
-	// process.exit(1);
 }
 
 function generateObjCResult(state, json, fn, arglist, asProperty, tab) {

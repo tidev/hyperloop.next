@@ -75,11 +75,15 @@ describe('GenerateSourcesTask', function () {
 		SDKEnvironment.fromTypeAndMinimumVersion('iphonesimulator', '9.0')
 			.then(sdkInfo => {
 				sdk = sdkInfo;
+				sdk.cacheDir = buildDir;
 				return sdk.getSystemFrameworks();
 			})
 			.then(frameworkMap => {
 				should(frameworkMap).be.ok;
 				frameworkMap.has('$metadata').should.be.false;
+				frameworkMap.forEach(value => {
+					value.cacheDir = buildDir;
+				});
 				frameworks = frameworkMap;
 
 				const frameworksToGenerate = [ frameworkName ];

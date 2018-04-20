@@ -13,7 +13,6 @@ describe('generate/enum', () => {
 			framework: 'UIKit',
 			introducedIn: '0.0.0',
 			line: '56',
-			thirdparty: true,
 			values:
 			{
 				UIControlStateApplication: 16711680,

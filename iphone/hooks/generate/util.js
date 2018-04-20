@@ -31,6 +31,7 @@ function isPrimitive(type) {
 		case 'i':
 		case 'c':
 		case 'd':
+		case 'D':
 		case 'f':
 		case 'B':
 		case 's':
@@ -51,6 +52,8 @@ function isPrimitive(type) {
 		case 'unsigned long long':
 		case 'long long':
 		case 'long_long':
+		case 'long double':
+		case 'long_double':
 		case 'double':
 		case 'short':
 		case 'ushort':
@@ -335,6 +338,7 @@ function generateArgList(state, json, args, startParens, endParens, def) {
 function toValue (encoding, type) {
 	switch (encoding) {
 		case 'd':
+		case 'D':
 			return 'doubleValue';
 		case 'i':
 			return 'intValue';
@@ -361,13 +365,13 @@ function toValue (encoding, type) {
 		case 'S':
 			return 'unsignedShortValue';
 	}
-	logger.error('Can\'t convert encoding: ' + encoding + ', type: ' + type);
-	process.exit(1);
+	throw new Error(`Can't convert encoding: ${encoding}, type: ${type}`);
 }
 
 function toValueDefault(encoding, type) {
 	switch (encoding) {
 		case 'd':
+		case 'D':
 		case 'i':
 		case 'l':
 		case 'f':
@@ -389,8 +393,7 @@ function toValueDefault(encoding, type) {
 		case '^':
 			return 'nil';
 	}
-	logger.error('Can\'t convert encoding: ' + encoding + ', type: ' + type);
-	process.exit(1);
+	throw new Error(`Can't convert encoding: ${encoding}, type: ${type}`);
 }
 
 /**
@@ -423,6 +426,8 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 		case 'unexposed':
 		case 'vector':
 		case 'incomplete_array':
+		case 'constant_array':
+		case 'function_callback':
 		case 'pointer': {
 			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ')];';
 		}
@@ -455,7 +460,6 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 				type: 'struct',
 				value: structName
 			}, name, returns, asPointer);
-			break;
 		}
 		case 'id':
 		case 'objc_interface':
@@ -487,6 +491,7 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 	if (isPrimitive(value.type)) {
 		switch (value.encoding) {
 			case 'd':
+			case 'D':
 				return returns + ' [NSNumber numberWithDouble:' + name + '];';
 			case 'i':
 				return returns + ' [NSNumber numberWithInt:' + name + '];';
@@ -517,9 +522,6 @@ function getObjCReturnResult(json, value, name, returns, asPointer) {
 		}
 	}
 	throw new Error('cannot figure out objc return result: ' + JSON.stringify(value));
-	// console.log(value);
-	// logger.error('cannot figure out objc return result', value);
-	// process.exit(1);
 }
 
 function generatePropGetter (state, json, prop, name) {
@@ -567,6 +569,8 @@ function getPrimitiveValue (type) {
 			return 'unsigned char';
 		case 'long_long':
 			return 'long long';
+		case 'long_double':
+			return 'long double';
 		case 'ulonglong':
 			return 'unsigned long long';
 		case 'enum':
@@ -691,8 +695,6 @@ function generateObjCValue(state, json, fn, arg, name, define, tab, arglist) {
 		}
 		if (!found) {
 			throw new Error(`don't know how to encode: ${JSON.stringify(arg)}`);
-			// logger.error('don\'t know how to encode:', arg);
-			// process.exit(1);
 		}
 	}
 	return code.join('\n');
