@@ -437,6 +437,53 @@ void HyperloopInstance::postCallAsConstructor(const JSContext& js_context, const
 	}
 }
 
+HyperloopNamespace::HyperloopNamespace(const JSContext& js_context) TITANIUM_NOEXCEPT
+	: Titanium::Module(js_context)
+{
+	TITANIUM_LOG_DEBUG("HyperloopNamespace ctor");
+}
+
+void HyperloopNamespace::JSExportInitialize()
+{
+	JSExport<HyperloopNamespace>::SetClassVersion(1);
+	JSExport<HyperloopNamespace>::SetParent(JSExport<Titanium::Module>::Class());
+	JSExport<HyperloopNamespace>::AddHasPropertyCallback(std::mem_fn(&HyperloopNamespace::HasProperty));
+	JSExport<HyperloopNamespace>::AddGetPropertyCallback(std::mem_fn(&HyperloopNamespace::GetProperty));
+}
+
+
+bool HyperloopNamespace::HasProperty(const JSString& js_property_name) const
+{
+	const auto property_name = static_cast<std::string>(js_property_name);
+
+	try {
+		std::string moduleId = namespace__ + "." + property_name;
+		const auto moduleType = TypeHelper::GetType(ConvertUTF8String(moduleId));
+		return moduleType.Name != nullptr;
+	} catch (...) {
+		TITANIUM_MODULE_LOG_WARN("Unable to find ", property_name);
+	}
+	return false;
+}
+
+JSValue HyperloopNamespace::GetProperty(const JSString& js_property_name)
+{
+	const auto property_name = static_cast<std::string>(js_property_name);
+
+	try {
+		std::string moduleId = namespace__ + "." + property_name;
+		const auto moduleType = TypeHelper::GetType(ConvertUTF8String(moduleId));
+		const auto ctor = get_context().CreateObject(JSExport<HyperloopInstance>::Class());
+		const auto ctor_ptr = ctor.GetPrivate<HyperloopInstance>();
+		ctor_ptr->set_apiName(moduleId);
+		ctor_ptr->set_type(moduleType);
+
+		return ctor;
+	} catch (...) {
+		TITANIUM_MODULE_LOG_WARN("Unable to find ", property_name);
+	}
+	return get_context().CreateNull();
+}
 HyperloopModule::HyperloopModule(const JSContext& js_context) TITANIUM_NOEXCEPT
 	: Titanium::Module(js_context, "hyperloop")
 {
@@ -460,6 +507,13 @@ TITANIUM_FUNCTION(HyperloopModule, exists)
 {
 	ENSURE_STRING_AT_INDEX(moduleId, 0);
 	try {
+
+		// if moduleId ends with ".*", it indicates requiring Windows namespace.
+		// In this case we're assuming it exists.
+		if (moduleId.length() > 2 && moduleId.substr(moduleId.length() - 2) == ".*") {
+			return get_context().CreateBoolean(true);
+		}
+
 		const auto module = TypeHelper::GetType(ConvertUTF8String(moduleId));
 		return get_context().CreateBoolean(module.Name != nullptr);
 	} catch (Platform::COMException^ e) {
@@ -480,6 +534,18 @@ TITANIUM_FUNCTION(HyperloopModule, require)
 
 	ENSURE_STRING_AT_INDEX(moduleId, 0);
 	try {
+		// if moduleId ends with ".*", it indicates requiring Windows namespace.
+		// In this case we're assuming it exists.
+		if (moduleId.length() > 2 && moduleId.substr(moduleId.length() - 2) == ".*") {
+			const auto nsObj = ctx.CreateObject(JSExport<HyperloopNamespace>::Class());
+			const auto nsObj_ptr = nsObj.GetPrivate<HyperloopNamespace>();
+			const auto nsName = moduleId.substr(0, moduleId.length() - 2);
+			nsObj_ptr->set_apiName(nsName);
+			nsObj_ptr->set_namespace(nsName);
+
+			return nsObj;
+		}
+
 		const auto module = TypeHelper::GetType(ConvertUTF8String(moduleId));
 		const auto ctor = ctx.CreateObject(JSExport<HyperloopInstance>::Class());
 		const auto ctor_ptr = ctor.GetPrivate<HyperloopInstance>();
