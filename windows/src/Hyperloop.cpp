@@ -194,9 +194,9 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 
 		// First, try to get a method with expected parameter types.
 		// This could return null when method is not found with given types
-		const auto expectedParams = ref new Platform::Array<TypeName>(argumentCount);
+		const auto expectedParams = ref new Platform::Array<TypeName>(static_cast<unsigned int>(argumentCount));
 		const TypeName nullType;
-		for (std::size_t i = 0; i < argumentCount; i++) {
+		for (unsigned int i = 0; i < argumentCount; i++) {
 			expectedParams[i] = HyperloopModule::Convert(js_arguments[i], nullType)->NativeType;
 		}
 
@@ -204,15 +204,15 @@ JSValue HyperloopFunction::CallAsFunction(const std::vector<JSValue>& js_argumen
 		if (method == nullptr) {
 			// When method is not found with given types, then try to get the method with matched argument count
 			// TODO: More precise method overloading detection with derived types etc
-			const auto methods = Method::GetMethods(type__, functionName, argumentCount);
+			const auto methods = Method::GetMethods(type__, functionName, static_cast<int>(argumentCount));
 			if (methods == nullptr || methods->Size == 0) {
 				detail::ThrowRuntimeError("HyperloopFunction::CallAsFunction", apiName__ + " is not found with the given argument list");
 			}
 			method = methods->GetAt(0);
 		}
 		const auto types = method->GetParameters();
-		const auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(argumentCount);
-		for (std::size_t i = 0; i < argumentCount; i++) {
+		const auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(static_cast<unsigned int>(argumentCount));
+		for (unsigned int i = 0; i < argumentCount; i++) {
 			args[i] = HyperloopModule::Convert(js_arguments[i], types[i]);
 		}
 		try {
@@ -419,10 +419,10 @@ void HyperloopInstance::postCallAsConstructor(const JSContext& js_context, const
 	try {
 		const auto type = TypeHelper::GetType(ConvertUTF8String(apiName__));
 		const auto argumentCount = js_arguments.size();
-		const auto expectedParams = Instance::GetConstructorParameters(type, argumentCount);
+		const auto expectedParams = Instance::GetConstructorParameters(type, static_cast<int>(argumentCount));
 
-		auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(argumentCount);
-		for (std::size_t i = 0; i < argumentCount; i++) {
+		auto args = ref new Platform::Array<HyperloopInvocation::Instance^>(static_cast<unsigned int>(argumentCount));
+		for (unsigned int i = 0; i < argumentCount; i++) {
 			TypeName parameterType;
 			if (expectedParams->Length > i) {
 				parameterType = expectedParams[i];
