@@ -31,9 +31,9 @@ node {
 		packageVersion = packageJSON['version']
 
 		nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-			sh 'npm i -g npm' // install latest npm
+			ensureNPM()
 			// Now do top-level linting
-			sh 'npm install'
+			sh 'npm ci'
 			sh 'npm test'
 
 			// Sub-builds assume they can copy common folders from top-level like documentation, LICENSE, etc
@@ -88,9 +88,9 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 
 							// Run hook tests and then prune to production deps
 							dir('hooks') {
-								sh 'npm install'
+								sh 'npm ci'
 								sh 'npm test'
-								sh 'npm prune --production'
+								sh 'npm ci --production'
 							}
 
 							appc.loggedIn {
@@ -131,10 +131,11 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 			} // node
 		},
 		'iOS': {
-			node('osx && xcode') {
+			node('osx && xcode-9') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					ensureNPM()
 					appc.install()
 					appc.installAndSelectSDK(sdkVersion)
 
@@ -185,6 +186,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					unstash 'source'
 
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						ensureNPM()
 						appc.install()
 						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 

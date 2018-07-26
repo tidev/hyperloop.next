@@ -36,14 +36,18 @@ cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 echo "\nBuilding for JSCore ..."
 xcodebuild clean >/dev/null
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
+[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a >/dev/null 2>&1
+[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
+lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a
 
 # Build for the Titanium custom JavaScriptCore
 echo "\nBuilding for TiJSCore ..."
 xcodebuild clean >/dev/null
 xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
+[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
 xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
+[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
 lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
 
 echo "\nPackaging iOS module..."
