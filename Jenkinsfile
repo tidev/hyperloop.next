@@ -50,6 +50,7 @@ stage('Build') {
 				unstash 'source'
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+					ensureNPM()
 					appc.install()
 					def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
