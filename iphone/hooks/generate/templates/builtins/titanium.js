@@ -239,14 +239,6 @@ module.exports = function(json, callback) {
 					encoding: '@',
 					value: 'NSDictionary *'
 				}
-			},
-			userAgent: {
-				name: 'userAgent',
-				returns: {
-					type: 'obj_interface',
-					encoding: '@',
-					value: 'NSString *'
-				}
 			}
 		}
 	};
