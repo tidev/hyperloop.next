@@ -21,9 +21,6 @@ const COMPILE_JS_FILE_HOOK_SDK_MIN = '7.1.0';
 // Set the iOS SDK minium
 const IOS_SDK_MIN = '9.0';
 
-// Reference to the native library
-const coreLib = 'libhyperloop-jscore.a'
-
 const path = require('path');
 const exec = require('child_process').exec;
 const hm = require('hyperloop-metabase');
@@ -209,19 +206,6 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
 	fs.ensureDirSync(this.hyperloopBuildDir);
-
-	// update to use the correct libhyperloop based on which JS engine is configured
-	this.builder.nativeLibModules.some(function (mod) {
-		if (mod.id === 'hyperloop') {
-			var JSCoreFlag = this.builder.tiapp.ios['use-jscore-framework'];
-
-			mod.libName = coreLib;
-			mod.libFile = path.join(mod.modulePath, mod.libName);
-			mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
-			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
-			return true;
-		}
-	}, this);
 };
 
 /**
