@@ -1,6 +1,6 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #import <Foundation/Foundation.h>
 #import "define.h"
@@ -16,8 +16,8 @@
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 
-+(TiObjectRef)createPointer:(HyperloopPointer *)pointer;
-+(NSException*)JSValueRefToNSException:(TiValueRef)exception;
++(JSObjectRef)createPointer:(HyperloopPointer *)pointer;
++(NSException*)JSValueRefToNSException:(JSValueRef)exception;
 
 @end
 

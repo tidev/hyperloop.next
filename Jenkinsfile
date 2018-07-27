@@ -154,28 +154,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						sh 'rm -rf build'
 						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
 
-						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
-						// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
-						// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// 	// Building for TiCore
-						// 	echo "Building for TiCore ..."
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
-						//
-						// 	// Building for JSCore
-						// 	echo "Building for JSCore ..."
-						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
-						//
-						// 	// Add a fake libhyperloop.a file
-						// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
-
 						// THEN we need to combine all the plugins stuff!
-						// And build and package the metabase shit!
+						// And build and package the metabase sh*t!
 						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
 					} // dir
 				} // nodejs
