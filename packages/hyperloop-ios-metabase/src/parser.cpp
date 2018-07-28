@@ -470,6 +470,18 @@ namespace hyperloop {
 				}
 
 				introducedIn = platformAvailability.Introduced;
+				// Here we change -1 into 0. versions may be specified as simply 12, which becomes 12,-1,-1 here.
+				// So we change to 12.0.0
+				// There's also a number of all -1 cases, which we coerce to 0.0.0 now, not sure how to handle it...
+				if (introducedIn.Major == -1) {
+					introducedIn.Major = 0;
+				}
+				if (introducedIn.Minor == -1) {
+					introducedIn.Minor = 0;
+				}
+				if (introducedIn.Subminor == -1) {
+					introducedIn.Subminor = 0;
+				}
 			}
 			clang_disposeCXPlatformAvailability(availability);
 			if (unavailable || always_deprecated || always_unavailable) {
