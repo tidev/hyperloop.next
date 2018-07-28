@@ -9,7 +9,6 @@
 #import "utils.h"
 
 #ifdef TIMODULE
-#import "TiToJS.h"
 #import "TiBase.h"
 #import "KrollContext.h"
 #import "KrollBridge.h"
@@ -319,7 +318,7 @@ static JSObjectRef CreateJSClassFromModulePath (NSString *path, id obj, JSClassR
 		JSObjectRef ref = HLObjectMake(ctx, pointerClassRef, obj);
 		if (newInstance) {
 			JSValueRef args [] = {ref};
-			return TiObjectCallAsConstructor(ctx, function, 1, args, NULL);
+			return JSObjectCallAsConstructor(ctx, function, 1, args, NULL);
 		} else {
 			// we need to store our pointer since this is a KrollWrapper and it's native pointer
 			// will be a KrollContext but we want to get back to our class

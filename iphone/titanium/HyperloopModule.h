@@ -3,6 +3,8 @@
  * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #import <Foundation/Foundation.h>
+#import <JavaScriptCore/JavaScriptCore.h>
+
 #import "define.h"
 
 @class KrollContext;

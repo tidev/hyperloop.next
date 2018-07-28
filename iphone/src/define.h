@@ -18,10 +18,6 @@ extern BOOL isIOS9OrGreater();
 extern BOOL HLValueIsArray(JSContextRef js_context_ref, JSValueRef js_value_ref);
 extern BOOL HLValueIsDate(JSContextRef js_context_ref, JSValueRef js_value_ref);
 
-#define JSObjectMakeConstructor JSObjectMakeConstructor
-
-#define TiObjectCallAsConstructor JSObjectCallAsConstructor
-
 #define RELEASE_AND_CHECK(s) { if (s) { s = nil; } }
 
 #if defined(DEBUG)

@@ -3,6 +3,7 @@
  * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #ifdef TIMODULE
+#import <JavaScriptCore/JavaScriptCore.h>
 
 #import "HyperloopView.h"
 #import "HyperloopModule.h"
