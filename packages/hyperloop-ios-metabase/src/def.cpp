@@ -119,13 +119,10 @@ namespace hyperloop {
 
 	void Definition::setIntroducedIn(const CXVersion version) {
 		std::stringstream versionNumberStream;
+		// We handle -1 values and make them 0 in parser.cpp
 		versionNumberStream << version.Major;
 		versionNumberStream << "." << version.Minor;
-		if (version.Subminor == -1) {
-			versionNumberStream << ".0";
-		} else {
-			versionNumberStream << "." << version.Subminor;
-		}
+		versionNumberStream << "." << version.Subminor;
 		this->introducedIn = versionNumberStream.str();
 	}
 

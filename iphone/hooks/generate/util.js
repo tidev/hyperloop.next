@@ -142,7 +142,7 @@ function getResultWrapper(state, json, obj, instance) {
 		name = obj.name || value,
 		struct,
 		typedef;
-	// console.log('>', name, type, value);
+
 	switch (type) {
 		case 'unexposed':
 		case 'obj_interface':
@@ -180,10 +180,10 @@ function getResultWrapper(state, json, obj, instance) {
 			} else if (cls === 'void') {
 				return '';
 			} else if (isBlock(value)) {
-				// FIXME:
+				// FIXME: Not implemented, yet
 				return '';
 			} else if (isFunctionPointer(value)) {
-				// FIXME:
+				// FIXME: Not implemented, yet
 				return '';
 			} else if (isPointerEncoding(obj.encoding)) {
 				return '';
@@ -235,7 +235,7 @@ function getResultWrapper(state, json, obj, instance) {
 		case 'struct': {
 			name = getStructNameFromEncoding(obj.encoding) || name;
 			if (name === '?') {
-				// TODO:
+				// TODO: Handle this property
 				return '';
 			}
 			struct = json.structs[name];
@@ -297,7 +297,7 @@ function getResultWrapper(state, json, obj, instance) {
 			return '';
 		}
 		default: {
-			if (isPrimitive(type) || value.indexOf('*') > 0) {
+			if (isPrimitive(type) || (value && value.indexOf('*') > 0)) {
 				return '';
 			}
 		}

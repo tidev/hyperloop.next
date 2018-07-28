@@ -6,7 +6,7 @@ def nodeVersion = '8.9.0' // Must set up Jenkins with a given version first. Con
 def npmVersion = '5.7.1' // so we can do npm ci
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-def sdkVersion = '7.1.1.v20180329185637' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
+def sdkVersion = '7.3.0.v20180607210411' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
@@ -108,6 +108,13 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf dist/'
 							sh 'rm -rf libs/'
 
+							// Run hook tests and then prune to production deps
+							dir('hooks') {
+								sh 'npm ci'
+								sh 'npm test'
+								sh 'npm ci --production'
+							}
+
 							appc.loggedIn {
 								// Even setting config needs login, ugh
 								sh "appc ti config android.sdkPath ${androidSDK}"
@@ -154,6 +161,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 
 				nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
 					ensureNPM(npmVersion)
+
 					appc.install()
 					appc.installAndSelectSDK(sdkVersion)
 
@@ -247,6 +255,7 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 					unstash 'source'
 
 					nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
+						ensureNPM()
 						appc.install()
 						def activeSDKPath = appc.installAndSelectSDK(sdkVersion)
 
