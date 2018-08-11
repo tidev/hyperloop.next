@@ -1404,12 +1404,13 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			var name = path.basename(file);
 			var fileRefUuid = generateUuid();
 			var buildFileUuid = generateUuid();
+			var objcPlusPlusPattern = /\.mm$/;
 
 			// add the file reference
 			xobjs.PBXFileReference[fileRefUuid] = {
 				isa: 'PBXFileReference',
 				fileEncoding: 4,
-				lastKnownFileType: 'sourcecode.' + (swiftRegExp.test(file) ? 'swift' : 'c.objc'),
+				lastKnownFileType: 'sourcecode.' + (swiftRegExp.test(file) ? 'swift' : (objcPlusPlusPattern.test(file) ? 'cpp.objcpp' : 'c.objc')),
 				name: '"' + name + '"',
 				path: '"' + file + '"',
 				sourceTree: '"<absolute>"'
