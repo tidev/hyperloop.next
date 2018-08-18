@@ -760,7 +760,7 @@ function generateFieldSetter (state, json, prop, index) {
 		var indent = repeat('\t', 5);
 		prop.otherStruct = otherStruct;
 		code.push('set: function (_' + prop.name + ') {');
-		otherStruct.fields.forEach(function (field, i) {
+		otherStruct.fields && otherStruct.fields.forEach(function (field, i) {
 			code.push(indent + 'this.$' + prop.name + '.' + field.name + ' = _' + prop.name + '.' + field.name + ';');
 		});
 		code.push(repeat('\t', 4) + '}');
