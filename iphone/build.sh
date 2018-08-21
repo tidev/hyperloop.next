@@ -8,6 +8,9 @@ VERSION=`grep "^version:" manifest | cut -c 10-`
 METABASE_VERSION=`grep "\"version\":" ../packages/hyperloop-ios-metabase/package.json | cut -d \" -f 4`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
 
+echo "Titanium SDK version: "
+echo $TITANIUM_SDK
+
 XC=`which xcpretty`
 CHECK="✓ "
 
@@ -31,6 +34,9 @@ fi
 
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
+
+# Inject the TITANIUM_SDK value into titanium.xcconfig explicitly, just exporting the value doesn't override it, it seems
+sed -i.bak 's@TITANIUM_SDK = .*@TITANIUM_SDK = '"$TITANIUM_SDK"'@g' ./titanium.xcconfig
 
 # Build for the Apple JavaScriptCore built-in
 echo "\nBuilding for JSCore ..."
