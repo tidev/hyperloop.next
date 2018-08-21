@@ -8,6 +8,9 @@ VERSION=`grep "^version:" manifest | cut -c 10-`
 METABASE_VERSION=`grep "\"version\":" ../packages/hyperloop-ios-metabase/package.json | cut -d \" -f 4`
 export TITANIUM_SDK="`node ../tools/tiver.js`"
 
+echo "Titanium SDK version: "
+echo $TITANIUM_SDK
+
 XC=`which xcpretty`
 CHECK="✓ "
 
