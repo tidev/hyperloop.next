@@ -129,7 +129,7 @@ module.exports = function(json, callback) {
 			registerApplicationDelegate: {
 				instance: true,
 				name: 'registerApplicationDelegate',
-				selector: 'registerApplicationDelegate',
+				selector: 'registerApplicationDelegate:',
 				arguments: [{
 					type: 'id',
 					encoding: '@',
@@ -145,7 +145,7 @@ module.exports = function(json, callback) {
 			unregisterApplicationDelegate: {
 				instance: true,
 				name: 'unregisterApplicationDelegate',
-				selector: 'unregisterApplicationDelegate',
+				selector: 'unregisterApplicationDelegate:',
 				arguments: [{
 					type: 'id',
 					encoding: '@',
