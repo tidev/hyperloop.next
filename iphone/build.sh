@@ -35,6 +35,9 @@ fi
 mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
 cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
 
+# Inject the TITANIUM_SDK value into titanium.xcconfig explicitly, just exporting the value doesn't override it, it seems
+sed -i.bak 's@TITANIUM_SDK = .*@TITANIUM_SDK = '"$TITANIUM_SDK"'@g' ./titanium.xcconfig
+
 # Build for the Apple JavaScriptCore built-in
 echo "\nBuilding for JSCore ..."
 xcodebuild clean >/dev/null
