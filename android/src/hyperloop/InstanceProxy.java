@@ -164,13 +164,12 @@ public class InstanceProxy extends BaseProxy {
         // release from our cache, because we're cleaning this view up
         HyperloopModule.getProxyFactory().release(this);
         super.releaseViews(); // do normal cleanup for the view hierarchy
-        super.release(); // now release the underlying JS object
     }
 
     @Override
     public void release() {
         // ensure we release from our cache
-        HyperloopModule.getProxyFactory().release(this);
+        releaseViews();
         super.release();
     }
 
