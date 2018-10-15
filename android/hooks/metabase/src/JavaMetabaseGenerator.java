@@ -57,6 +57,15 @@ public class JavaMetabaseGenerator
     private static final Pattern anonymousClass = Pattern.compile(".+\\$\\d+$");
 
     /**
+     * determine if the class is a package-private class (with no access attributes)
+     * that can only be accessed by classes within the same package
+     */
+    private static boolean isPackagePrivate(JavaClass cls)
+    {
+        return !(cls.isPublic() || cls.isPrivate() || cls.isProtected());
+    }
+
+    /**
      * enumerate over a zip/jar and load up it's classes
      */
     private static void enumerate(String filename, Enumeration<? extends ZipEntry> e, JSONWriter writer, Set<String> uniques)
@@ -74,9 +83,10 @@ public class JavaMetabaseGenerator
                 }
                 try {
                     JavaClass cls = repo.loadClass(classname);
-                    // skip private/package-level/anonymous classes but keep abstract classes
+                    // skip private/anonymous classes but keep abstract and package-level classes
                     // because there may be other public classes extending them
-                    if ((cls.isPublic() || cls.isProtected() || cls.isAbstract()) && !anonymousClass.matcher(classname).matches()) {
+                    if ((cls.isPublic() || cls.isProtected() || cls.isAbstract() || isPackagePrivate(cls))
+                            && !anonymousClass.matcher(classname).matches()) {
                         writer.key(classname);
                         writer.object();
                         asJSON(cls, writer);
@@ -125,6 +135,10 @@ public class JavaMetabaseGenerator
         if (obj.isNative())
         {
             json.put("native");
+        }
+        if (obj.isSynchronized())
+        {
+            json.put("synchronized");
         }
         return json;
     }
