@@ -150,6 +150,10 @@ function safeName(name) {
 	if (name.match(/^(decodeURI|decodeURIComponent|encodeURI|encodeURIComponent|escape|eval|isFinite|isNaN|parseFloat|parseInt|unescape|uneval)$/)) {
 		return '_' + name;
 	}
+	// Replace numeric prefix
+	if (name.match(/^\d+/)) {
+		return '_' + name;
+	}
 	return name;
 }
 
