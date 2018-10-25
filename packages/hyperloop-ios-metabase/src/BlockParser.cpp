@@ -42,8 +42,9 @@ namespace hyperloop {
   void BlockParser::parseBlock(Definition *definition, CXCursor cursor, Type *type) {
     auto context = definition->getContext();
     auto framework = definition->getFramework();
-    context->getParserTree()->addBlock(framework, type->getValue());
-
-    clang_visitChildren(cursor, parseBlockParameter, definition);
+    if (isAvailableInIos(cursor)) {
+      context->getParserTree()->addBlock(framework, type->getValue());
+      clang_visitChildren(cursor, parseBlockParameter, definition);
+    }
   }
 }

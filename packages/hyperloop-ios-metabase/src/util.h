@@ -145,6 +145,11 @@ namespace hyperloop {
 	 * parse a block signature to JSON
 	 */
 	Json::Value callbackToJSON (ParserContext *context, const std::string &block);
+
+	/**
+	 * Checks if the specified cursor is available in iOS
+	 */
+	bool isAvailableInIos(CXCursor cursor);
 };
 
 #endif

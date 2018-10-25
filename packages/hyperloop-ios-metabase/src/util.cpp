@@ -994,4 +994,41 @@ namespace hyperloop {
 		return result;
 	}
 
+	bool isAvailableInIos(CXCursor cursor) {
+		CXPlatformAvailability availability[10];
+		int always_deprecated, always_unavailable;
+		CXString deprecated_message, unavailable_message;
+		int size = clang_getCursorPlatformAvailability(
+			cursor,
+			&always_deprecated,
+			&deprecated_message,
+			&always_unavailable,
+			&unavailable_message,
+			(CXPlatformAvailability *)&availability,
+			10
+		);
+		bool available = true;
+
+		// check and make sure this API is available
+		if (size > 0) {
+			for (int i = 0; i < size; i++) {
+				auto platformAvailability = availability[i];
+				// We only care for ios, so skip platform if it's anything else
+				auto platformNameCString = clang_getCString(platformAvailability.Platform);
+				std::string platformName = platformNameCString;
+				if (platformName.compare("ios") != 0) {
+					continue;
+				}
+
+				if (platformAvailability.Unavailable) {
+					available = false;
+					break;
+				}
+			}
+			clang_disposeCXPlatformAvailability(availability);
+		}
+
+		return available;
+	}
+
 };
