@@ -1,12 +1,20 @@
 /**
  * get the active (selected) Titanium SDK to build with
  */
-var exec = require('child_process').exec,
-	path = require('path'),
-	titanium = require.resolve('.bin/titanium');
+'use strict';
+const exec = require('child_process').exec;
+const path = require('path');
+
+function getTitaniumPath() {
+	try {
+		return require.resolve('titanium');
+	} catch (err) {
+		return 'titanium';
+	}
+}
 
 exports.getActivePath = function (cb) {
-	exec('"' + titanium + '" sdk -o json', function (err, out) {
+	exec('"' + getTitaniumPath() + '" sdk -o json', function (err, out) {
 		if (err) { return cb(err); }
 		var j = JSON.parse(out);
 		var version = j.activeSDK;

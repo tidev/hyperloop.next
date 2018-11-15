@@ -21,6 +21,9 @@ fi
 
 rm -rf build
 
+# Inject the TITANIUM_SDK value into titanium.xcconfig explicitly, just exporting the value doesn't override it, it seems
+sed -i.bak 's@TITANIUM_SDK = .*@TITANIUM_SDK = '"$TITANIUM_SDK"'@g' ./titanium.xcconfig
+
 if [ "${CI}" = "1" ];
 then
 	echo "Testing ..."
