@@ -32,36 +32,15 @@ then
 	fi
 fi
 
-mkdir -p build/zip/modules/iphone/hyperloop/$VERSION
-cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/$VERSION
+# Build the native module
+echo "\nBuilding module ..."
+mkdir -p build/zip
+ti build -p ios --build-only
+cd dist
+unzip hyperloop-iphone-$VERSION.zip -d ../build/zip
+cd ..
 
-# Inject the TITANIUM_SDK value into titanium.xcconfig explicitly, just exporting the value doesn't override it, it seems
-sed -i.bak 's@TITANIUM_SDK = .*@TITANIUM_SDK = '"$TITANIUM_SDK"'@g' ./titanium.xcconfig
-
-# Build for the Apple JavaScriptCore built-in
-echo "\nBuilding for JSCore ..."
-xcodebuild clean >/dev/null
-xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
-xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1 USE_JSCORE_FRAMEWORK=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
-lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-jscore.a
-
-# Build for the Titanium custom JavaScriptCore
-echo "\nBuilding for TiJSCore ..."
-xcodebuild clean >/dev/null
-xcodebuild -sdk iphoneos -configuration Release GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
-xcodebuild -sdk iphonesimulator -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='TIMODULE=1' ONLY_ACTIVE_ARCH=NO | xcpretty
-[[ ${PIPESTATUS[0]} -ne 0 ]] && exit 1
-lipo build/Debug-iphonesimulator/libhyperloop.a build/Release-iphoneos/libhyperloop.a -create -output build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop-ticore.a
-
-echo "\nPackaging iOS module..."
-cp -R hooks build/zip/modules/iphone/hyperloop/$VERSION
-cp -R ../hooks build/zip/modules/iphone/hyperloop/$VERSION
-cp ../LICENSE build/zip/modules/iphone/hyperloop/$VERSION
-
-# package the metabase into the .zip
+# Package the metabase into the .zip
 echo "Packaging iOS metabase..."
 cd ../packages/hyperloop-ios-metabase
 rm *.tgz

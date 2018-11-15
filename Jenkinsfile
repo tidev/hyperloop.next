@@ -5,7 +5,7 @@ import com.axway.AppcCLI;
 def nodeVersion = '8.9.0'
 def platformEnvironment = 'prod' // 'preprod'
 def credentialsId = '895d8db1-87c2-4d96-a786-349c2ed2c04a' // preprod = '65f9aaaf-cfef-4f22-a8aa-b1fb0d934b64'
-def sdkVersion = '7.3.0.v20180607210411' // Use master build with Windows DLL & removed 8.1, newer v8 api level *and* Android ARM64 support
+def sdkVersion = '8.0.0.v20180807074223' // Use master build with TiCore / Kroll-Thread removal
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
@@ -154,28 +154,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						sh 'rm -rf build'
 						sh './build.sh' // TODO Move the logic into this and use the appc cli to build!
 
-						// sh "mkdir -p build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// sh 'mkdir -p build/zip/plugins/hyperloop/hooks/ios'
-						// sh 'mkdir -p build/zip/plugins/hyperloop/node_modules/hyperloop-metabase'
-						// sh "cp manifest module.xcconfig build/zip/modules/iphone/hyperloop/${packageVersion}"
-						// 	// Building for TiCore
-						// 	echo "Building for TiCore ..."
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-ticore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-ticore.a"
-						//
-						// 	// Building for JSCore
-						// 	echo "Building for JSCore ..."
-						// 	sh "sed -i.bak 's/TIMODULE=1/TIMODULE=1 USE_JSCORE_FRAMEWORK=1/g' ./titanium.xcconfig"
-						// 	sh 'appc ti build --build-only'
-						// 	// Keep the libhyperloop.a and rename it to libhyperloop-jscore.a
-						// 	sh "cp build/libhyperloop.a build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop-jscore.a"
-						//
-						// 	// Add a fake libhyperloop.a file
-						// 	sh "echo 1 > build/zip/modules/iphone/hyperloop/${packageVersion}/libhyperloop.a"
-
 						// THEN we need to combine all the plugins stuff!
-						// And build and package the metabase shit!
+						// And build and package the metabase sh*t!
 						stash includes: "hyperloop-iphone-${packageVersion}.zip", name: 'iphone-zip'
 					} // dir
 				} // nodejs

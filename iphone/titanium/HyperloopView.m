@@ -1,16 +1,17 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #ifdef TIMODULE
+#import <JavaScriptCore/JavaScriptCore.h>
 
 #import "HyperloopView.h"
 #import "HyperloopModule.h"
 #import "pointer.h"
 
 
-TiObjectRef HyperloopGetWrapperForId(id obj);
-TiContextRef HyperloopCurrentContext();
+JSObjectRef HyperloopGetWrapperForId(id obj);
+JSContextRef HyperloopCurrentContext();
 
 @implementation HyperloopView
 
@@ -44,16 +45,16 @@ TiContextRef HyperloopCurrentContext();
 }
 
 -(void)protectFromGC {
-	TiObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
+	JSObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
 	if (wrapper != NULL) {
-		TiValueProtect(HyperloopCurrentContext(), wrapper);
+		JSValueProtect(HyperloopCurrentContext(), wrapper);
 	}
 }
 
 -(void)unprotectFromGC {
-	TiObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
+	JSObjectRef wrapper = HyperloopGetWrapperForId(_nativeProxy);
 	if (wrapper != NULL) {
-		TiValueUnprotect(HyperloopCurrentContext(), wrapper);
+		JSValueUnprotect(HyperloopCurrentContext(), wrapper);
 	}
 }
 
