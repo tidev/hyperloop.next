@@ -13,12 +13,13 @@ exports.id = 'hyperloop';
 exports.cliVersion = '>=3.2';
 
 (function () {
-	var fs = require('fs'),
+	var fs = require('fs-extra'),
 		ejs = require('ejs'),
 		path = require('path'),
 		spawn = require('child_process').spawn,
-		wrench = require('wrench'),
-		babel_types = require('babel-types');
+		traverse = require('babel-traverse').default,
+		types = require('babel-types'),
+		babylon = require('babylon');
 
 	// State
 	var state = {};
@@ -72,9 +73,16 @@ exports.cliVersion = '>=3.2';
 			pre: function(data, finished) {
 				var from     = data.args[0],
 					to       = data.args[1],
-					ast      = data.args[2],
-					traverse = data.args[3],
-					types    = data.args[4];
+					ast;
+
+				const contents = fs.readFileSync(from, {encoding: 'utf8'});
+
+				try {	
+					ast = babylon.parse(contents, { filename: from, sourceType: 'module' });	
+				} catch (E) {	
+					// t_.logger.error(reportJSErrors(from, contents, E));	
+					return next('Failed to parse JavaScript files.');	
+				}
 
 				builder.native_namespaces || (builder.native_namespaces  = {});
 				builder.native_types  || (builder.native_types  = {});
@@ -152,7 +160,7 @@ exports.cliVersion = '>=3.2';
 					// ES6+-style imports
 					ImportDeclaration: function(p) {
 						const nodeSource = p.node.source;
-						if (nodeSource && babel_types.isStringLiteral(nodeSource)) {  // module name is a string literal
+						if (nodeSource && types.isStringLiteral(nodeSource)) {  // module name is a string literal
 							// Found an import that acts the same as a require...
 							let classOrNamespace = nodeSource.value;
 							if (t_.hasWindowsAPI(classOrNamespace)) {
@@ -245,11 +253,9 @@ exports.cliVersion = '>=3.2';
 	};
 
 	HyperloopWindowsBuilder.prototype.copyNativeTemplates = function copyNativeTemplates(callback) {
-		fs.existsSync(state.hyperloopBuildDir) && wrench.rmdirSyncRecursive(state.hyperloopBuildDir);
+		fs.emptyDirSync(state.hyperloopBuildDir);
 
-		wrench.copyDirSyncRecursive(path.join(__dirname, 'TitaniumWindows_Hyperloop'), state.hyperloopBuildDir, {
-			forceDelete: true
-		});
+		fs.copySync(path.join(__dirname, 'TitaniumWindows_Hyperloop'), state.hyperloopBuildDir);
 
 		callback();
 	};
