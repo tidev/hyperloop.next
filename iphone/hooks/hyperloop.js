@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-2018 by Appcelerator, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -9,13 +9,16 @@
 
 module.exports = HyperloopiOSBuilder;
 
-// set this to enforce a ios-min-version
-const IOS_MIN = '8.0';
-// set this to enforce a minimum Titanium SDK
-const TI_MIN = '7.0.0';
-// Min SDK to use the newer build.ios.compileJsFile hook
+// Set this to enforce a ios-min-version
+const IOS_MIN = '9.0';
+
+// Set this to enforce a minimum Titanium SDK
+const TI_MIN = '8.0.0';
+
+// Minimum SDK to use the newer build.ios.compileJsFile hook
 const COMPILE_JS_FILE_HOOK_SDK_MIN = '7.1.0';
-// set the iOS SDK minium
+
+// Set the iOS SDK minium
 const IOS_SDK_MIN = '9.0';
 
 const path = require('path');
@@ -80,56 +83,16 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.cocoaPodsProducts = [];
 	this.headers = null;
 	this.needMigration = {};
-	this.useCopyResourceHook = false; // boolean flag to determine which CLi hook to use based on SDK version
 
 	// set our CLI logger
 	hm.util.setLog(builder.logger);
 }
 
 /**
- * called for each resource to process them
- */
-HyperloopiOSBuilder.prototype.copyResource = function (builder, callback) {
-	try {
-		// Use this variant of the hook on SDK 7.0.2 and lower
-		if (!this.useCopyResourceHook) {
-			return callback();
-		}
-		const from = builder.args[0];
-		const to = builder.args[1];
-		const contents = fs.readFileSync(to).toString();
-		const obj = {
-			contents: contents,
-			original: contents
-		};
-
-		this.patchJSFile(obj, from, to, function (err) {
-			if (err) {
-				return callback(err);
-			}
-
-			// Only write if contents changed
-			if (contents !== obj.contents) {
-				fs.writeFile(to, obj.contents, callback);
-			} else {
-				callback();
-			}
-		});
-	} catch (e) {
-		callback(e);
-	}
-};
-
-/**
  * called for each JS resource to process them
  */
 HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 	try {
-		// use this variant of the hook on SDK 7.1+
-		if (this.useCopyResourceHook) {
-			return callback();
-		}
-
 		const obj = builder.args[0];
 		const from = builder.args[1];
 		const to = builder.args[2];
@@ -1076,12 +1039,6 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 		pre: this.hookUpdateXcodeProject.bind(this)
 	});
 
-	// To be removed once we no longer support SDK < 7.1
-	this.cli.on('build.ios.copyResource', {
-		post: this.copyResource.bind(this)
-	});
-
-	// For SDK 7.1+
 	this.cli.on('build.ios.compileJsFile', {
 		pre: this.compileJsFile.bind(this)
 	});
