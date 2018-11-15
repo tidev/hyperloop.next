@@ -210,7 +210,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -f hyperloop-windows-*.zip'
 
 							dir('hooks') {
-								sh 'npm ci --production'
+								// We must use bat here as sh picks up a different npm executable
+								bat 'npm ci --production'
 							}
 
 							appc.loggedIn {
