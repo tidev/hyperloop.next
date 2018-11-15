@@ -1,6 +1,6 @@
 /**
- * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Hyperloop iOS-Core
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 
 import Foundation

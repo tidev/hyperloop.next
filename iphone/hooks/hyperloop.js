@@ -17,11 +17,6 @@ const TI_MIN = '7.0.0';
 const COMPILE_JS_FILE_HOOK_SDK_MIN = '7.1.0';
 // set the iOS SDK minium
 const IOS_SDK_MIN = '9.0';
-// enum for ios javascript core
-const coreLib = {
-	JSCore: 'libhyperloop-jscore.a',
-	TiCore: 'libhyperloop-ticore.a'
-};
 
 const path = require('path');
 const exec = require('child_process').exec;
@@ -248,35 +243,6 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 HyperloopiOSBuilder.prototype.setup = function setup() {
 	// create a temporary hyperloop directory
 	fs.ensureDirSync(this.hyperloopBuildDir);
-
-	if (!this.appc.version.gte(this.builder.titaniumSdkVersion, COMPILE_JS_FILE_HOOK_SDK_MIN)) {
-		this.useCopyResourceHook = true;
-	}
-
-	// update to use the correct libhyperloop based on which JS engine is configured
-	this.builder.nativeLibModules.some(function (mod) {
-		if (mod.id === 'hyperloop') {
-			var JSCoreFlag = this.builder.tiapp.ios['use-jscore-framework'];
-			var usesJSCore = JSCoreFlag === undefined || JSCoreFlag === true;
-
-			// check for built-in JSCore but only warn if not set
-			if (!usesJSCore) {
-				this.logger.info('The Hyperloop compiler works best with the built-in iOS JavaScriptCore library.');
-				this.logger.info('In Titanium SDK 7.0.0+, the built-in JavaScriptCore library is used by default.');
-				this.logger.info('Either remove the following flag or explicitly enable it to use the recommended settings:');
-				this.logger.info('');
-				this.logger.info('	<use-jscore-framework>true</use-jscore-framework>');
-				this.logger.info('');
-				mod.libName = coreLib.TiCore;
-			} else {
-				mod.libName = coreLib.JSCore;
-			}
-			mod.libFile = path.join(mod.modulePath, mod.libName);
-			mod.hash = crypto.createHash('md5').update(fs.readFileSync(mod.libFile)).digest('hex');
-			this.logger.debug('Using Hyperloop library -> ' + mod.libName);
-			return true;
-		}
-	}, this);
 };
 
 /**
@@ -1664,10 +1630,6 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 			addParam('HEADER_SEARCH_PATHS', header);
 			addParam('FRAMEWORK_SEARCH_PATHS', header);
 		});
-		// FIXME: For some reason, when using ticore and having custom headers, the original header search path goes missing.
-		if (!this.builder.tiapp.ios['use-jscore-framework']) {
-			addParam('HEADER_SEARCH_PATHS', 'headers');
-		}
 	}
 
 	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');

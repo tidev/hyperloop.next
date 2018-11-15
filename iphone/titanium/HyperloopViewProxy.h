@@ -1,6 +1,6 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #ifdef TIMODULE
 

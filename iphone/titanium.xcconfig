@@ -1,10 +1,6 @@
 // define this is running locally but don't check in your change
 
-TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/6.0.3.GA
+TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/8.0.0.v20180727104257
 TITANIUM_BASE_SDK = "$(TITANIUM_SDK)/iphone/include"
-TITANIUM_BASE_SDK2 = "$(TITANIUM_SDK)/iphone/include/TiCore"
 TITANIUM_BASE_SDK3 = "$(TITANIUM_SDK)/iphone/include/JavaScriptCore"
-HEADER_SEARCH_PATHS= $(TITANIUM_BASE_SDK) $(TITANIUM_BASE_SDK2) $(TITANIUM_BASE_SDK3)
-
-// See http://help.apple.com/xcode/mac/8.3/#/itcaec37c2a6
-// GCC_PREPROCESSOR_DEFINITIONS=$(inherited) TIMODULE=1 USE_JSCORE_FRAMEWORK=1
+HEADER_SEARCH_PATHS= $(TITANIUM_BASE_SDK) $(TITANIUM_BASE_SDK3)

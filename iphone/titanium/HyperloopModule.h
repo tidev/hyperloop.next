@@ -1,8 +1,10 @@
 /**
  * Hyperloop Module
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 #import <Foundation/Foundation.h>
+#import <JavaScriptCore/JavaScriptCore.h>
+
 #import "define.h"
 
 @class KrollContext;
@@ -16,8 +18,8 @@
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 +(void)didStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge;
 
-+(TiObjectRef)createPointer:(HyperloopPointer *)pointer;
-+(NSException*)JSValueRefToNSException:(TiValueRef)exception;
++(JSObjectRef)createPointer:(HyperloopPointer *)pointer;
++(NSException*)JSValueRefToNSException:(JSValueRef)exception;
 
 @end
 

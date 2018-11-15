@@ -1,6 +1,6 @@
 /**
- * Hyperloop Library
- * Copyright (c) 2015 by Appcelerator, Inc.
+ * Hyperloop iOS-Core
+ * Copyright (c) 2015-present by Appcelerator, Inc.
  */
 
 #import <XCTest/XCTest.h>
@@ -29,16 +29,16 @@ static NSString *NSStringFromJSValueRef (JSContextRef ctx, JSValueRef value, JSV
 
 @class KrollCallback;
 
-id TiValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *exception);
+id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *exception);
 void HyperloopRegisterCallbackForIdentifier (KrollCallback *callback, NSString *identifier);
 
 JSObjectRef ConstructorCallback (JSContextRef ctx, JSObjectRef constructor, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) {
-	id obj = TiValueRefToId(ctx, arguments[0], exception);
+	id obj = JSValueRefToId(ctx, arguments[0], exception);
 	return JSObjectMake(ctx, classDef, (__bridge void *)(obj));
 }
 
 JSValueRef FunctionCallback (JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception) {
-	id obj = TiValueRefToId(ctx, arguments[0], exception);
+	id obj = JSValueRefToId(ctx, arguments[0], exception);
 	return JSObjectMake(ctx, classDef, (__bridge void *)(obj));
 }
 
@@ -195,7 +195,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSDictionary class]]);
@@ -209,7 +209,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -223,7 +223,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsNumber(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -237,7 +237,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsBoolean(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -251,7 +251,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsUndefined(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNull class]]);
@@ -265,7 +265,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsNull(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNull class]]);
@@ -279,7 +279,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsDate(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSDate class]]);
@@ -293,7 +293,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSArray class]]);
@@ -312,7 +312,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSDictionary class]]);
@@ -328,7 +328,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSArray class]]);
@@ -345,7 +345,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSDictionary class]]);
@@ -363,7 +363,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSArray class]]);
@@ -381,7 +381,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -395,7 +395,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsBoolean(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -409,7 +409,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsBoolean(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -423,7 +423,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsNumber(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -437,7 +437,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsNumber(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -451,7 +451,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -465,7 +465,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -479,7 +479,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -493,7 +493,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -507,7 +507,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsString(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSString class]]);
@@ -521,7 +521,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsBoolean(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -535,7 +535,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsBoolean(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSNumber class]]);
@@ -550,7 +550,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
 	KrollValue = [KrollCallback new];
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[KrollCallback class]]);
@@ -563,7 +563,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception == NULL);
 	JSStringRelease(script);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	id obj = TiValueRefToId(_ctx.context, result, &exception);
+	id obj = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSRegularExpression class]]);
@@ -579,7 +579,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	XCTAssertTrue(exception != NULL);
 	XCTAssertTrue(result == NULL);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, exception));
-	id obj = TiValueRefToId(_ctx.context, exception, NULL);
+	id obj = JSValueRefToId(_ctx.context, exception, NULL);
 	XCTAssertNotNil(obj);
 	XCTAssertTrue([obj isKindOfClass:[NSDictionary class]]);
 	XCTAssertEqualObjects([obj objectForKey:@"column"], @19);
@@ -602,7 +602,7 @@ JSValueRef KrollCallbackFunction (JSContextRef ctx, JSObjectRef function, JSObje
 	JSValueRef result = JSEvaluateScript(_ctx.context, script, NULL, NULL, 0, &exception);
 	XCTAssertTrue(exception == NULL);
 	XCTAssertTrue(JSValueIsObject(_ctx.context, result));
-	NSDictionary *dict = TiValueRefToId(_ctx.context, result, &exception);
+	NSDictionary *dict = JSValueRefToId(_ctx.context, result, &exception);
 	XCTAssertTrue(exception == NULL);
 	NSDictionary *expected = @{ @"x": @10, @"y": @20, @"width": @30, @"height": @40 };
 	XCTAssertEqualObjects(dict, expected);
