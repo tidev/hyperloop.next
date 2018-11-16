@@ -195,6 +195,8 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 						// FIXME How the hell is Windows OK with these shell commands?
 						dir('windows') {
 							sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
+							sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
+
 							// FIXME We should have a module clean command!
 							// manually clean
 							sh 'rm -rf build/'
@@ -206,6 +208,12 @@ google.apis=${androidSDK}/add-ons/addon-google_apis-google-${androidAPILevel}
 							sh 'rm -rf WindowsStore.Win32/'
 							sh 'rm -f CMakeLists.txt'
 							sh 'rm -f hyperloop-windows-*.zip'
+
+							dir('hooks') {
+								// We must use bat here as sh picks up a different npm executable
+								bat 'npm ci --production'
+							}
+
 							appc.loggedIn {
 								sh 'appc run -p windows --build-only'
 							} // appc.loggedIn

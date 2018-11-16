@@ -1,0 +1,15 @@
+{
+  "name": "hyperloop",
+  "version": "0.0.0-PLACEHOLDER",
+  "description": "Access native UWP APIs from within Titanium.",
+  "author": "Kota Iguchi",
+  "license": "Appcelerator Software Subscription",
+  "private": true,
+  "dependencies": {
+    "babel-traverse": "^6.26.0",
+    "babel-types": "^6.26.0",
+    "babylon": "^6.18.0",
+    "ejs": "^2.6.1",
+    "fs-extra": "^7.0.1"
+  }
+}
