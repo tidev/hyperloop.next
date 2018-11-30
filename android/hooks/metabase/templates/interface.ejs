@@ -51,7 +51,7 @@ var <%= sanitizedName %> = function() {
 			subclass;
 
 		function _wrapArg(arg) {
-			if (arg.apiName && arg.isNativeProxy && arg.isInstanceProxy) { // Assume hyperloop proxy, wrap in JS wrapper
+			if (arg && arg.apiName && arg.isNativeProxy && arg.isInstanceProxy) { // Assume hyperloop proxy, wrap in JS wrapper
 				var other = require('./' + arg.apiName);
 				return new other(arg);
 			}
