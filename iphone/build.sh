@@ -59,9 +59,6 @@ rm -rf node_modules/findit/test
 rm -rf package-lock.json
 cd $CWD
 
-# titanium requires at least this file so just create an empty one
-echo 1 > $CWD/build/zip/modules/iphone/hyperloop/$VERSION/libhyperloop.a
-
 cd $CWD/build/zip
 rm -rf $CWD/hyperloop-iphone-$VERSION.zip
 zip -q -r $CWD/hyperloop-iphone-$VERSION.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*

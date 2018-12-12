@@ -7,8 +7,8 @@
 <% Object.keys(data.frameworks).forEach(function (f) { -%>
 #import <<%=f%>>
 <% }) -%>
-#import "TiBase.h"
-#import "KrollCallback.h"
+@import TitaniumKit.TiBase;
+@import TitaniumKit.KrollCallback;
 
 @interface HyperloopPointer : NSObject
 +(instancetype)pointer:(const void *)pointer encoding:(const char *)encoding;
