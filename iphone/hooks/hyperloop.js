@@ -1589,7 +1589,6 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 		});
 	}
 
-	addParam('GCC_PREPROCESSOR_DEFINITIONS', '$(inherited) HYPERLOOP=1');
 	addParam('APPC_PROJECT_DIR', this.builder.projectDir);
 };
 
