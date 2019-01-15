@@ -1090,7 +1090,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		thirdPartyFrameworksUsed = true;
 	}
 
-	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
+	if (!nativeModules.length && !thirdPartyFrameworksUsed && !this.hasCocoaPods) {
 		return;
 	}
 
