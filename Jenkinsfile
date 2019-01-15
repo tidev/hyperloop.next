@@ -4,7 +4,7 @@ import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '8.9.0'
-def sdkVersion = '8.0.0.v20181114074027' // Use master build with TiCore / Kroll-Thread removal
+def sdkVersion = '8.0.0.v20190115162133' // Use master build with TiCore / Kroll-Thread removal
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
