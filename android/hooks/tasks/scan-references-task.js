@@ -3,10 +3,10 @@
 const fs =  require('fs-extra');
 const IncrementalFileTask = require('appc-tasks').IncrementalFileTask;
 const path = require('path');
-const babylon = require('babylon');
-const t = require('babel-types');
-const generate = require('babel-generator').default;
-const traverse = require('babel-traverse').default;
+const babelParser = require('@babel/parser');
+const t = require('@babel/types');
+const generate = require('@babel/generator').default;
+const traverse = require('@babel/traverse').default;
 
 const REFERENCES_FILENAME = 'references.json';
 
@@ -321,7 +321,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		};
 
 		// Now traverse the AST and generate modified source
-		const ast = babylon.parse(originalSource, { sourceFilename: file, sourceType: 'module' });
+		const ast = babelParser.parse(originalSource, { sourceFilename: file, sourceType: 'module' });
 		traverse(ast, HyperloopVisitor);
 		const modifiedSource = generate(ast, {}).code;
 
