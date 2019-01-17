@@ -88,7 +88,7 @@ function generateFullyQualifiedClassName(cls, state) {
 	var fullyQualifiedClassName = cls.name;
 	if (cls.language === 'swift') {
 		fullyQualifiedClassName = swift.generateSwiftMangledClassName(state.appName, cls.name);
-	} else if (cls.filename === cls.framework + '-Swift.h') {
+	} else if (cls.filename && cls.filename.endsWith(cls.framework + '-Swift.h')) {
 		fullyQualifiedClassName = cls.framework + '.' + cls.name;
 	}
 
