@@ -17,9 +17,9 @@ exports.cliVersion = '>=3.2';
 		ejs = require('ejs'),
 		path = require('path'),
 		spawn = require('child_process').spawn,
-		traverse = require('babel-traverse').default,
-		types = require('babel-types'),
-		babylon = require('babylon');
+		traverse = require('@babel/traverse').default,
+		types = require('@babel/types'),
+		babelParser = require('@babel/parser');
 
 	// State
 	var state = {};
@@ -78,7 +78,7 @@ exports.cliVersion = '>=3.2';
 				const contents = fs.readFileSync(from, {encoding: 'utf8'});
 
 				try {	
-					ast = babylon.parse(contents, { filename: from, sourceType: 'module' });	
+					ast = babelParser.parse(contents, { filename: from, sourceType: 'unambiguous' });
 				} catch (E) {	
 					// t_.logger.error(reportJSErrors(from, contents, E));	
 					return next('Failed to parse JavaScript files.');	
