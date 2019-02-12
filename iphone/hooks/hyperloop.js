@@ -717,7 +717,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 	}
 	if (this.hyperloopConfig.ios.thirdparty) {
 		// Throw a deprecation warning regarding thirdparty-references in the appc.js
-		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 4.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
+		this.logger.warn('Defining third-party sources and frameworks in appc.js via the \'thirdparty\' section has been deprecated in Hyperloop 2.2.0 and will be removed in 5.0.0. The preferred way to provide third-party sources is either via dropping frameworks into the project\'s platform/ios folder or by using CocoaPods.');
 
 		this.headers = [];
 		Object.keys(this.hyperloopConfig.ios.thirdparty).forEach(function (frameworkName) {
@@ -1090,7 +1090,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		thirdPartyFrameworksUsed = true;
 	}
 
-	if (!nativeModules.length && !thirdPartyFrameworksUsed) {
+	if (!nativeModules.length && !thirdPartyFrameworksUsed && !this.hasCocoaPods) {
 		return;
 	}
 
