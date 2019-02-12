@@ -321,7 +321,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		};
 
 		// Now traverse the AST and generate modified source
-		const ast = babelParser.parse(originalSource, { sourceFilename: file, sourceType: 'module' });
+		const ast = babelParser.parse(originalSource, { sourceFilename: file, sourceType: 'unambiguous' });
 		traverse(ast, HyperloopVisitor);
 		const modifiedSource = generate(ast, {}).code;
 

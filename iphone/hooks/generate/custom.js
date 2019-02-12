@@ -594,7 +594,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	const ast = babelParser.parse(buf, { sourceFilename: fn, sourceType: 'module' });
+	const ast = babelParser.parse(buf, { sourceFilename: fn, sourceType: 'unambiguous' });
 	let mutated = false;
 	const ASTWalker = {
 		ExpressionStatement: function(p) {

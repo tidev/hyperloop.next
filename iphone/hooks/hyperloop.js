@@ -597,7 +597,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		}
 	};
 
-	const ast = babelParser.parse(contents, { sourceFilename: sourceFilename, sourceType: 'module' });
+	const ast = babelParser.parse(contents, { sourceFilename: sourceFilename, sourceType: 'unambiguous' });
 	traverse(ast, HyperloopVisitor);
 	let newContents = generate(ast, {}).code;
 
