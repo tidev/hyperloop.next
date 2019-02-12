@@ -17,7 +17,7 @@ exports.cliVersion = '>=3.2';
 		ejs = require('ejs'),
 		path = require('path'),
 		spawn = require('child_process').spawn,
-		traverse = require('@babel/traverse'),
+		traverse = require('@babel/traverse').default,
 		types = require('@babel/types'),
 		babelParser = require('@babel/parser');
 
