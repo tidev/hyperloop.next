@@ -2,7 +2,7 @@
 
 const fs = require('fs-extra');
 const IncrementalFileTask = require('appc-tasks').IncrementalFileTask;
-const babel = require('babel-core');
+const babel = require('@babel/core');
 const minify = require('babel-preset-minify');
 const path = require('path');
 

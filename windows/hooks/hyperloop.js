@@ -17,9 +17,9 @@ exports.cliVersion = '>=3.2';
 		ejs = require('ejs'),
 		path = require('path'),
 		spawn = require('child_process').spawn,
-		traverse = require('babel-traverse').default,
-		types = require('babel-types'),
-		babylon = require('babylon');
+		traverse = require('@babel/traverse').default,
+		types = require('@babel/types'),
+		babelParser = require('@babel/parser');
 
 	// State
 	var state = {};
@@ -77,11 +77,11 @@ exports.cliVersion = '>=3.2';
 
 				const contents = fs.readFileSync(from, {encoding: 'utf8'});
 
-				try {	
-					ast = babylon.parse(contents, { filename: from, sourceType: 'module' });	
-				} catch (E) {	
-					// t_.logger.error(reportJSErrors(from, contents, E));	
-					return next('Failed to parse JavaScript files.');	
+				try {
+					ast = babelParser.parse(contents, { filename: from, sourceType: 'unambiguous' });
+				} catch (E) {
+					// t_.logger.error(reportJSErrors(from, contents, E));
+					return next('Failed to parse JavaScript files.');
 				}
 
 				builder.native_namespaces || (builder.native_namespaces  = {});
@@ -142,7 +142,7 @@ exports.cliVersion = '>=3.2';
 									if (ctor && ctor.path.node.init && ctor.path.node.init.arguments && ctor.path.node.init.arguments.length > 0) {
 										detectedConstructorType = ctor.path.node.init.arguments[0].value; // record the type of the constructor
 									} else if (native_specifiers[localname]) {
-										detectedConstructorType = native_specifiers[localname];	
+										detectedConstructorType = native_specifiers[localname];
 									}
 									if (detectedConstructorType != null && t_.hasWindowsAPI(detectedConstructorType)) {
 										var native_event = {

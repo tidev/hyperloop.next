@@ -1,4 +1,4 @@
-const babel = require('babel-core');
+const babel = require('@babel/core');
 const chai = require('chai');
 const chaiAsPromised = require('chai-as-promised');
 const CopySourcesTask = require('../tasks/copy-sources-task');

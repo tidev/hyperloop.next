@@ -8,10 +8,10 @@ const path = require('path');
 const util = require('util');
 const utillib = require('./util');
 const classgen = require('./class');
-const babylon = require('babylon');
-const t = require('babel-types');
-const generate = require('babel-generator').default;
-const traverse = require('babel-traverse').default;
+const babelParser = require('@babel/parser');
+const t = require('@babel/types');
+const generate = require('@babel/generator').default;
+const traverse = require('@babel/traverse').default;
 
 function Parser() {
 }
@@ -594,7 +594,7 @@ Parser.prototype.parse = function (buf, fn, state) {
 	// turn it into a buffer
 	buf = buf.toString();
 
-	const ast = babylon.parse(buf, { sourceFilename: fn, sourceType: 'module' });
+	const ast = babelParser.parse(buf, { sourceFilename: fn, sourceType: 'unambiguous' });
 	let mutated = false;
 	const ASTWalker = {
 		ExpressionStatement: function(p) {
@@ -698,7 +698,7 @@ function isHyperloopAddMethodCall(node, state) {
 
 /**
  * [isHyperloopReferenced description]
- * @param  {Object}  p  Babylon AST node path
+ * @param  {Object}  p  babelParser AST node path
  * @param  {[type]}  state [description]
  * @return {Boolean}       [description]
  */
@@ -714,7 +714,7 @@ function isHyperloopReferenced(p, state) {
 
 /**
  * [findVariableDefinition description]
- * @param  {Object} program Babylon AST node for the program/file
+ * @param  {Object} program babelParser AST node for the program/file
  * @param  {String} name    variable name
  * @param  {String} def     default value
  * @return {String}         [description]
@@ -740,8 +740,8 @@ function findVariableDefinition(program, name, def) {
 
 /**
  * [toJSObject description]
- * @param  {Object} ref  Babylon AST node for program/file
- * @param  {Object} node Babylon AST node
+ * @param  {Object} ref  babelParser AST node for program/file
+ * @param  {Object} node babelParser AST node
  * @param  {String|Object|Number} def default value
  * @return {String|Object|Number}      [description]
  */
@@ -749,7 +749,7 @@ function toJSObject(ref, node, def) {
 	if (node) {
 		switch (node.type) {
 			case 'Literal': // ESTree
-			case 'StringLiteral': // Babylon replacements
+			case 'StringLiteral': // babelParser replacements
 			case 'NumericLiteral':
 			case 'BooleanLiteral':
 			case 'NullLiteral':
@@ -802,7 +802,7 @@ function toJSObject(ref, node, def) {
  *
  * var MyUIView = Hyperloop.defineClass('MyUIView', 'UIView', ['Foo']);
  * @param {Object} state
- * @param {Object} p - Babylon Path: https://github.com/thejameskyle/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-paths
+ * @param {Object} p - babelParser Path: https://github.com/thejameskyle/babel-handbook/blob/master/translations/en/plugin-handbook.md#toc-paths
  */
 function makeHyperloopClassFromCall(state, p) {
 	const node = p.node;
@@ -851,7 +851,7 @@ function makeHyperloopClassFromCall(state, p) {
 
 /**
  * [findProgramNode description]
- * @param  {Object} nodePath Babylon AST path for a given node
+ * @param  {Object} nodePath babelParser AST path for a given node
  * @return {Node}          Node for the Program
  */
 function findProgramNode(nodePath) {
@@ -901,7 +901,7 @@ function encodeFriendlyType(type, imports) {
 
 /**
  * [addHyperloopMethodToClass description]
- * @param {Object} p  Babylon AST node path
+ * @param {Object} p  babelParser AST node path
  * @param {[type]} state [description]
  */
 function addHyperloopMethodToClass(p, state) {

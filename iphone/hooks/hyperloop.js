@@ -33,10 +33,10 @@ const async = require('async');
 const HL = chalk.magenta.inverse('Hyperloop');
 const semver = require('semver');
 
-const babylon = require('babylon');
-const t = require('babel-types');
-const generate = require('babel-generator').default;
-const traverse = require('babel-traverse').default;
+const babelParser = require('@babel/parser');
+const t = require('@babel/types');
+const generate = require('@babel/generator').default;
+const traverse = require('@babel/traverse').default;
 const generator = require('./generate');
 
 /**
@@ -597,11 +597,11 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		}
 	};
 
-	const ast = babylon.parse(contents, { sourceFilename: sourceFilename, sourceType: 'module' });
+	const ast = babelParser.parse(contents, { sourceFilename: sourceFilename, sourceType: 'unambiguous' });
 	traverse(ast, HyperloopVisitor);
 	let newContents = generate(ast, {}).code;
 
-	// TODO: Remove once we combine the custom acorn-based parser and the babylon parser above!
+	// TODO: Remove once we combine the custom acorn-based parser and the babelParser parser above!
 	// Or maybe it can go now? The migration stuff is noted that it could be removed in 3.0.0...
 	var needMigration = this.parserState.state.needMigration;
 	if (needMigration.length > 0) {
