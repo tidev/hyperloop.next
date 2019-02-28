@@ -342,6 +342,12 @@ exports.cliVersion = '>=3.2';
 							}
 							sourceFiles.push(file);
 						})
+						.on('link', link => {
+							if (path.extname(link) !== '.js') {
+								return;
+							}
+							sourceFiles.push(link);
+						})
 						.on('end', function () {
 							cb();
 						});
