@@ -5,6 +5,7 @@ import com.axway.AppcCLI;
 // Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '8.9.0'
 def sdkVersion = '8.0.0.v20190115162133' // Use master build with TiCore / Kroll-Thread removal
+def sdkVersion_windows = '8.0.0.v20190308114556' // Use master build with module apiversion 7
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
@@ -166,7 +167,7 @@ stage('Build') {
 							ensureNPM()
 							withEnv(["PATH+NPM=${env.APPDATA}\\npm"]) { // fix PATH for Windows, blah
 								titanium.install()
-								def activeSDKPath = titanium.installAndSelectSDK(sdkVersion)
+								def activeSDKPath = titanium.installAndSelectSDK(sdkVersion_windows)
 
 								echo 'Building Windows module...'
 								dir('windows') {
