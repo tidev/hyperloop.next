@@ -429,6 +429,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 	// require() calls with the Hyperloop layer
 	const requireRegexp = /[\w_/\-\\.]+/ig;
 	const self = this;
+	let changedAST = false;
 	const HyperloopVisitor = {
 		// ES5-style require calls
 		CallExpression: function (p) {
@@ -505,6 +506,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 				p.replaceWith(
 					t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ])
 				);
+				changedAST = true;
 			}
 		},
 		// ES6+-style imports
@@ -587,11 +589,13 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 				});
 
 				// Apply replacements
-				if (replacements.length == 1) {
+				const replaceCount = replacements.length;
+				if (replaceCount === 1) {
 					p.replaceWith(replacements[0]);
-				} else {
-					//
+					changedAST = true;
+				} else if (replaceCount > 1) {
 					p.replaceWithMultiple(replacements);
+					changedAST = true;
 				}
 			}
 		}
@@ -599,7 +603,9 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 
 	const ast = babelParser.parse(contents, { sourceFilename: sourceFilename, sourceType: 'unambiguous' });
 	traverse(ast, HyperloopVisitor);
-	let newContents = generate(ast, {}).code;
+	// if we didn't change the AST, no need to generate new source!
+	// If we *do* generate new source, try to retain the lines and comments to retain source map
+	let newContents = changedAST ? generate(ast, { retainLines: true, comments: true }, contents).code : contents;
 
 	// TODO: Remove once we combine the custom acorn-based parser and the babelParser parser above!
 	// Or maybe it can go now? The migration stuff is noted that it could be removed in 3.0.0...
@@ -616,7 +622,7 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 		this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
 	} else {
 		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
-		// modify the contents stored int he state object passed thorugh the hook,
+		// modify the contents stored in the state object passed through the hook,
 		// so that SDK CLI can use new contents for minification/transpilation
 		obj.contents = newContents;
 	}

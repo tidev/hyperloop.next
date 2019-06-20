@@ -239,6 +239,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		this._logger.trace('Searching for hyperloop requires in: ' + file);
 		const logger = this.logger;
 		const self = this;
+		let changedAST = false;
 		const HyperloopVisitor = {
 			// ES5-style require calls
 			CallExpression: function(p) {
@@ -264,6 +265,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 							p.replaceWith(
 								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + packageName)])
 							);
+							changedAST = true;
 						}
 					} else {
 						// single type
@@ -274,6 +276,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 							p.replaceWith(
 								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + validatedClassName)])
 							);
+							changedAST = true;
 						}
 					}
 				}
@@ -302,6 +305,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 							p.replaceWith(
 								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + packageName))
 							);
+							changedAST = true;
 						}
 					} else {
 						// single type
@@ -314,6 +318,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 							p.replaceWith(
 								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + validatedClassName))
 							);
+							changedAST = true;
 						}
 					}
 				}
@@ -323,7 +328,9 @@ class ScanReferencesTask extends IncrementalFileTask {
 		// Now traverse the AST and generate modified source
 		const ast = babelParser.parse(originalSource, { sourceFilename: file, sourceType: 'unambiguous' });
 		traverse(ast, HyperloopVisitor);
-		const modifiedSource = generate(ast, {}).code;
+		// if we didn't change the AST, no need to generate new source!
+		// If we *do* generate new source, try to retain the lines and comments to retain source map
+		const modifiedSource = changedAST ? generate(ast, { retainLines: true, comments: true }, originalSource).code : originalSource;
 
 		return {
 			usedClasses: usedClasses,
