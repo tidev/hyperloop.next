@@ -1,5 +1,5 @@
 // define this is running locally but don't check in your change
 
-TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/8.0.0.v20190115162133
-TITANIUM_BASE_SDK = "$(TITANIUM_SDK)/iphone/include"
-HEADER_SEARCH_PATHS= $(TITANIUM_BASE_SDK)
+TITANIUM_SDK = ~/Library/Application Support/Titanium/mobilesdk/osx/8.0.2.GA
+HEADER_SEARCH_PATHS = $(inherited) "$(TITANIUM_SDK)/iphone/include"
+FRAMEWORK_SEARCH_PATHS = $(inherited) "$(TITANIUM_SDK)/iphone/Frameworks"
