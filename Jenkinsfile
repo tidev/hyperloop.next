@@ -124,7 +124,7 @@ stage('Build') {
 			} // node
 		},
 		'iOS': {
-			node('osx && xcode-9') {
+			node('osx && xcode-11') {
 				try {
 					checkout scm
 
