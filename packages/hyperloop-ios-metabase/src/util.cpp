@@ -336,6 +336,9 @@ namespace hyperloop {
 			value = value.substr(pos + 6);
 		}
 		value = trim(value);
+		if (value.find("NSArray<") == 0) {
+			value = value.replace(7, value.find(">"), "");
+		}
 		if (value.find("*") != std::string::npos) {
 			value = replace(value, "*", "");
 			value = trim(value);
@@ -362,6 +365,9 @@ namespace hyperloop {
 		if (tree->hasType(value)) {
 			auto typeDef = tree->getType(value);
 			return typeDef->getEncoding();
+		}
+		if (tree->hasClass(value)) {
+			return "@";
 		}
 		if (str == "unexposed") {
 			return "?";
@@ -730,6 +736,9 @@ namespace hyperloop {
 				kv["encoding"] = "i";
 				kv["type"] = "enum";
 				return;
+			}
+			if (valueString.find("struct ") == 0) {
+				valueString = valueString.replace(0, 7, "");
 			}
 			if (tree->hasStruct(valueString)) {
 				kv["encoding"] = structDefinitionToEncoding(tree->getStruct(valueString));
