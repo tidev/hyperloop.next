@@ -18,6 +18,7 @@ namespace hyperloop {
 	class EnumDefinition;
 	class VarDefinition;
 	class FunctionDefinition;
+	class BlockDefinition;
 	class StructDefinition;
 	class UnionDefinition;
 	class ParserContext;
@@ -29,7 +30,7 @@ namespace hyperloop {
 	typedef std::map<std::string, FunctionDefinition *> FunctionMap;
 	typedef std::map<std::string, StructDefinition *> StructMap;
 	typedef std::map<std::string, UnionDefinition *> UnionMap;
-	typedef std::map<std::string, std::set<std::string>> Blocks;
+	typedef std::map<std::string, std::map<std::string, BlockDefinition *>> Blocks;
 
 	/**
 	 * state of the parser tree
@@ -47,7 +48,7 @@ namespace hyperloop {
 			void addFunction (FunctionDefinition *definition);
 			void addStruct (StructDefinition *definition);
 			void addUnion (UnionDefinition *definition);
-			void addBlock (const std::string &framework, const std::string &def);
+			void addBlock (BlockDefinition *defintion);
 
 			ClassDefinition* getClass (const std::string &name);
 			TypeDefinition* getType (const std::string &name);
@@ -72,6 +73,7 @@ namespace hyperloop {
 			EnumMap enums;
 			VarMap vars;
 			FunctionMap functions;
+			Blocks blocks;
 			StructMap structs;
 			UnionMap unions;
 	};

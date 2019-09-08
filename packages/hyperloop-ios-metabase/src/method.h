@@ -8,6 +8,8 @@
 #include "def.h"
 
 namespace hyperloop {
+	class ClassDefinition;
+
 	/**
 	 * Method definition
 	 */

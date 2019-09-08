@@ -15,9 +15,8 @@ namespace hyperloop {
 		FunctionDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx);
 		~FunctionDefinition();
 		Json::Value toJSON () const;
-		void addArgument(const std::string &argName, const CXType &paramType, const std::string &argType, const std::string &encoding);
+		void addArgument(const std::string &argName, const CXCursor &cursor);
 	private:
-		std::string name;
 		Type *returnType;
 		Arguments arguments;
 		bool variadic;

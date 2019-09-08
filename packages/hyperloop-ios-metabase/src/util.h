@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <set>
 
 #include "clang-c/Index.h"
 #include "json/json.h"
@@ -19,6 +20,7 @@ namespace hyperloop {
 	class Type;
 	class StructDefinition;
 	class Definition;
+	class BlockDefinition;
 
 	/**
 	 * stringify an unsigned value
@@ -43,17 +45,17 @@ namespace hyperloop {
 	/**
 	 * trim from start
 	 */
-	std::string &ltrim(std::string &s);
+	std::string &ltrim(std::string &s, const std::string &chars = " ");
 
 	/**
 	 * trim from end
 	 */
-	std::string &rtrim(std::string &s);
+	std::string &rtrim(std::string &s, const std::string &chars = " ");
 
 	/**
 	 * trim from both ends
 	 */
-	std::string &trim(std::string &s);
+	std::string &trim(std::string &s, const std::string &chars = " ");
 
 	/**
 	 * returns true if string starts with character
@@ -133,23 +135,34 @@ namespace hyperloop {
 	/**
 	 * add a block if found as a type
 	 */
-	void addBlockIfFound (Definition *definition, CXCursor cursor);
-
-	/**
-	 * parse a block signature and return the returns value and place any args in the
-	 * vector passed
-	 */
-	std::string parseBlock (const std::string &block, std::vector<std::string> &args);
-
-	/**
-	 * parse a block signature to JSON
-	 */
-	Json::Value callbackToJSON (ParserContext *context, const std::string &block);
+	void addBlockIfFound (Definition *definition, CXCursor cursor, CXCursor parent);
 
 	/**
 	 * Checks if the specified cursor is available in iOS
 	 */
 	bool isAvailableInIos(CXCursor cursor);
+
+	/**
+	 * Returns true if the given cursor is a block pointer
+	 */
+	bool isBlock(const CXCursor &cursor);
+
+	/**
+	 * Resolves the type of the cursor.
+	 *
+	 * If the cursor represents a typedef retrieves the canonocal type.
+	 */
+	CXType resolveCursorType(const CXCursor &cursor);
+
+	/**
+	 * Strips any template specifiers from the type.
+	 */
+	std::string stripTemplateArgs(std::string &type);
+
+	/**
+	 * Generates the JSON structure for a block return value
+	 */
+	Json::Value generateBlockReturnJson(BlockDefinition *block);
 };
 
 #endif

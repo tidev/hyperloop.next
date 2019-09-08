@@ -16,11 +16,9 @@ namespace hyperloop {
 
 		switch (kind) {
 			case CXCursor_FieldDecl: {
-				auto argType = clang_getCursorType(cursor);
-				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-				auto type = new Type(unionDef->getContext(), argType);
-				unionDef->addField(displayName, type, encoding);
-				hyperloop::addBlockIfFound(unionDef, cursor);
+				auto type = new Type(cursor, unionDef->getContext());
+				unionDef->addField(displayName, type);
+				addBlockIfFound(unionDef, cursor, parent);
 				break;
 			}
 			case CXCursor_UnexposedAttr: {
@@ -71,8 +69,8 @@ namespace hyperloop {
 		return "?";
 	}
 
-	void UnionDefinition::addField (const std::string &name, Type *type, const std::string &encoding) {
-		auto arg = new Argument(name, type, encoding);
+	void UnionDefinition::addField (const std::string &name, Type *type) {
+		auto arg = new Argument(name, type);
 		fields.push_back(arg);
 	}
 
