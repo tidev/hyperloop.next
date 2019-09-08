@@ -40,5 +40,13 @@
  */
 +(BOOL)booleanify:(id)val;
 
+/**
+ * Performs isEqual with iOS 13 sanity checks.
+ *
+ * NSURLSessionConfiguration crashes when calling isEqual with anything else
+ * than another NSURLSessionConfiguration.
+ */
++(BOOL)safeIsEqual:(id)value with:(id)other;
+
 @end
 
