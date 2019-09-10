@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <set>
 
 #include "clang-c/Index.h"
 #include "json/json.h"
@@ -28,14 +29,17 @@ namespace hyperloop {
 
 	class Type : public Serializable {
 		public:
+			Type (CXType type, ParserContext *ctx);
+			Type (CXCursor cursor, ParserContext *ctx);
 			Type (const Type &type);
 			Type (Type &&type);
-			Type (ParserContext *ctx, const std::string &type, const std::string &value = "");
-			Type (ParserContext *ctx, const CXType &type, const std::string &value = "");
+			Type (ParserContext *ctx, const std::string &type, const std::string &value = "", const std::string &encoding = "");
 			virtual ~Type();
 			virtual Json::Value toJSON() const;
 			inline std::string getType() { return type; }
 			inline std::string getValue() { return value; }
+			inline std::string getEncoding() { return encoding; }
+
 			void setType (const std::string &_type);
 			void setValue (const std::string &_value);
 			void swap(Type &other);
@@ -43,25 +47,25 @@ namespace hyperloop {
 			ParserContext *context;
 			std::string type;
 			std::string value;
+			std::string encoding;
 	};
 
 	class Argument : public Serializable {
 		public:
-			Argument(const std::string &name, Type *type, const std::string &encoding);
+			Argument(const std::string &name, Type *type);
 			virtual ~Argument();
 			virtual Json::Value toJSON() const;
 			inline Type* getType () { return type; }
 		private:
 			std::string name;
 			Type *type;
-			std::string encoding;
 	};
 
 	class Arguments : public Serializable {
 		public:
 			Arguments();
 			virtual ~Arguments();
-			void add(const std::string &name, Type *type, const std::string &encoding);
+			void add(const std::string &name, Type *type);
 			const Argument& get(size_t index);
 			virtual Json::Value toJSON() const;
 			inline size_t count() const { return arguments.size(); }

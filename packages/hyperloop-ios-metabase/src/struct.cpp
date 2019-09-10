@@ -15,19 +15,21 @@ namespace hyperloop {
 		auto kind = clang_getCursorKind(cursor);
 
 		switch (kind) {
-			case CXCursor_FieldDecl: {
-				auto argType = clang_getCursorType(cursor);
-				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-//				std::cout << "struct field " << displayName << ", type: " << argType.kind << ", encoding: " << encoding << " struct: " << structDef->getName() << std::endl;
-				auto type = new Type(structDef->getContext(), argType);
-				if (type->getType() == "typedef") {
-					type->setType(EncodingToType(encoding));
-				}
-				structDef->addField(displayName, type, encoding);
-				addBlockIfFound(structDef, cursor);
+			case CXCursor_StructDecl:
+			case CXCursor_UnionDecl: {
 				break;
 			}
-			case CXCursor_UnexposedAttr: {
+			case CXCursor_FieldDecl: {
+//				std::cout << "struct field " << displayName << ", type: " << argType.kind << ", encoding: " << encoding << " struct: " << structDef->getName() << std::endl;
+				auto type = new Type(cursor, structDef->getContext());
+				structDef->addField(displayName, type);
+				addBlockIfFound(structDef, cursor, parent);
+				break;
+			}
+			case CXCursor_UnexposedAttr:
+			case CXCursor_PackedAttr:
+			case CXCursor_VisibilityAttr:
+			case CXCursor_ObjCBoxable: {
 				break;
 			}
 			default: {
@@ -49,6 +51,7 @@ namespace hyperloop {
 		for (auto it = fields.begin(); it != fields.end(); it++) {
 			delete *it;
 		}
+		delete type;
 	}
 
 	Json::Value StructDefinition::toJSON () const {
@@ -66,12 +69,8 @@ namespace hyperloop {
 		return kv;
 	}
 
-	std::string StructDefinition::getEncoding() {
-		return structDefinitionToEncoding(this);
-	}
-
-	void StructDefinition::addField (const std::string &name, Type *type, const std::string &encoding) {
-		auto arg = new Argument(name, type, encoding);
+	void StructDefinition::addField (const std::string &name, Type *type) {
+		auto arg = new Argument(name, type);
 		fields.push_back(arg);
 	}
 
@@ -81,6 +80,11 @@ namespace hyperloop {
 
 	CXChildVisitResult StructDefinition::executeParse (CXCursor cursor, ParserContext *context) {
 		auto kind = clang_getCursorKind(cursor);
+		this->type = new Type(cursor, context);
+		this->type->setType("struct");
+		if (this->name.empty()) {
+			this->name = this->type->getValue();
+		}
 		if (!clang_isUnexposed(kind) && !this->getName().empty()) {
 			context->getParserTree()->addStruct(this);
 		}

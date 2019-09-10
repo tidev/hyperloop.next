@@ -241,7 +241,7 @@ function getResultWrapper (state, json, obj, instance) {
 			return '';
 		}
 		case 'struct': {
-			name = getStructNameFromEncoding(obj.encoding) || name;
+			name = getStructNameFromEncoding(obj.encoding) || getStructNameFromEncoding(obj.type.encoding) || name;
 			if (name === '?') {
 				// TODO: Handle this property
 				return '';
@@ -497,8 +497,7 @@ function getObjCReturnType (value) {
 		return value.value || getPrimitiveValue(value.type);
 	}
 	console.log(value);
-	logger.error("cannot figure out objc return type", value);
-	process.exit(1);
+	throw new Error("cannot figure out objc return type");
 }
 
 function getObjCReturnResult (value, name, returns, asPointer) {
@@ -595,8 +594,7 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 		}
 	}
 	console.log(value);
-	logger.error("cannot figure out objc return result", value);
-	process.exit(1);
+	throw new Error("cannot figure out objc return result");
 }
 
 function generateImport (name, fp) {

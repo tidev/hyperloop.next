@@ -25,12 +25,7 @@ namespace hyperloop {
 		toJSONBase(kv);
 		kv["type"] = type->getType();
 		kv["value"] = type->getValue();
-		auto tree = this->context->getParserTree();
-		if (encoding.empty()) {
-			resolveEncoding(tree, kv, "type", "value");
-		} else {
-			kv["encoding"] = encoding;
-		}
+		kv["encoding"] = type->getEncoding();
 		return kv;
 	}
 
@@ -44,8 +39,7 @@ namespace hyperloop {
 				auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
 				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(parent));
 				auto typeName = EncodingToType(encoding);
-				varDef->setType(new Type(varDef->getContext(), typeName, typeValue));
-				varDef->setEncoding(encoding);
+				varDef->setType(new Type(varDef->getContext(), typeName, typeValue, encoding));
 				break;
 			}
 			default: break;
@@ -55,11 +49,10 @@ namespace hyperloop {
 
 	CXChildVisitResult VarDefinition::executeParse (CXCursor cursor, ParserContext *context) {
 		auto tree = context->getParserTree();
-		auto type = clang_getCanonicalType(clang_getCursorType(cursor));
-		this->type = new Type(context, type);
+		this->type = new Type(cursor, context);
 		tree->addVar(this);
 		clang_visitChildren(cursor, parseVarMember, this);
-		addBlockIfFound(this, cursor);
+		addBlockIfFound(this, cursor, cursor);
 		return CXChildVisit_Continue;
 	}
 

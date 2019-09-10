@@ -50,19 +50,12 @@ namespace hyperloop {
 	}
 
 	void MethodDefinition::addArgument(const CXCursor argumentCursor) {
-		auto argType = clang_getCursorType(argumentCursor);
-		auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
-		auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(argumentCursor));
 		auto displayName = CXStringToString(clang_getCursorDisplayName(argumentCursor));
-		auto type = new Type(this->getContext(), argType, typeValue);
+		auto type = new Type(argumentCursor, this->context);
 
-		if (type->getType() == "unexposed") {
-			type->setType(EncodingToType(encoding));
-		}
+		addBlockIfFound(this, argumentCursor, argumentCursor);
 
-		addBlockIfFound(this, argumentCursor);
-
-		arguments.add(displayName, type, encoding);
+		arguments.add(displayName, type);
 	}
 
 	Json::Value MethodDefinition::toJSON () const {
@@ -93,10 +86,8 @@ namespace hyperloop {
 	}
 
 	CXChildVisitResult MethodDefinition::executeParse (CXCursor cursor, ParserContext *context) {
-		auto returnType = clang_getCursorResultType(cursor);
-		auto returnTypeValue = CXStringToString(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
-		this->returnType = new Type(context, returnType, returnTypeValue);
-		addBlockIfFound(this, cursor);
+		this->returnType = new Type(clang_getCursorResultType(cursor), this->context);
+		addBlockIfFound(this, cursor, cursor);
 		clang_visitChildren(cursor, parseMethodMember, this);
 		return CXChildVisit_Continue;
 	}

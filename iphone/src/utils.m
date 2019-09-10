@@ -38,7 +38,7 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 #if defined(DEBUG_INVOKE) && DEBUG_INVOKE == 1
 	NSLog(@"[DEBUG] unmarshalObject %@ -> %@ at %zu", invocation, [arg class], index);
 #endif
-	if (arg == nil || [arg isEqual:[NSNull null]]) {
+	if (arg == nil || [HyperloopUtils safeIsEqual:arg with:[NSNull null]]) {
 		if (invocation) {
 			arg = nil;
 			[invocation setArgument:&arg atIndex:index];
@@ -73,7 +73,7 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 		for (id key in [copy allKeys]) {
 			id obj = [copy objectForKey:key];
 			id newobj = [HyperloopUtils unmarshalObject:nil arg:obj index:0];
-			if ([obj isEqual:newobj] == NO) {
+			if ([HyperloopUtils safeIsEqual:obj with:newobj] == NO) {
 				[copy setObject:newobj forKey:key];
 			}
 		}
@@ -109,7 +109,7 @@ id JSValueRefToId (JSContextRef ctx, const JSValueRef value, JSValueRef *excepti
 			#define SETVALUE(c, typev, sel) \
 			case c: {\
 				typev value;\
-				if ([arg isEqual:[NSNull null]]) {\
+				if ([HyperloopUtils safeIsEqual:arg with:[NSNull null]]) {\
 					if (invocation) {\
 						[invocation setArgument:&arg atIndex:index];\
 					} else {\
@@ -197,7 +197,7 @@ case enc: {\
 case enc: {\
 	type __autoreleasing value = nil;\
 	[invocation getReturnValue:&value];\
-    if (!value) return value; \
+	if (!value) return value; \
 	if ([value isKindOfClass:[HyperloopPointer class]]) {\
 		result = (id)value;\
 	} else {\
@@ -450,6 +450,15 @@ case enc: {\
 	JSValueUnprotect(context, function);
 	free(jsArgs);
 	return result;
+}
+
++(BOOL)safeIsEqual:(id)value with:(id)other
+{
+	if ([value isKindOfClass:NSURLSessionConfiguration.class] && ![other isKindOfClass:NSURLSessionConfiguration.class]) {
+		return false;
+	}
+
+	return [value isEqual:other];
 }
 
 @end

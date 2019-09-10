@@ -8,7 +8,19 @@
 
 namespace hyperloop {
 
-	Property::Property(const std::string &_name, Type *_type, const std::vector<std::string> &_attributes, bool _optional) : name(_name), type(_type), attributes(_attributes), optional(_optional) {
+	Property::Property(CXCursor cursor, const std::string &name, ParserContext *context) : Definition(cursor, name, context) {
+		this->type = new Type(cursor, context);
+		auto attributes = clang_Cursor_getObjCPropertyAttributes(cursor, 0);
+		if ((attributes & CXObjCPropertyAttr_readonly) == CXObjCPropertyAttr_readonly) {
+			this->attributes.push_back("readonly");
+		}
+		if ((attributes & CXObjCPropertyAttr_readwrite) == CXObjCPropertyAttr_readwrite) {
+			this->attributes.push_back("readwrite");
+		}
+		if ((attributes & CXObjCPropertyAttr_class) == CXObjCPropertyAttr_class) {
+			this->attributes.push_back("class");
+		}
+		this->optional = clang_Cursor_isObjCOptional(cursor);
 	}
 
 	Property::~Property() {
@@ -28,5 +40,9 @@ namespace hyperloop {
 		}
 		kv["optional"] = optional;
 		return kv;
+	}
+
+	CXChildVisitResult Property::executeParse(CXCursor cursor, ParserContext *context) {
+		return CXChildVisit_Continue;
 	}
 }

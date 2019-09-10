@@ -6,11 +6,12 @@
 #include "def.h"
 #include "parser.h"
 #include "util.h"
+#include "typedef.h"
 #include <iostream>
 
 namespace hyperloop {
 
-	Argument::Argument(const std::string &_name, Type *_type, const std::string &_encoding) : name(_name), type(_type), encoding(_encoding) {
+	Argument::Argument(const std::string &_name, Type *_type) : name(_name), type(_type) {
 //		std::cerr << "method argument: " << name << " " << encoding << std::endl;
 	}
 
@@ -23,7 +24,7 @@ namespace hyperloop {
 		kv["name"] = this->name;
 		kv["type"] = type->getType();
 		kv["value"] = cleanString(type->getValue());
-		kv["encoding"] = this->encoding;
+		kv["encoding"] = type->getEncoding();
 		return kv;
 	}
 
@@ -37,8 +38,8 @@ namespace hyperloop {
 		}
 	}
 
-	void Arguments::add(const std::string &name, Type *type, const std::string &encoding) {
-		arguments.push_back(new Argument(name, type, encoding));
+	void Arguments::add(const std::string &name, Type *type) {
+		arguments.push_back(new Argument(name, type));
 	}
 
 	const Argument& Arguments::get(size_t index) {
@@ -67,20 +68,73 @@ namespace hyperloop {
 	Serializable::~Serializable() {
 	}
 
-	Type::Type (const Type &type) : context(type.context) {
+	Type::Type (CXType type, ParserContext *context) : context(context) {
+		auto typeSpelling = CXStringToString(clang_getTypeSpelling(type));
+		// keep instancetype typedef as it serves as a constructor marker for init methods
+		if (type.kind == CXType_Typedef && typeSpelling == "instancetype") {
+			setType(hyperloop::CXTypeToType(type));
+			setValue(typeSpelling);
+			return;
+		}
+
+		// resolve typedef to underlying type
+		if (type.kind == CXType_Typedef) {
+			type = clang_getCanonicalType(type);
+		}
+		typeSpelling = CXStringToString(clang_getTypeSpelling(type));
+		setType(hyperloop::CXTypeToType(type));
+		if (this->type != "block") {
+			typeSpelling = stripTemplateArgs(typeSpelling);
+		}
+		setValue(typeSpelling);
+		this->encoding = CXStringToString(clang_Type_getObjCEncoding(type));
+		if (this->type == "unexposed") {
+			this->setType(EncodingToType(this->encoding));
+		}
+
+		// we blindly assume that all structs have a typedef name without underscore prefix
+		// so convert all record types that actually have those to struct
+		if (this->type == "record" && this->value.find("struct ") != std::string::npos) {
+			auto structName = replace(this->value, "struct ", "");
+			structName = ltrim(structName, "_");
+			if (this->context->getParserTree()->hasStruct(structName)) {
+				this->type = "struct";
+				this->value = structName;
+			}
+		}
+	}
+
+	Type::Type (CXCursor cursor, ParserContext *context) : Type(resolveCursorType(cursor), context) {
+		auto type = clang_getCursorType(cursor);
+		if (type.kind == CXType_Typedef && this->getType() == "record") {
+			auto tree = this->context->getParserTree();
+			// we blindly assume that all structs have a typedef name without underscore prefix
+			// so convert all record types that actually have those to struct
+			auto typeDefName = cleanString(CXStringToString(clang_getTypeSpelling(type)));
+			if (tree->hasStruct(typeDefName)) {
+				this->type = "struct";
+				this->value = typeDefName;
+			} if (this->value.find("struct ") != std::string::npos) {
+				// special case for struct typedef to existing struct typedef, stick to the first one
+				// for consistency
+				auto structName = replace(this->value, "struct ", "");
+				if (tree->hasStruct(structName)) {
+					this->type = "struct";
+					this->value = structName;
+				}
+			}
+		}
+	}
+
+	Type::Type (const Type &type) : context(type.context), encoding(type.encoding) {
 		setType(type.type);
 		setValue(type.value);
 	}
 
-	Type::Type (Type &&type) : context(type.context), type(std::move(type.type)), value(std::move(type.value)) {
+	Type::Type (Type &&type) : context(type.context), type(std::move(type.type)), value(std::move(type.value)), encoding(std::move(type.encoding)) {
 	}
 
-	Type::Type (ParserContext *ctx, const CXType &_type, const std::string &_value) : context(ctx) {
-		setType(hyperloop::CXTypeToType(_type));
-		setValue(_value);
-	}
-
-	Type::Type (ParserContext *ctx, const std::string &_type, const std::string &_value) : context(ctx) {
+	Type::Type (ParserContext *ctx, const std::string &_type, const std::string &_value, const std::string &encoding) : context(ctx), encoding(encoding) {
 		setType(_type);
 		setValue(_value);
 	}
@@ -108,6 +162,7 @@ namespace hyperloop {
 		Json::Value kv;
 		kv["type"] = type;
 		kv["value"] = value;
+		kv["encoding"] = encoding;
 		return kv;
 	}
 
