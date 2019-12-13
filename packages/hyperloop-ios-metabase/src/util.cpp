@@ -13,7 +13,7 @@
 #include "union.h"
 #include "typedef.h"
 #include "enum.h"
-#include "BlockParser.h"
+#include "block.h"
 
 namespace hyperloop {
 	/**
@@ -83,28 +83,24 @@ namespace hyperloop {
 	/**
 	 * trim from start
 	 */
-	std::string &ltrim (std::string &s) {
-		if (!s.empty()) {
-			s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
-		}
+	std::string &ltrim (std::string &s, const std::string &chars) {
+		s.erase(0, s.find_first_not_of(chars));
 		return s;
 	}
 
 	/**
 	 * trim from end
 	 */
-	std::string &rtrim (std::string &s) {
-		if (!s.empty()) {
-			s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
-		}
+	std::string &rtrim (std::string &s, const std::string &chars) {
+		s.erase(s.find_last_not_of(chars) + 1);
 		return s;
 	}
 
 	/**
 	 * trim from both ends
 	 */
-	std::string &trim (std::string &s) {
-		return ltrim(rtrim(s));
+	std::string &trim (std::string &s, const std::string &chars) {
+		return ltrim(rtrim(s, chars), chars);
 	}
 
 	/**
@@ -335,6 +331,10 @@ namespace hyperloop {
 		if (pos != std::string::npos) {
 			value = value.substr(pos + 6);
 		}
+		pos = value.find("enum ");
+		if (pos != std::string::npos) {
+			value = value.substr(pos + 6);
+		}
 		value = trim(value);
 		if (value.find("*") != std::string::npos) {
 			value = replace(value, "*", "");
@@ -349,7 +349,7 @@ namespace hyperloop {
 				type->setType("struct");
 			}
 			type->setValue(structDef->getName());
-			return structDef->getEncoding();
+			return structDef->getType()->getEncoding();
 		}
 		if (tree->hasUnion(value)) {
 			auto unionDef = tree->getUnion(value);
@@ -361,7 +361,13 @@ namespace hyperloop {
 		}
 		if (tree->hasType(value)) {
 			auto typeDef = tree->getType(value);
-			return typeDef->getEncoding();
+			return typeDef->getType()->getEncoding();
+		}
+		if (tree->hasEnum(value)) {
+			return "i";
+		}
+		if (tree->hasClass(value)) {
+			return "@";
 		}
 		if (str == "unexposed") {
 			return "?";
@@ -677,7 +683,7 @@ namespace hyperloop {
 		bool isTypeDef = false;
 //		std::cout << "resolveEncoding: " << type << ", value = " << value << ", encoding = " << encoding << ", json: " << kv << std::endl;
 		if (typeString == "unexposed" || encoding.empty() || encoding == "?") {
-			if (valueString == "id" || valueString == "ObjectType" || valueString == "KeyType") {
+			if (valueString == "id") {
 				kv["encoding"] = "@";
 				kv[typeKey] = "id";
 				//TODO: add classname
@@ -730,6 +736,9 @@ namespace hyperloop {
 				kv["encoding"] = "i";
 				kv["type"] = "enum";
 				return;
+			}
+			if (valueString.find("struct ") == 0) {
+				valueString = valueString.replace(0, 7, "");
 			}
 			if (tree->hasStruct(valueString)) {
 				kv["encoding"] = structDefinitionToEncoding(tree->getStruct(valueString));
@@ -838,15 +847,11 @@ namespace hyperloop {
 	/**
 	 * add a block if found as a type
 	 */
-	void addBlockIfFound (Definition *definition, CXCursor cursor) {
-		auto cursorType = clang_getCursorType(cursor);
-		if (cursorType.kind == CXType_Typedef) {
-			cursorType = clang_getCanonicalType(clang_getTypedefDeclUnderlyingType(cursor));
-		}
-		auto typeSpelling = CXStringToString(clang_getTypeSpelling(cursorType));
-		auto type = new Type(definition->getContext(), cursorType, typeSpelling);
-		if (type->getType() == "block") {
-			BlockParser::parseBlock(definition, cursor, type);
+	void addBlockIfFound (Definition *definition, CXCursor cursor, CXCursor parent) {
+		if (isBlock(cursor)) {
+			auto context = definition->getContext();
+			auto blockDef = new BlockDefinition(cursor, context);
+			blockDef->parse(cursor, parent, context);
 		}
 	}
 
@@ -893,107 +898,6 @@ namespace hyperloop {
 		}
 	}
 
-	/**
-	 * parse a block signature and return the returns value and place any args in the
-	 * vector passed
-	 */
-	std::string parseBlock (const std::string &block, std::vector<std::string> &args) {
-		auto p1 = block.find("(^)(");
-		if (p1 == std::string::npos) {
-			return "";
-		}
-		size_t offset = p1 + 4;
-		size_t p2 = offset;
-		size_t e = 0;
-		size_t len = block.size();
-		while (offset < len) {
-			p2 = block.find(")", offset);
-			if (p2 == std::string::npos) { break; }
-			if (block.at(p2 - 1) == (int)'^') {
-				offset = p2 + 1;
-				e = 1;
-			} else if ((p2 + 1 < len && block.at(p2 + 1) == (int)',')) {
-				offset = p2 + 1;
-				e = 1;
-			} else {
-				break;
-			}
-		}
-		auto p4 = p1 + 4;
-		auto returns = block.substr(0, p1) + (p2 + 1 < block.size() ? block.substr(p2 + 1 + e) : "");
-		auto params = block.substr(p4, p2 - (p4 - e));
-
-		returns = trim(returns);
-		params = trim(params);
-
-#ifdef BLOCK_PARSE_DEBUG
-		std::cout << "block: " << block << std::endl;
-		std::cout << "  |-params:" << params << std::endl;
-		std::cout << "  |-returns:" << returns << std::endl;
-#endif
-		tokenizeArguments(params, args);
-
-		// if the first argument is void, we have no params
-		if (args.size() > 0 && args.at(0) == "void") {
-			args.clear();
-		}
-
-		return trim(returns);
-	}
-
-	/**
-	 * parse a block signature and return the returns value and place any args in the
-	 * vector passed
-	 */
-	Json::Value callbackToJSON (ParserContext *context, const std::string &block) {
-
-		auto tree = context->getParserTree();
-
-		Json::Value result;
-		Json::Value returns;
-		Json::Value argsValue;
-		std::vector<std::string> args;
-		std::string returnString;
-
-		result["signature"] = block;
-
-		if (tree->hasType(block)) {
-			TypeDefinition *def = tree->getType(block);
-			returnString = parseBlock(def->getType()->getValue(), args);
-		} else {
-			returnString = parseBlock(block, args);
-		}
-
-		returns["type"] = Json::Value("unexposed");
-		returns["encoding"] = Json::Value(getEncodingFromType(returnString));
-		returns["value"] = Json::Value(returnString);
-		resolveEncoding(tree, returns);
-
-		// attempt to resolve each argument
-		for (auto it = args.begin(); it != args.end(); it++) {
-			auto arg = *it;
-			Json::Value argValue;
-			argValue["type"] = Json::Value("unexposed");
-			argValue["encoding"] = Json::Value(getEncodingFromType(arg));
-			argValue["value"] = Json::Value(arg);
-			resolveEncoding(tree, argValue);
-			argsValue.append(argValue);
-		}
-
-		// we always need to have an array (instead of null), so we make sure we create an empty one
-		if (argsValue.size() == 0) {
-			argsValue.resize(1);
-			argsValue.clear();
-		}
-
-		result["arguments"] = argsValue;
-		result["returns"] = returns;
-		result["type"] = "block";
-		result["encoding"] = "@?";
-
-		return result;
-	}
-
 	bool isAvailableInIos(CXCursor cursor) {
 		CXPlatformAvailability availability[10];
 		int always_deprecated, always_unavailable;
@@ -1031,4 +935,42 @@ namespace hyperloop {
 		return available;
 	}
 
+	bool isBlock(const CXCursor &cursor) {
+		auto cursorType = resolveCursorType(cursor);
+		return cursorType.kind == CXType_BlockPointer;
+	}
+
+	CXType resolveCursorType(const CXCursor &cursor) {
+		auto cursorType = clang_getCursorType(cursor);
+		if (cursorType.kind == CXType_Typedef) {
+			cursorType = clang_getCanonicalType(cursorType);
+		}
+		if (cursorType.kind == CXType_Elaborated) {
+			cursorType = clang_Type_getNamedType(cursorType);
+		}
+		return cursorType;
+	}
+
+	std::string stripTemplateArgs(std::string &type) {
+		auto openAngleBracketIndex = type.find("<");
+		if (openAngleBracketIndex != std::string::npos) {
+			auto closeAngleBracketIndex = type.rfind(">");
+			return type.replace(openAngleBracketIndex, closeAngleBracketIndex - openAngleBracketIndex + 1, "");
+		}
+
+		return type;
+	}
+
+	Json::Value generateBlockReturnJson(BlockDefinition *block) {
+		auto tree = block->getContext()->getParserTree();
+		auto signature = block->getSignature();
+		auto returnString = signature.substr(0, signature.find("(^)("));
+		returnString = stripTemplateArgs(trim(returnString));
+		Json::Value returns;
+		returns["type"] = Json::Value("unexposed");
+		returns["encoding"] = Json::Value(getEncodingFromType(returnString));
+		returns["value"] = Json::Value(returnString);
+		resolveEncoding(tree, returns);
+		return returns;
+	}
 };

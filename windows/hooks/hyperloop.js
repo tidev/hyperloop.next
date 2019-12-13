@@ -69,10 +69,10 @@ exports.cliVersion = '>=3.2';
 		state.buildDir            = builder.buildDir;
 		state.hyperloopBuildDir   = path.join(builder.buildDir, 'TitaniumWindows_Hyperloop');
 
-		this.builder.cli.on('build.windows.analyzeJsFile', {
+		this.builder.cli.on('build.windows.compileJsFile', {
 			pre: function(data, finished) {
-				var from     = data.args[0],
-					to       = data.args[1],
+				var from     = data.args[1],
+					to       = data.args[2],
 					ast;
 
 				const contents = fs.readFileSync(from, {encoding: 'utf8'});

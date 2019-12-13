@@ -20,20 +20,20 @@ namespace hyperloop {
 
 		switch (kind) {
 			case CXCursor_ParmDecl: {
-				auto argType = clang_getCursorType(cursor);
-				auto typeValue= CXStringToString(clang_getTypeSpelling(argType));
-				auto encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-				functionDef->addArgument(displayName, argType, typeValue, encoding);
-				addBlockIfFound(functionDef, cursor);
+				functionDef->addArgument(displayName, cursor);
+				addBlockIfFound(functionDef, cursor, parent);
 				break;
 			}
+			case CXCursor_ObjCProtocolRef:
 			case CXCursor_ObjCClassRef:
 			case CXCursor_TypeRef:
 			case CXCursor_UnexposedAttr:
 			case CXCursor_CompoundStmt:
 			case CXCursor_AsmLabelAttr:
 			case CXCursor_ConstAttr:
-			case CXCursor_PureAttr: {
+			case CXCursor_PureAttr:
+			case CXCursor_VisibilityAttr:
+			case CXCursor_NSReturnsRetained: {
 				break;
 			}
 			default: {
@@ -55,12 +55,9 @@ namespace hyperloop {
 		}
 	}
 
-	void FunctionDefinition::addArgument(const std::string &argName, const CXType &paramType, const std::string &argType, const std::string &encoding) {
-		auto type = new Type(this->getContext(), paramType, argType);
-		if (type->getType() == "unexposed") {
-			type->setType(EncodingToType(encoding));
-		}
-		arguments.add(argName, type, filterEncoding(encoding));
+	void FunctionDefinition::addArgument(const std::string &argName, const CXCursor &cursor) {
+		auto type = new Type(cursor, this->context);
+		arguments.add(argName, type);
 	}
 
 	Json::Value FunctionDefinition::toJSON () const {
@@ -81,11 +78,9 @@ namespace hyperloop {
 	}
 
 	CXChildVisitResult FunctionDefinition::executeParse (CXCursor cursor, ParserContext *context) {
-		auto returnType = clang_getCursorResultType(cursor);
-		auto returnTypeValue = CXStringToString(clang_getTypeSpelling(clang_getCursorResultType(cursor)));
-		this->returnType = new Type(context, returnType, returnTypeValue);
+		this->returnType = new Type(clang_getCursorResultType(cursor), this->context);
 		this->variadic = clang_isFunctionTypeVariadic(clang_getCursorType(cursor));
-		addBlockIfFound(this, cursor);
+		addBlockIfFound(this, cursor, cursor);
 		context->getParserTree()->addFunction(this);
 		clang_visitChildren(cursor, parseFunctionMember, this);
 		return CXChildVisit_Continue;

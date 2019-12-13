@@ -36,20 +36,7 @@ namespace hyperloop {
 				break;
 			}
 			case CXCursor_ObjCPropertyDecl: {
-				auto attributes = clang_Cursor_getObjCPropertyAttributes(cursor, 0);
-				std::vector<std::string> attrs;
-				if ((attributes & CXObjCPropertyAttr_readonly) == CXObjCPropertyAttr_readonly) {
-					attrs.push_back("readonly");
-				}
-				if ((attributes & CXObjCPropertyAttr_readwrite) == CXObjCPropertyAttr_readwrite) {
-					attrs.push_back("readwrite");
-				}
-				if ((attributes & CXObjCPropertyAttr_class) == CXObjCPropertyAttr_class) {
-					attrs.push_back("class");
-				}
-				auto returnType = clang_getCursorType(cursor);
-				auto returnTypeValue = CXStringToString(clang_getTypeSpelling(returnType));
-				auto prop = new Property(displayName, new Type(classDef->getContext(), returnType, returnTypeValue), attrs, clang_Cursor_isObjCOptional(cursor));
+				auto prop = new Property(cursor, displayName, classDef->getContext());
 				classDef->addProperty(prop);
 				break;
 			}
@@ -81,6 +68,11 @@ namespace hyperloop {
 				break;
 			}
 			case CXCursor_TypeRef: {
+				break;
+			}
+			case CXCursor_VisibilityAttr:
+			case CXCursor_ObjCException:
+			case CXCursor_ObjCRootClass: {
 				break;
 			}
 			default: {

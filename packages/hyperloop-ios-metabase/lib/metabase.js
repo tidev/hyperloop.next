@@ -1263,6 +1263,8 @@ function generateCocoaPods (cachedir, builder, callback) {
 			return callback(err);
 		}
 
+		ensureXcode11Compatibility(basedir);
+
 		runCocoaPodsBuild(basedir, builder, function (err) {
 			if (err) {
 				return callback(err);
@@ -1276,6 +1278,21 @@ function generateCocoaPods (cachedir, builder, callback) {
 			});
 		});
 	});
+}
+
+function ensureXcode11Compatibility(baseDir) {
+	const podProjectPath = path.join(baseDir, 'Pods', 'Pods.xcodeproj');
+	const workspaceDataPath = path.join(podProjectPath, 'project.xcworkspace', 'contents.xcworkspacedata');
+	if (!fs.existsSync(workspaceDataPath)) {
+		fs.ensureDirSync(path.dirname(workspaceDataPath));
+		fs.writeFileSync(workspaceDataPath, `<?xml version="1.0" encoding="UTF-8"?>
+<Workspace
+	version = "1.0">
+	<FileRef
+		location = "self:">
+	</FileRef>
+</Workspace>`);
+	}
 }
 
 // public API

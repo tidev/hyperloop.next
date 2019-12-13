@@ -9,13 +9,13 @@
 #include "def.h"
 
 namespace hyperloop {
-	
+
 	class UnionDefinition : public Definition {
 	public:
 		UnionDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx);
 		~UnionDefinition();
 		Json::Value toJSON () const;
-		void addField (const std::string &name, Type *type, const std::string &encoding);
+		void addField (const std::string &name, Type *type);
 		std::vector<Argument *> getFields();
 		std::string getEncoding();
 	private:

@@ -10,17 +10,16 @@
 
 namespace hyperloop {
 
-	class Property : public Serializable {
+	class Property : public Definition {
 		public:
-			Property(const std::string &name, Type *type, const std::vector<std::string> &attributes, bool optional);
+			Property(CXCursor cursor, const std::string &name, ParserContext *context);
 			~Property();
 			Json::Value toJSON () const;
-			inline std::string getName () { return name; }
 		private:
-			std::string name;
 			Type *type;
 			std::vector<std::string> attributes;
 			bool optional;
+			CXChildVisitResult executeParse(CXCursor cursor, ParserContext *context);
 	};
 }
 

@@ -898,6 +898,8 @@ static JSValueRef Convert (JSContextRef ctx, JSObjectRef object, JSType type, JS
 			return object;
 		}
 	}
+
+	return JSValueMakeUndefined(ctx);
 }
 
 /**

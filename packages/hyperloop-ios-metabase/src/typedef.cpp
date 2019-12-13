@@ -8,7 +8,6 @@
 #include "util.h"
 #include "struct.h"
 #include "union.h"
-#include "BlockParser.h"
 
 namespace hyperloop {
 
@@ -23,9 +22,8 @@ namespace hyperloop {
 		}
 	}
 
-	void TypeDefinition::setType(Type *_type, const std::string &_encoding) {
+	void TypeDefinition::setType(Type *_type) {
 		type = _type;
-		encoding = _encoding;
 	}
 
 	Json::Value TypeDefinition::toJSON () const {
@@ -35,19 +33,19 @@ namespace hyperloop {
 		kv["type"] = type->getType();
 		kv["value"] = type->getValue();
 
-		if (encodingNeedsResolving(this->encoding)) {
+		if (encodingNeedsResolving(this->type->getEncoding())) {
 			kv["encoding"] = CXTypeUnknownToEncoding(this->context, type);
 		} else {
-			kv["encoding"] = this->encoding;
+			kv["encoding"] = this->type->getEncoding();
 		}
 
 		return kv;
 	}
 
 	CXChildVisitResult TypeDefinition::executeParse (CXCursor cursor, ParserContext *context) {
-		auto cxtype = clang_getCanonicalType(clang_getTypedefDeclUnderlyingType(cursor));
-		auto typeString = CXStringToString(clang_getTypeSpelling(cxtype));
-		auto type = new Type(context, cxtype, typeString);
+		auto underlyingType = clang_getTypedefDeclUnderlyingType(cursor);
+		auto typeSpelling = CXStringToString(clang_getTypeSpelling(underlyingType));
+		auto type = new Type(underlyingType, context);
 
 //		std::cout << "typedef: " << typeString << ", " << type->toJSON() << std::endl;
 
@@ -60,7 +58,7 @@ namespace hyperloop {
 			if (p != nullptr) {
 				auto pn = p->getName();
 				if (pn.empty()) {
-					p->setName(typeString);
+					p->setName(typeSpelling);
 					auto up = dynamic_cast<UnionDefinition *>(p);
 					if (up) {
 						type->setType("union");
@@ -78,10 +76,9 @@ namespace hyperloop {
 				}
 			}
 		}
-		std::string encoding = CXStringToString(clang_getDeclObjCTypeEncoding(cursor));
-		this->setType(type, encoding);
+		this->setType(type);
 		context->getParserTree()->addType(this);
-		addBlockIfFound(this, cursor);
+		addBlockIfFound(this, cursor, cursor);
 		return CXChildVisit_Continue;
 	}
 

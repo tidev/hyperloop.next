@@ -9,16 +9,17 @@
 #include "def.h"
 
 namespace hyperloop {
-	
+
 	class StructDefinition : public Definition {
 	public:
 		StructDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx);
 		~StructDefinition();
 		Json::Value toJSON () const;
-		void addField (const std::string &name, Type *type, const std::string &encoding);
+		void addField (const std::string &name, Type *type);
+		inline Type *getType() { return this->type; }
 		std::vector<Argument *> getFields();
-		std::string getEncoding();
 	private:
+		Type *type;
 		std::vector<Argument *> fields;
 		CXChildVisitResult executeParse(CXCursor cursor, ParserContext *context);
 	};

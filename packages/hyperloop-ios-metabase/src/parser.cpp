@@ -15,14 +15,11 @@
 #include "function.h"
 #include "struct.h"
 #include "union.h"
+#include "block.h"
 
 #define APIVERSION "1"
 
 namespace hyperloop {
-
-	// TODO: normally this should be a member variable to ParserTree but I'm having a weird
-	// crash on some libraries that i can't yet figure out but moving outside works fine. c'est la vie
-	static Blocks blocks;
 
 	ParserTree::ParserTree () : context(nullptr) {
 	}
@@ -71,21 +68,8 @@ namespace hyperloop {
 
 	void ParserTree::addStruct (StructDefinition *definition) {
 		auto key = definition->getName();
-		if (key.at(0) == '_') {
-			// trim off any leading underscores
-			size_t c = 0;
-			for (; c < key.length(); c++) {
-				char ch = key.at(c);
-				if (ch == '_') {
-					continue;
-				}
-				break;
-			}
-			if (c) {
-				key = key.substr(c);
-				definition->setName(key);
-			}
-		}
+		key = ltrim(key, "_");
+		definition->setName(key);
 		this->structs[key] = definition;
 	}
 
@@ -96,11 +80,13 @@ namespace hyperloop {
 		}
 	}
 
-	void ParserTree::addBlock (const std::string &framework, const std::string & def) {
-		if (!def.empty() && !framework.empty()) {
-			auto set = blocks[framework];
-			set.insert(def);
-			blocks[framework] = set;
+	void ParserTree::addBlock (BlockDefinition *definition) {
+		auto key = definition->getSignature();
+		auto framework = definition->getFramework();
+		if (!framework.empty()) {
+			auto frameworkBlocks = this->blocks[framework];
+			frameworkBlocks.insert(std::make_pair(key, definition));
+			this->blocks[framework] = frameworkBlocks;
 		}
 	}
 
@@ -238,8 +224,10 @@ namespace hyperloop {
 				auto key = it->first;
 				Json::Value set;
 				for (auto iit = it->second.begin(); iit != it->second.end(); iit++) {
-					std::string block = *iit;
-					set.append(callbackToJSON(context, block));
+					BlockDefinition *block = iit->second;
+					Json::Value blockData = block->toJSON();
+					blockData["returns"] = generateBlockReturnJson(block);
+					set.append(blockData);
 				}
 				blockSet[key] = set;
 			}

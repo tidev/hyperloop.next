@@ -16,12 +16,10 @@ namespace hyperloop {
 		TypeDefinition (CXCursor cursor, const std::string &name, ParserContext *ctx);
 		~TypeDefinition ();
 		Json::Value toJSON () const;
-		void setType(hyperloop::Type *type, const std::string &encoding);
+		void setType(hyperloop::Type *type);
 		Type* getType() { return type; }
-		std::string getEncoding() { return encoding; }
 	private:
 		Type *type;
-		std::string encoding;
 		CXChildVisitResult executeParse(CXCursor cursor, ParserContext *context);
 	};
 }

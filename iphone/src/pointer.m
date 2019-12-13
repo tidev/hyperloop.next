@@ -385,6 +385,11 @@ NSString *cleanEncoding (NSString *encoding) {
 }
 
 -(BOOL)isEqual:(id)obj {
+	if ([_object isKindOfClass:NSURLSessionConfiguration.class] && ![obj isKindOfClass:NSURLSessionConfiguration.class]) {
+		// iOS 13 bug, calling isEqual on NSURLSessionConfiguration with anything else
+		// then another NSURLSessionConfiguration instance causes a crash.
+		return false;
+	}
 	if ([_object isEqual:obj]) {
 		return YES;
 	} else if (_clazz == (Class)obj) {
@@ -581,7 +586,7 @@ NSString *cleanEncoding (NSString *encoding) {
 \
 +(type)name##Value:(id) value{\
 	if (value && [value respondsToSelector:@selector(name##Value)]) {\
-	   return [value name##Value];\
+		 return [value name##Value];\
 	}\
 	return def;\
 }\
