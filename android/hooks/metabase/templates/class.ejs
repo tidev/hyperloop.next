@@ -1,12 +1,12 @@
 <%
 var sanitizedName = classDefinition.safeName,
 	fullName = classDefinition.name,
-	parts = fullName.replace('$', '.').split('.'),
+	parts = fullName.replace(/\$/g, '.').split('.'),
 	baseName = parts[parts.length - 1],
-	isInnerClass = (fullName.indexOf('$') != -1),
+	isInnerClass = (fullName.indexOf('$') >= 0),
 	isGlobal = parts.length == 1,
 	parent,
-	BASE_URL = 'http://developer.android.com/reference/' + classDefinition.name.replace(/\./g, '/').replace('$', '.') + '.html'; // Used to build up API URLs
+	BASE_URL = 'http://developer.android.com/reference/' + classDefinition.name.replace(/\./g, '/').replace(/\$/g, '.') + '.html'; // Used to build up API URLs
 -%>
 /**
  * Hyperloop
@@ -178,7 +178,7 @@ for (var propertyName in classDefinition.properties) {
 if (classDefinition.innerClasses) {
 	for (var ic = 0; ic < classDefinition.innerClasses.length; ic++) {
 		var innerClassName = classDefinition.innerClasses[ic];
-		var baseInnerClassName = innerClassName.slice(innerClassName.indexOf('$') + 1);
+		var baseInnerClassName = innerClassName.slice(innerClassName.lastIndexOf('$') + 1);
 -%>
 Object.defineProperty(<%= sanitizedName %>, '<%= baseInnerClassName %>', {
 	get: function() {

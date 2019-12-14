@@ -93,17 +93,19 @@ function expandClassDependencies(metabaseJSON, className, done) {
 	}
 
 	// if this is an innerclass, add it's enclosing class as dependency
-	if (className.indexOf('$') != -1) {
-		// inner class, add it's enclosing class as dependency
-		expanded.push(className.slice(0, className.indexOf('$')));
-	} else {
-		// if this is not an inner class, add any inner classes underneath it as dependencies
-		for (var otherClass in metabaseJSON.classes) {
-			if (otherClass.indexOf(className + '$') == 0) {
-				classDef.innerClasses = classDef.innerClasses || [];
-				classDef.innerClasses.push(otherClass);
-				expanded.push(otherClass);
-			}
+	var innerClassIndex = className.lastIndexOf('$');
+	if (innerClassIndex >= 0) {
+		var parentClass = className.slice(0, innerClassIndex);
+		expanded = expanded.concat(expandClassDependencies(metabaseJSON, parentClass, done));
+	}
+
+	// add any inner classes immediately underneath this class as dependencies
+	var innerClassPrefix = className + '$';
+	for (var otherClass in metabaseJSON.classes) {
+		if ((otherClass.indexOf(innerClassPrefix) == 0) && (otherClass.indexOf('$', innerClassPrefix.length) < 0)) {
+			classDef.innerClasses = classDef.innerClasses || [];
+			classDef.innerClasses.push(otherClass);
+			expanded = expanded.concat(expandClassDependencies(metabaseJSON, otherClass, done));
 		}
 	}
 
@@ -195,7 +197,7 @@ function generateFromJSON(dir, metabaseJSON, options, callback) {
 			async.eachLimit(classes, 25, function(className, next) {
 				var json = metabaseJSON.classes[className],
 					dest = path.join(dir, className + '.js'),
-					parts = className.replace('$', '.').split('.'),
+					parts = className.replace(/\$/g, '.').split('.'),
 					baseName = parts[parts.length - 1],
 					contents = '',
 					packageName = className.slice(0, className.lastIndexOf('.')),
