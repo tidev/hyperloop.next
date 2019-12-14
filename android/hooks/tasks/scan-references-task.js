@@ -191,8 +191,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 		const result = this.extractAndReplaceHyperloopRequires(pathAndFilename);
 		if (result && result.usedClasses.length > 0) {
 			this._references.set(pathAndFilename, {
-				usedClasses: result.usedClasses,
-				replacedContent: result.replacedContent
+				usedClasses: result.usedClasses
 			});
 			return true;
 		}
@@ -260,12 +259,6 @@ class ScanReferencesTask extends IncrementalFileTask {
 						const used = self.detectUsedClasses(className);
 						if (used.length > 0) {
 							usedClasses = usedClasses.concat(used); // add to our full listing
-							const packageName = className.slice(0, className.length - 2); // drop the .* ending
-							// Replace required with hacked version!
-							p.replaceWith(
-								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + packageName)])
-							);
-							changedAST = true;
 						}
 					} else {
 						// single type
@@ -273,10 +266,6 @@ class ScanReferencesTask extends IncrementalFileTask {
 						if (validatedClassName) {
 							// Looks like it's a Java type, so let's hack it and add it to our list!
 							usedClasses.push(validatedClassName);
-							p.replaceWith(
-								t.callExpression(p.node.callee, [t.stringLiteral('hyperloop/' + validatedClassName)])
-							);
-							changedAST = true;
 						}
 					}
 				}
@@ -298,27 +287,12 @@ class ScanReferencesTask extends IncrementalFileTask {
 						const used = self.detectUsedClasses(className); // TODO pass along the specifiers to narrow the used class listing!
 						if (used.length > 0) {
 							usedClasses = usedClasses.concat(used); // add to our full listing
-							// FIXME: Validate that the types listed in the specifiers exist underneath the package!
-							// If we pass in the specifiers, we can probably just check that the returned array length === the specifiers length
-							const packageName = className.slice(0, className.length - 2); // drop the .* ending
-							// Replace required with hacked version!
-							p.replaceWith(
-								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + packageName))
-							);
-							changedAST = true;
 						}
 					} else {
 						// single type
 						const validatedClassName = self.validateTypeName(className);
 						if (validatedClassName) { // FIXME: If name is invalid/can't be found, should we raise an error?
 							usedClasses.push(validatedClassName);
-							// Looks like it's a Java type, so let's hack it and add it to our list!
-							// replace the require to point to our generated file path
-							// Replace required with hacked version!
-							p.replaceWith(
-								t.importDeclaration(p.node.specifiers, t.stringLiteral('hyperloop/' + validatedClassName))
-							);
-							changedAST = true;
 						}
 					}
 				}
@@ -328,13 +302,9 @@ class ScanReferencesTask extends IncrementalFileTask {
 		// Now traverse the AST and generate modified source
 		const ast = babelParser.parse(originalSource, { sourceFilename: file, sourceType: 'unambiguous' });
 		traverse(ast, HyperloopVisitor);
-		// if we didn't change the AST, no need to generate new source!
-		// If we *do* generate new source, try to retain the lines and comments to retain source map
-		const modifiedSource = changedAST ? generate(ast, { retainLines: true, comments: true }, originalSource).code : originalSource;
 
 		return {
 			usedClasses: usedClasses,
-			replacedContent: modifiedSource
 		};
 	}
 

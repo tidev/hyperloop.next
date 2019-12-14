@@ -1,0 +1,73 @@
+
+apply plugin: 'com.android.library'
+
+// Path to the Titanium project's "./platform/android" directory.
+def tiProjectPlatformAndroidDir = '<%- tiProjectPlatformAndroidDir.replace(/\\/g, '\\\\') %>'
+
+// Path to the Titanium SDK's "m2repository" containing the "titanium.aar" library.
+// Needed by "org.appcelerator:titanium:<version>" dependency reference below.
+repositories {
+	maven {
+		url '<%- tiMavenUrl %>'
+	}
+}
+
+// Android build settings for this library project.
+android {
+	compileSdkVersion <%- compileSdkVersion %>
+	defaultConfig {
+		minSdkVersion <%- minSdkVersion %>
+		targetSdkVersion <%- targetSdkVersion %>
+	}
+	lintOptions {
+		checkReleaseBuilds false
+	}
+}
+
+// Disable linting for faster build times.
+tasks.lint.enabled = false
+
+// Default hyperloop library references.
+dependencies {
+	// Reference the JARs/AARs in the Titanium project's "./platform/android" directory.
+	implementation fileTree(dir: tiProjectPlatformAndroidDir, include: ['*.aar', '*.jar'])
+
+	// Reference the main Titanium library.
+	implementation 'org.appcelerator:titanium:<%- tiSdkVersion %>'
+}
+
+// Load optional "build.gradle" file in Titanium project's "./platform/android" directory.
+// This gradle file is expected to provide additional "dependencies" for hyperloop.
+def customBuildGradlePath = "${tiProjectPlatformAndroidDir}/build.gradle"
+if (file(customBuildGradlePath).exists()) {
+	apply from: customBuildGradlePath
+}
+
+// Task used to fetch the paths to all JAR dependencies available to hyperloop.
+// Writes paths to a "./build/outputs/hyperloop/jar-dependencies.txt" file, separated by '\n' characters.
+// To be executed via command line:  "gradlew :gradle-project:generateJarDependenciesFile"
+task generateJarDependenciesFile() {
+	doLast {
+		def jarPathCollection = new HashSet<String>();
+
+		// Add the main Android framework JAR to the collection.
+		jarPathCollection.add(
+			file("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar").toString())
+
+		// Fetch JAR paths to all dependencies referenced by this gradle script and "./platform/android/build.gradle".
+		project.android.libraryVariants.all { variant ->
+			variant.getCompileClasspath(null).each {
+				def fileObject = it
+				def filePath = fileObject.toString()
+				if (!filePath.startsWith(buildDir.toString()) && fileObject.exists()) {
+					jarPathCollection.add(filePath)
+				}
+			}
+		}
+
+		// Write the paths to all JAR file dependencies to text file, separated by newlines.
+		def outputFile = file("${buildDir}/outputs/hyperloop/jar-dependencies.txt")
+		outputFile.getParentFile().mkdirs()
+		outputFile.text = jarPathCollection.join('\n')
+	}
+}
