@@ -83,6 +83,7 @@ stage('Build') {
 								dir('hooks') {
 									sh 'npm ci'
 									sh 'npm test'
+									sh 'rm -rf node_modules'
 									sh 'npm ci --production'
 								}
 
