@@ -3,7 +3,7 @@ import com.axway.TitaniumCLI;
 import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
-def nodeVersion = '8.16.0'
+def nodeVersion = '10.17.0'
 def sdkVersion = '8.0.2.GA'
 def sdkVersion_windows = '8.0.2.GA'
 def androidAPILevel = '26'
