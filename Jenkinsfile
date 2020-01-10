@@ -5,7 +5,6 @@ import com.axway.AppcCLI;
 // Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '10.17.0'
 def sdkVersion = '8.0.2.GA'
-def sdkVersion_windows = '8.0.2.GA'
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
@@ -158,57 +157,6 @@ stage('Build') {
 				}
 			} // node
 		},
-		'windows': {
-			node('windows && (vs2015 || vs2017)') {
-				ws('hl-windows') { // change workspace name to be shorter, avoid path too long errors!
-					try {
-						checkout scm
-
-						nodejs(nodeJSInstallationName: "node ${nodeVersion}") {
-							ensureNPM()
-							withEnv(["PATH+NPM=${env.APPDATA}\\npm"]) { // fix PATH for Windows, blah
-								titanium.install()
-								def activeSDKPath = titanium.installAndSelectSDK(sdkVersion_windows)
-
-								echo 'Building Windows module...'
-								dir('windows') {
-									// FIXME: Do this under bat script!
-									sh "sed -i.bak 's/VERSION/${packageVersion}/g' ./manifest"
-									sh "sed -i.bak 's/0.0.0-PLACEHOLDER/${packageVersion}/g' ./hooks/package.json"
-
-									bat 'ti clean'
-									dir('hooks') {
-										// We must use bat here as sh picks up a different npm executable
-										bat 'npm ci --production'
-									}
-									appc.install() // FIXME: Use ti cli, use 'bat' not 'sh'
-									// Seems like the plugin/hooks CLI hook doesn't run with ti cli!
-									appc.loggedIn {
-										sh 'appc run -p windows --build-only'
-									} // appc.loggedIn
-
-									bat 'if exist zip\\ rmdir /s /q zip\\'
-									bat 'mkdir zip'
-									bat "move hyperloop-windows-${packageVersion}.zip zip\\hyperloop-windows-${packageVersion}.zip"
-									dir('zip') {
-										bat "unzip hyperloop-windows-${packageVersion}.zip"
-										bat "del /f /q hyperloop-windows-${packageVersion}.zip"
-										// Remove docs and examples
-										bat "rmdir /s /q modules\\windows\\hyperloop\\${packageVersion}\\example"
-										bat "rmdir /s /q modules\\windows\\hyperloop\\${packageVersion}\\documentation"
-										// Now zip it back up
-										bat "zip -r hyperloop-windows-${packageVersion}.zip ."
-									}
-									stash includes: 'zip/hyperloop-windows-*.zip', name: 'windows-zip'
-								} // dir
-							} // withEnv
-						} // nodejs
-					} finally {
-						step([$class: 'WsCleanup'])
-					}
-				} // ws
-			} // node
-		},
 		failFast: true
 	)
 }
@@ -222,19 +170,14 @@ stage('Package') {
 		unstash 'iphone-zip'
 		sh "mv hyperloop-iphone-${packageVersion}.zip dist/"
 
-		unstash 'windows-zip'
-		sh "mv zip/hyperloop-windows-${packageVersion}.zip dist/"
-
 		unstash 'android-zip'
 
-		echo 'Creating combined zip with iOS, Windows, and Android ...'
+		echo 'Creating combined zip with iOS and Android ...'
 		dir('dist') {
 			sh "unzip hyperloop-android-${packageVersion}.zip"
 			sh "rm -f hyperloop-android-${packageVersion}.zip"
 			sh "unzip -o hyperloop-iphone-${packageVersion}.zip"
 			sh "rm -f hyperloop-iphone-${packageVersion}.zip"
-			sh "unzip -o hyperloop-windows-${packageVersion}.zip"
-			sh "rm -f hyperloop-windows-${packageVersion}.zip"
 			sh "zip -q -r hyperloop-${packageVersion}.zip * --exclude=*test* --exclude=*.DS_Store* --exclude=*.git* --exclude *.travis.yml*  --exclude *.gitignore*  --exclude *.npmignore* --exclude *CHANGELOG* --exclude *.jshintrc*"
 			sh 'rm -rf modules'
 		}

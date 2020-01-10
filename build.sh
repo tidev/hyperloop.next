@@ -12,8 +12,7 @@ onexit () {
 	git checkout HEAD -- android/manifest
 	git checkout HEAD -- android/build.properties
 	git checkout HEAD -- iphone/manifest
-	git checkout HEAD -- iphone/titanium.xcconfig
-	git checkout HEAD -- windows/manifest
+	#git checkout HEAD -- iphone/titanium.xcconfig
 	rm -rf $SCRIPT_PATH/iphone/*.bak
 	rm -rf $SCRIPT_PATH/android/*.bak
 }
@@ -37,11 +36,11 @@ then
 	echo "$CHECK Android SDK is $ANDROID_SDK"
 fi
 
-# Make sure we have at least the Android 7.1 (SDK 25) installed
-if [ ! -d "$ANDROID_SDK/platforms/android-25" ];
+# Make sure we have at least the Android 8.1 (SDK 27) installed
+if [ ! -d "$ANDROID_SDK/platforms/android-27" ];
 then
-	echo "Android 7.1 (Lollipop) / (android-25) not installed"
-	echo "Download Android 7.1 using Android Studio"
+	echo "Android 8.1 (Lollipop) / (android-27) not installed"
+	echo "Download Android 8.1 using Android Studio"
 	exit 1
 fi
 
@@ -93,7 +92,6 @@ VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
-sed -i.bak 's/VERSION/'"$VERSION"'/g' ./windows/manifest
 
 # Build Android module
 echo "Building Android module..."
@@ -135,18 +133,8 @@ fi
 cp -R build/zip/modules/ ../dist/modules
 cd ..
 
-# Build Windows module
-cd windows/dist
-if [ -f hyperloop-windows-$VERSION.zip ];
-then
-	echo "Unzipping Windows zipfile..."
-	unzip hyperloop-windows-$VERSION.zip -d ../../dist
-fi
-
-cd ../../
-
 # Combine all modules to one masterpiece
-echo "Creating combined zip with iOS, Android and Windows..."
+echo "Creating combined zip with iOS andAndroid..."
 cd dist
 zip -q -r hyperloop-$VERSION.zip *
 
