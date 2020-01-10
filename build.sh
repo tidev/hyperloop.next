@@ -12,7 +12,7 @@ onexit () {
 	git checkout HEAD -- android/manifest
 	git checkout HEAD -- android/build.properties
 	git checkout HEAD -- iphone/manifest
-	#git checkout HEAD -- iphone/titanium.xcconfig
+	git checkout HEAD -- iphone/titanium.xcconfig
 	rm -rf $SCRIPT_PATH/iphone/*.bak
 	rm -rf $SCRIPT_PATH/android/*.bak
 }
