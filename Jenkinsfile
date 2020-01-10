@@ -11,8 +11,6 @@ def androidAPILevel = '26'
 def packageVersion = ''
 
 def titanium = new TitaniumCLI(steps)
-def appc = new AppcCLI(steps)
-appc.environment = 'prod'
 
 node {
 	try {
