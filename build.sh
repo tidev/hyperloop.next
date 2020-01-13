@@ -36,11 +36,11 @@ then
 	echo "$CHECK Android SDK is $ANDROID_SDK"
 fi
 
-# Make sure we have at least the Android 8.1 (SDK 27) installed
-if [ ! -d "$ANDROID_SDK/platforms/android-27" ];
+# Make sure we have at least the Android 7.1 (SDK 25) installed
+if [ ! -d "$ANDROID_SDK/platforms/android-25" ];
 then
-	echo "Android 8.1 (Lollipop) / (android-27) not installed"
-	echo "Download Android 8.1 using Android Studio"
+	echo "Android 7.1 (Lollipop) / (android-25) not installed"
+	echo "Download Android 7.1 using Android Studio"
 	exit 1
 fi
 
