@@ -13,7 +13,6 @@ onexit () {
 	git checkout HEAD -- android/build.properties
 	git checkout HEAD -- iphone/manifest
 	git checkout HEAD -- iphone/titanium.xcconfig
-	git checkout HEAD -- windows/manifest
 	rm -rf $SCRIPT_PATH/iphone/*.bak
 	rm -rf $SCRIPT_PATH/android/*.bak
 }
@@ -93,7 +92,6 @@ VERSION=`grep "^\s*\"version\":" package.json | cut -d ":" -f2 | cut -d "\"" -f2
 # Force the version into the manifest files in iphone/android directories!
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./android/manifest
 sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
-sed -i.bak 's/VERSION/'"$VERSION"'/g' ./windows/manifest
 
 # Build Android module
 echo "Building Android module..."
@@ -135,18 +133,8 @@ fi
 cp -R build/zip/modules/ ../dist/modules
 cd ..
 
-# Build Windows module
-cd windows/dist
-if [ -f hyperloop-windows-$VERSION.zip ];
-then
-	echo "Unzipping Windows zipfile..."
-	unzip hyperloop-windows-$VERSION.zip -d ../../dist
-fi
-
-cd ../../
-
 # Combine all modules to one masterpiece
-echo "Creating combined zip with iOS, Android and Windows..."
+echo "Creating combined zip with iOS andAndroid..."
 cd dist
 zip -q -r hyperloop-$VERSION.zip *
 
