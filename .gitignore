@@ -17,9 +17,7 @@ project.xcworkspace
 *.bak
 npm-debug.log
 packages/hyperloop-ios-metabase/bin/metabase
-windows/Windows10.ARM
-windows/Windows10.Win32
-windows/CMakeLists.txt
+
 # Coverage directory and nyc output
 coverage
 .nyc_output
