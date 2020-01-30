@@ -4,11 +4,11 @@
 #
 version: VERSION
 apiversion: 4
-architectures: arm64-v8a armeabi-v7a x86
+architectures: arm64-v8a armeabi-v7a x86 x86_64
 description: hyperloop-android
 author: Appcelerator
 license: Appcelerator Commercial License
-copyright: Copyright (c) 2017 Appcelerator, Inc.
+copyright: Copyright (c) 2017-2020 Axway, Inc.
 
 # these should not be edited
 name: hyperloop-android
