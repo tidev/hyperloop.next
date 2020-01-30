@@ -1,0 +1,4 @@
+
+dependencies {
+	implementation 'com.linkedin.dexmaker:dexmaker:2.25.1'
+}
