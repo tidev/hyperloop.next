@@ -254,9 +254,16 @@ exports.cliVersion = '>=3.2';
 		// This event is emitted when build system requests for additional "Resources" directory paths from plugins.
 		// "data.args[0]" is an array of paths. We must add hyperloop's "Resources" directory path to it.
 		this.cli.on('build.android.requestResourcesDirPaths', {
-			pre: (data, finished) => {
+			pre: async (data, finished) => {
+				// Have build system copy all files under hyperloop's "Resources" directory to app.
 				const dirPaths = data.args[0];
 				dirPaths.push(hyperloopResourcesDir);
+
+				// Tell build system to not "process" hyperloop's generated JS files, except for its bootstrap JS file.
+				// Prevents transpile, source-mapping, and encryption. (Huge improvement to build performance.)
+				for (const jsFilePath of await generateSourcesTask.fetchGeneratedJsProxyPaths()) {
+					this.builder.htmlJsFiles[jsFilePath] = 1;
+				}
 				finished();
 			}
 		})
