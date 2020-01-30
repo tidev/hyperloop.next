@@ -46,7 +46,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 	 *
 	 * @return {Promise}
 	 */
-	runTaskAction() {
+	async runTaskAction() {
 		const inputFiles = Array.from(this.inputFiles);
 		this.logger.trace('Generating metabase for JARs: ' + inputFiles);
 		return new Promise((resolve, reject) => {

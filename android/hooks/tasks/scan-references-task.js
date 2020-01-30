@@ -92,14 +92,12 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 *
 	 * @return {Promise}
 	 */
-	doFullTaskRun() {
-		fs.emptyDirSync(this.outputDirectory);
+	async doFullTaskRun() {
+		await fs.emptyDir(this.outputDirectory);
 		this.inputFiles.forEach(pathAndFilename => {
 			this.scanFileForHyperloopRequires(pathAndFilename);
 		});
-		this.writeReferences();
-
-		return Promise.resolve();
+		await this.writeReferences();
 	}
 
 	/**
@@ -110,7 +108,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @param {Map} changedFiles Map of changed files and their state (created, changed, deleted)
 	 * @return {Promise}
 	 */
-	doIncrementalTaskRun(changedFiles) {
+	async doIncrementalTaskRun(changedFiles) {
 		const fullBuild = !this.loadReferences();
 		if (fullBuild) {
 			return this.doFullTaskRun();
@@ -126,9 +124,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 				this._references.delete(pathAndFilename);
 			}
 		});
-		this.writeReferences();
-
-		return Promise.resolve();
+		await this.writeReferences();
 	}
 
 	/**
@@ -136,48 +132,50 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 *
 	 * @return {Promise}
 	 */
-	loadResultAndSkip() {
+	async loadResultAndSkip() {
 		const loaded = this.loadReferences();
 		if (loaded) {
-			return Promise.resolve();
-		} else {
-			return this.doFullTaskRun();
+			return;
 		}
+		await this.doFullTaskRun();
 	}
 
 	/**
 	 * Loads references of the last build from file.
 	 *
-	 * @return {boolean} True if the reference file was succesfully loaded, otherwise false
+	 * @return {Promise<Boolean>} True if the reference file was succesfully loaded, otherwise false
 	 */
-	loadReferences() {
-		if (!fs.existsSync(this._referencesPathAndFilename)) {
+	async loadReferences() {
+		if (!(await fs.exists(this._referencesPathAndFilename))) {
 			return false;
 		}
 
 		try {
-			const referencesObj = JSON.parse(fs.readFileSync(this._referencesPathAndFilename));
+			const fileContent = await fs.readFile(this._referencesPathAndFilename);
+			const referencesObj = JSON.parse(fileContent.toString());
 			this._references = new Map();
 			Object.keys(referencesObj).forEach(pathAndFilename => {
 				this._references.set(pathAndFilename, referencesObj[pathAndFilename]);
 			});
-			return true;
 		} catch (e) {
 			return false;
 		}
+		return true;
 	}
 
 	/**
 	 * Writes the references to file
+	 *
+	 * @return {Promise}
 	 */
-	writeReferences() {
+	async writeReferences() {
 		let referencesObj = {};
 		this._references.forEach((fileInfo, pathAndFilename) => {
 			referencesObj[pathAndFilename] = fileInfo;
 		});
 		const referencesJson = JSON.stringify(referencesObj);
-		fs.ensureDirSync(path.dirname(this._referencesPathAndFilename));
-		fs.writeFileSync(this._referencesPathAndFilename, referencesJson);
+		await fs.ensureDir(path.dirname(this._referencesPathAndFilename));
+		await fs.writeFile(this._referencesPathAndFilename, referencesJson);
 	}
 
 	/**

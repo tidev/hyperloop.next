@@ -89,23 +89,20 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 *
 	 * @return {Promise}
 	 */
-	doFullTaskRun() {
-		fs.emptyDirSync(this._outputDirectory);
-		fs.ensureDirSync(this._hyperloopOutputDirectory);
+	async doFullTaskRun() {
+		await fs.emptyDir(this._outputDirectory);
+		await fs.ensureDir(this._hyperloopOutputDirectory);
 
 		if (this.references.size === 0) {
 			this._logger.info('Skipping Hyperloop wrapper generation, no usage found ...');
-			return Promise.resolve();
+			return;
 		}
 
 		const classesToGenerate = metabase.generate.expandDependencies(this.metabase, this.getAllReferencedClasses());
-
-		return this.generateSources(classesToGenerate, [])
-			.then(() => {
-				this._generatedClasses = new Set(classesToGenerate);
-			})
-			.then(() => this.generateBootstrap())
-			.then(() => this.writeClassList());
+		await this.generateSources(classesToGenerate, []);
+		this._generatedClasses = new Set(classesToGenerate);
+		await this.generateBootstrap();
+		await this.writeClassList();
 	}
 
 	/**
@@ -120,24 +117,22 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @param {Map.<String, String>} changedFiles Map of changed files and their state (created, changed, deleted)
 	 * @return {Promise}
 	 */
-	doIncrementalTaskRun(changedFiles) {
-		const fullBuild = !this.loadClassList();
+	async doIncrementalTaskRun(changedFiles) {
+		const fullBuild = !(await this.loadClassList());
 		if (fullBuild) {
-			return this.doFullTaskRun();
+			return await this.doFullTaskRun();
 		}
 
 		const expandedClassList = metabase.generate.expandDependencies(this.metabase, this.getAllReferencedClasses());
 		const classesToGenerate = expandedClassList.filter(className => !this._generatedClasses.has(className));
 		const classesToRemove = Array.from(this._generatedClasses).filter(className => expandedClassList.indexOf(className) === -1);
 
-		return this.removeUnusedClasses(classesToRemove)
-			.then(() => this.generateSources(classesToGenerate, classesToRemove))
-			.then(() => {
-				classesToGenerate.forEach(className => this._generatedClasses.add(className));
-				classesToRemove.forEach(className => this._generatedClasses.delete(className));
-			})
-			.then(() => this.generateBootstrap())
-			.then(() => this.writeClassList());
+		await this.removeUnusedClasses(classesToRemove);
+		await this.generateSources(classesToGenerate, classesToRemove);
+		classesToGenerate.forEach(className => this._generatedClasses.add(className));
+		classesToRemove.forEach(className => this._generatedClasses.delete(className));
+		await this.generateBootstrap();
+		await this.writeClassList();
 	}
 
 	/**
@@ -159,12 +154,10 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @param {Array.<String>} classesToRemove Array of class names
 	 * @return {Promise}
 	 */
-	removeUnusedClasses(classesToRemove) {
-		return Promise.all(classesToRemove.map(className => {
-			return new Promise(resolve => {
-				let classPathAndFilename = path.join(this._hyperloopOutputDirectory, className + '.js');
-				fs.unlink(classPathAndFilename, () => resolve());
-			});
+	async removeUnusedClasses(classesToRemove) {
+		await Promise.all(classesToRemove.map(async className => {
+			const classPathAndFilename = path.join(this._hyperloopOutputDirectory, className + '.js');
+			await fs.unlink(classPathAndFilename);
 		}));
 	}
 
@@ -176,13 +169,13 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 * @param {Array.<String>} removedClasses Array of classes that were removed
 	 * @return {Promise}
 	 */
-	generateSources(classesToGenerate, removedClasses) {
+	async generateSources(classesToGenerate, removedClasses) {
 		if (classesToGenerate.length === 0 && removedClasses.length === 0) {
 			this.logger.trace('All class wrappers are up-to-date.');
-			return Promise.resolve();
+			return;
 		}
 
-		return new Promise((resolve, reject) => {
+		await new Promise((resolve, reject) => {
 			const options = {
 				classesToGenerate: classesToGenerate,
 				removedClasses: removedClasses,
@@ -238,20 +231,19 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	/**
 	 * Loads the class list used in incremental task runs
 	 *
-	 * @return {Boolean} True if the files was loaded succesfully, false if not
+	 * @return {Promise<Boolean>} True if the files was loaded succesfully, false if not
 	 */
-	loadClassList() {
-		if (!fs.existsSync(this._classListPathAndFilename)) {
-			return false;
-		}
-
+	async loadClassList() {
 		try {
-			this._generatedClasses = new Set(JSON.parse(fs.readFileSync(this._classListPathAndFilename)));
-			return true;
+			if (await fs.exists(this._classListPathAndFilename)) {
+				const fileContent = await fs.readFile(this._classListPathAndFilename);
+				this._generatedClasses = new Set(JSON.parse(fileContent.toString()));
+				return true
+			}
 		} catch (e) {
 			this.logger.trace('Loading class list failed: ' + e);
-			return false;
 		}
+		return false;
 	}
 
 	/**
@@ -259,18 +251,9 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 *
 	 * @return {Promise}
 	 */
-	writeClassList() {
-		return new Promise((resolve, reject) => {
-			fs.writeFile(this._classListPathAndFilename, JSON.stringify(Array.from(this._generatedClasses)), err => {
-				if (err) {
-					reject(err);
-				} else {
-					resolve();
-				}
-			});
-		});
+	async writeClassList() {
+		await fs.writeFile(this._classListPathAndFilename, JSON.stringify(Array.from(this._generatedClasses)));
 	}
-
 }
 
 module.exports = GenerateSourcesTask;
