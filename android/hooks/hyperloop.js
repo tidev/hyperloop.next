@@ -63,24 +63,23 @@ exports.cliVersion = '>=3.2';
 				process.exit(1);
 			}
 
-			// Make sure "hyperloop" module is included in app build and fetch module version.
-			let wasModuleFound = false;
+			// Fetch hyperloop module version from "manifest" file.
 			this.moduleVersion = null;
-			for (const module of builder.modules) {
-				if (module && (module.id === 'hyperloop')) {
-					wasModuleFound = true;
-					if (module.manifest) {
-						this.moduleVersion = module.manifest.version;
-					}
-					break;
+			try {
+				const fileContent = await fs.readFile(path.join(__dirname, '..', 'manifest'));
+				const match = fileContent.toString().match(/^version\s*:\s*(.*)/m);
+				if (match) {
+					this.moduleVersion = match[1].trim();
 				}
+			} catch (err) {
+				logger.error(`Failed to read ${HL} 'manifest' file. Reason: ${err}`)
 			}
 
 			// Create the hyperloop build directory.
 			this.hyperloopBuildDir = path.join(builder.projectDir, 'build', 'hyperloop', 'android');
 			await fs.ensureDir(this.hyperloopBuildDir);
 
-			// Fetch hyperloop module information.
+			// Fetch info regarding last hyperloop build.
 			this.buildManifestJsonPath = path.join(this.hyperloopBuildDir, 'build-manifest.json');
 			let hasModuleVersionChanged = true;
 			try {
@@ -92,17 +91,6 @@ exports.cliVersion = '>=3.2';
 					}
 				}
 			} catch (err) {
-			}
-
-			// Do not continue if hyperloop module was not found in app build. We need its libraries.
-			if (!wasModuleFound) {
-				logger.error('You cannot use the Hyperloop compiler without configuring the module.');
-				logger.error('Add the following to your tiapp.xml <modules> section:');
-				var pkg = JSON.parse(path.join(__dirname, '../../package.json'));
-				logger.error('');
-				logger.error('	<module version="' + pkg.version + '">hyperloop</module>');
-				logger.warn('');
-				process.exit(1);
 			}
 
 			// Clean module's build directory if hyperloop version has changed.
