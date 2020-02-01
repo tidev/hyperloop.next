@@ -109,7 +109,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	async doIncrementalTaskRun(changedFiles) {
-		const fullBuild = !this.loadReferences();
+		const fullBuild = !(await this.loadReferences());
 		if (fullBuild) {
 			return this.doFullTaskRun();
 		}
@@ -133,7 +133,7 @@ class ScanReferencesTask extends IncrementalFileTask {
 	 * @return {Promise}
 	 */
 	async loadResultAndSkip() {
-		const loaded = this.loadReferences();
+		const loaded = await this.loadReferences();
 		if (loaded) {
 			return;
 		}

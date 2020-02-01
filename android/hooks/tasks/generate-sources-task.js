@@ -156,8 +156,14 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	 */
 	async removeUnusedClasses(classesToRemove) {
 		await Promise.all(classesToRemove.map(async className => {
-			const classPathAndFilename = path.join(this._hyperloopOutputDirectory, className + '.js');
-			await fs.unlink(classPathAndFilename);
+			try {
+				const classPathAndFilename = path.join(this._hyperloopOutputDirectory, className + '.js');
+				if (await fs.exists(classPathAndFilename)) {
+					await fs.unlink(classPathAndFilename);
+				}
+			} catch (err) {
+				this.logger.error(`Failed to delete file: ${classPathAndFilename}`);
+			}
 		}));
 	}
 
