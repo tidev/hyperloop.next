@@ -16,8 +16,7 @@ const noopBunyanLogger = {
 };
 let task = null;
 let testReferenceMetadata = {
-	usedClasses: [ 'android.app.Activity' ],
-	replacedContent: 'require("hyperloop/android.app.Activity");'
+	usedClasses: [ 'android.app.Activity' ]
 };
 
 chai.use(chaiAsPromised);
@@ -135,7 +134,7 @@ describe('ScanReferencesTask', () => {
 	describe('doIncrementalTaskRun', () => {
 		it('should do full run if cache file failed to load', () => {
 			let loadReferencesStub = sinon.stub(task, 'loadReferences');
-			loadReferencesStub.returns(false);
+			loadReferencesStub.returns(Promise.resolve(false));
 			let fullTaskRunExpectations = sinon.mock(task).expects('doFullTaskRun');
 			fullTaskRunExpectations.once();
 			fullTaskRunExpectations.resolves();
@@ -152,7 +151,7 @@ describe('ScanReferencesTask', () => {
 			changedFiles.set(activityRequireTestFile, 'created');
 			changedFiles.set(contextRequireTestFile, 'changed');
 			let loadReferencesStub = sinon.stub(task, 'loadReferences');
-			loadReferencesStub.returns(true);
+			loadReferencesStub.returns(Promise.resolve(true));
 			let scanFileExpectations = sinon.mock(task).expects('scanFileForHyperloopRequires');
 			scanFileExpectations.twice();
 			scanFileExpectations.returns(true);
@@ -168,7 +167,7 @@ describe('ScanReferencesTask', () => {
 			let testFile = path.join('input', 'activity-type.js');
 			changedFiles.set(testFile, 'changed');
 			let loadReferencesStub = sinon.stub(task, 'loadReferences');
-			loadReferencesStub.returns(true);
+			loadReferencesStub.returns(Promise.resolve(true));
 			let scanFileExpectations = sinon.mock(task).expects('scanFileForHyperloopRequires');
 			scanFileExpectations.once();
 			scanFileExpectations.returns(false);
@@ -187,7 +186,7 @@ describe('ScanReferencesTask', () => {
 			let testFile = path.join('input', 'activity-type.js');
 			changedFiles.set(testFile, 'deleted');
 			let loadReferencesStub = sinon.stub(task, 'loadReferences');
-			loadReferencesStub.returns(true);
+			loadReferencesStub.returns(Promise.resolve(true));
 			task._references = new Map();
 			task._references.set(testFile, {});
 			expect(task.references.size).to.be.equal(1);
@@ -200,7 +199,7 @@ describe('ScanReferencesTask', () => {
 	describe('loadResultAndSkip', () => {
 		it('should do full task run if loading references fails', () => {
 			let loadReferencesStub = sinon.stub(task, 'loadReferences');
-			loadReferencesStub.returns(false);
+			loadReferencesStub.returns(Promise.resolve(false));
 			let fullTaskRunExpectations = sinon.mock(task).expects('doFullTaskRun');
 			fullTaskRunExpectations.once();
 			fullTaskRunExpectations.resolves();
@@ -219,25 +218,22 @@ describe('ScanReferencesTask', () => {
 	});
 
 	describe('loadReferences', () => {
-		it('should return false if references file does not exist', () => {
+		it('should return false if references file does not exist', async () => {
 			task._referencesPathAndFilename = path.join('output', '_references.json');
-			expect(task.loadReferences()).to.be.false;
+			expect(await task.loadReferences()).to.be.false;
 		});
 
-		it('should return false if parsing reference data fails', () => {
+		it('should return false if parsing reference data fails', async () => {
 			task._referencesPathAndFilename = path.join('output', 'bad_references.json');
-			expect(task.loadReferences()).to.be.false;
+			expect(await task.loadReferences()).to.be.false;
 		});
 
-		it('should parse json from file and set references', () => {
-			expect(task.loadReferences()).to.be.true;
+		it('should parse json from file and set references', async () => {
+			expect(await task.loadReferences()).to.be.true;
 			expect(task.references.size).to.be.equal(1);
 			let pathAndFilename = path.join('input', 'activity-type.js');
 			expect(task.references).to.be.a('map').that.has.key(pathAndFilename);
-			expect(task.references.get(pathAndFilename)).to.be.deep.equal({
-				usedClasses: [ 'android.app.Activity' ],
-				replacedContent: 'require("hyperloop/android.app.Activity");'
-			});
+			expect(task.references.get(pathAndFilename)).to.be.deep.equal(testReferenceMetadata);
 		});
 	});
 
@@ -278,7 +274,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('require("hyperloop/android.app");');
 		});
 
 		it('should find and replace imports of native packages', () => {
@@ -288,7 +283,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('import { Activity } from "hyperloop/android.app";');
 		});
 
 		it('should ignore requires to non-existing native packages', () => {
@@ -305,7 +299,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('require("hyperloop/android.app.Activity");');
 		});
 
 		it('should find and replace imports to native types', () => {
@@ -315,7 +308,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.app.Activity');
-			expect(result.replacedContent).to.be.equal('import Activity from "hyperloop/android.app.Activity";');
 		});
 
 		it('should find and replace aliased imports to native types', () => {
@@ -325,7 +317,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('android.content.Context');
-			expect(result.replacedContent).to.be.equal('import * as Context from "hyperloop/android.content.Context";');
 		});
 
 		it('should ignore requires to non-existing native types ', () => {
@@ -342,7 +333,6 @@ describe('ScanReferencesTask', () => {
 			expect(result.usedClasses).to.be.an('array');
 			expect(result.usedClasses).to.have.lengthOf(1);
 			expect(result.usedClasses).to.include('hyperloop.test$NestedClass');
-			expect(result.replacedContent).to.be.equal('require("hyperloop/hyperloop.test$NestedClass");');
 		});
 	});
 

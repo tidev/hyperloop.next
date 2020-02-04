@@ -1,6 +1,6 @@
 /**
  * Hyperloop ®
- * Copyright (c) 2015-2016 by Appcelerator, Inc.
+ * Copyright (c) 2015-2019 by Axway, Inc.
  * All Rights Reserved. This library contains intellectual
  * property protected by patents and/or patents pending.
  */
@@ -13,38 +13,27 @@ exports.id = 'hyperloop';
 exports.cliVersion = '>=3.2';
 
 (function () {
-	var path = require('path'),
-		findit = require('findit'),
-		fs = require('fs-extra'),
-		chalk = require('chalk'),
-		appc = require('node-appc'),
-		async = require('async'),
-		metabase = require(path.join(__dirname, 'metabase')),
-		CopySourcesTask = require('./tasks/copy-sources-task'),
-		GenerateMetabaseTask = require('./tasks/generate-metabase-task'),
-		GenerateSourcesTask = require('./tasks/generate-sources-task'),
-		ScanReferencesTask = require('./tasks/scan-references-task');
+	const path = require('path');
+	const ejs = require('ejs');
+	const fs = require('fs-extra');
+	const chalk = require('chalk');
+	const appc = require('node-appc');
+	const metabase = require(path.join(__dirname, 'metabase'));
+	const GenerateMetabaseTask = require('./tasks/generate-metabase-task');
+	const GenerateSourcesTask = require('./tasks/generate-sources-task');
+	const ScanReferencesTask = require('./tasks/scan-references-task');
 
-	// set this to enforce a minimum Titanium SDK
-	var TI_MIN = '7.0.0';
-
-	/*
-	 State.
+	/**
+	 * Minimum Titanium SDK version this module supports in string form.
+	 * @private @type {String}
 	 */
-	var config,
-		cli,
-		logger,
-		HL = chalk.magenta.inverse('Hyperloop'),
-		resourcesDir,
-		filesDir,
-		hyperloopBuildDir, // where we generate the JS wrappers during build time
-		hyperloopResources, // Where we copy the JS wrappers we need for runtime
-		afs,
-		references = new Map(),
-		files = {},
-		exclusiveJars = [],
-		aars = {},
-		cleanup = [];
+	const TI_MIN = '9.0.0';
+
+	/**
+	 * A stylized Hyperloop title to be be printed via the "logger" object.
+	 * @private @type {String}
+	 */
+	const HL = chalk.magenta.inverse('Hyperloop');
 
 	/*
 	 Config.
@@ -60,358 +49,211 @@ exports.cliVersion = '>=3.2';
 
 	module.exports = HyperloopAndroidBuilder;
 
-	HyperloopAndroidBuilder.prototype.init = function (next) {
-		var builder = this.builder;
+	HyperloopAndroidBuilder.prototype.init = async function init(next) {
+		const builder = this.builder;
+		const logger = this.logger;
 
-		config = this.config;
-		cli = this.cli;
-		logger = this.logger;
+		try {
+			// Verify minimum SDK version.
+			if (!appc.version.satisfies(this.cli.sdk.manifest.version, '>=' + TI_MIN)) {
+				logger.error('You cannot use the Hyperloop compiler with a version of Titanium older than ' + TI_MIN);
+				logger.error('Set the value of <sdk-version> to a newer version in tiapp.xml.');
+				logger.error('For example:');
+				logger.error('	<sdk-version>' + TI_MIN + '.GA</sdk-version>');
+				process.exit(1);
+			}
 
-		afs = appc.fs;
+			// Fetch hyperloop module version from "manifest" file.
+			this.moduleVersion = null;
+			try {
+				const fileContent = await fs.readFile(path.join(__dirname, '..', 'manifest'));
+				const match = fileContent.toString().match(/^version\s*:\s*(.*)/m);
+				if (match) {
+					this.moduleVersion = match[1].trim();
+				}
+			} catch (err) {
+				logger.error(`Failed to read ${HL} 'manifest' file. Reason: ${err}`)
+			}
 
-		// Verify minimum SDK version
-		if (!appc.version.satisfies(cli.sdk.manifest.version, '>=' + TI_MIN)) {
-			logger.error('You cannot use the Hyperloop compiler with a version of Titanium older than ' + TI_MIN);
-			logger.error('Set the value of <sdk-version> to a newer version in tiapp.xml.');
-			logger.error('For example:');
-			logger.error('	<sdk-version>' + TI_MIN + '.GA</sdk-version>');
+			// Create the hyperloop build directory.
+			this.hyperloopBuildDir = path.join(builder.projectDir, 'build', 'hyperloop', 'android');
+			await fs.ensureDir(this.hyperloopBuildDir);
+
+			// Fetch info regarding last hyperloop build.
+			this.buildManifestJsonPath = path.join(this.hyperloopBuildDir, 'build-manifest.json');
+			let hasModuleVersionChanged = true;
+			try {
+				if (await fs.exists(this.buildManifestJsonPath)) {
+					const fileContent = await fs.readFile(this.buildManifestJsonPath);
+					const lastModuleVersion = JSON.parse(fileContent).moduleVersion;
+					if (lastModuleVersion === this.moduleVersion) {
+						hasModuleVersionChanged = false;
+					}
+				}
+			} catch (err) {
+			}
+
+			// Clean module's build directory if hyperloop version has changed.
+			if (hasModuleVersionChanged) {
+				logger.info(`Cleaning ${HL} build directory`);
+				await fs.emptyDir(this.hyperloopBuildDir);
+			}
+
+			// Perform the hyperloop build.
+			await this.build();
+
+			// Create "build-manifest.json" file storing last hyperloop version used to do the build.
+			await fs.writeFile(this.buildManifestJsonPath, JSON.stringify({ moduleVersion: this.moduleVersion }));
+
+		} catch (err) {
+			logger.error(err);
 			process.exit(1);
 		}
 
-		resourcesDir = path.join(builder.projectDir, 'Resources');
-		hyperloopResources = path.join(resourcesDir, 'android', 'hyperloop');
-
-		var buildDir = path.join(builder.projectDir, 'build');
-		var buildPlatform = path.join(buildDir, 'platform');
-		if (!afs.exists(buildDir)) {
-			fs.mkdirSync(buildDir);
-		}
-		else if (afs.exists(buildPlatform)) {
-			fs.removeSync(buildPlatform);
-		}
-		if (!afs.exists(resourcesDir)) {
-			fs.mkdirSync(resourcesDir);
-		}
-		// Wipe hyperloop resources each time, we will re-generate
-		if (afs.exists(hyperloopResources)) {
-			fs.removeSync(hyperloopResources);
-		}
-
-		// create a temporary hyperloop directory
-		hyperloopBuildDir = path.join(buildDir, 'hyperloop', 'android');
-		fs.ensureDirSync(hyperloopBuildDir);
-
-		// check to make sure the hyperloop module is actually configured
-		var moduleFound = builder.modules.map(function (i) {
-			if (i.id === 'hyperloop') { return i; };
-		}).filter(function (a) { return !!a; });
-
-		// check that it was found
-		if (!moduleFound.length) {
-			logger.error('You cannot use the Hyperloop compiler without configuring the module.');
-			logger.error('Add the following to your tiapp.xml <modules> section:');
-			var pkg = JSON.parse(path.join(__dirname, '../../package.json'));
-			logger.error('');
-			logger.error('	<module version="' + pkg.version + '">hyperloop</module>');
-			logger.warn('');
-			process.exit(1);
-		}
-
-		// check for the run-on-main-thread configuration
-		if (!builder.tiapp.properties['run-on-main-thread']) {
-			logger.error('You cannot use the Hyperloop compiler without configuring Android to use main thread execution.');
-			logger.error('Add the following to your tiapp.xml <ti:app> section:');
-			logger.error('');
-			logger.error('	<property name="run-on-main-thread" type="bool">true</property>');
-			logger.warn('');
-			process.exit(1);
-		}
-
-		cli.on('build.android.copyResource', {
-			priority: 99999,
-			pre: function (data, finished) {
-				var sourcePathAndFilename = data.args[0];
-				if (references.has(sourcePathAndFilename)) {
-					data.ctx._minifyJS = data.ctx.minifyJS;
-					data.ctx.minifyJS = true;
-				}
-				finished();
-			},
-			post: function (data, finished) {
-				var sourcePathAndFilename = data.args[0];
-				if (references.has(sourcePathAndFilename)) {
-					data.ctx.minifyJS = data.ctx._minifyJS;
-					delete data.ctx._minifyJS;
-				}
-				finished();
-			}
-		});
-
-		cli.on('build.android.compileJsFile', {
-			priority: 99999,
-			pre: function (data, finished) {
-				var filename = data.args[1]; // source filename
-				if (files[filename]) {
-					// modify the source code for the given file to our manipulated contents
-					data.args[0].contents = files[filename];
-				}
-				finished();
-			}
-		});
-
-		cli.on('build.android.dexer', {
-			pre: function (data, finished) {
-				// Add Hyperloop exclusive JARs
-				data.args[1] = data.args[1].concat(exclusiveJars);
-				finished();
-			}
-		});
-
-		prepareBuild(builder, next);
-
+		// Invoke given callback now that build has finished.
+		next();
 	};
 
-	/**
-	 * Sets up the build for using the hyperloop module.
-	 */
-	function prepareBuild(builder, callback) {
-		var metabaseJSON,
-			jars,
-			jarHashes = {},
-			sourceFolders = [resourcesDir],
-			sourceFiles = [],
-			platformAndroid = path.join(cli.argv['project-dir'], 'platform', 'android');
+	HyperloopAndroidBuilder.prototype.build = async function build() {
+		this.logger.info(`Starting ${HL} assembly`);
 
-		logger.info('Starting ' + HL + ' assembly');
+		// Copy our SDK's gradle files to the build directory. (Includes "gradlew" scripts and "gradle" directory tree.)
+		// The below install method will also generate a "gradle.properties" file.
+		const gradlew = this.builder.createGradleWrapper(this.hyperloopBuildDir);
+		gradlew.logger = this.logger;
+		await gradlew.installTemplate(path.join(this.builder.platformPath, 'templates', 'gradle'));
 
-		// set our CLI logger
-		metabase.util.setLog(logger);
+		// Create a "local.properties" file providing a path to the Android SDK/NDK directories.
+		await gradlew.writeLocalPropertiesFile(this.builder.androidInfo.sdk.path, this.builder.androidInfo.ndk.path);
 
-		// Need metabase for android API
-		jars = [builder.androidTargetSDK.androidJar];
+		// Copy our root "build.gradle" template script to the root build directory.
+		const templatesDir = path.join(this.builder.platformPath, 'templates', 'build');
+		await fs.copyFile(
+			path.join(templatesDir, 'root.build.gradle'),
+			path.join(this.hyperloopBuildDir, 'build.gradle'));
 
-		async.series([
-			/**
-			 * Manually adds the Android Support Libraries beacuse at this point the builder
-			 * hasn't loaded all the jars from our SDK core yet.
-			 *
-			 * @param {Function} next Callback function
-			 */
-			function (next) {
-				var depMap = JSON.parse(fs.readFileSync(path.join(builder.platformPath, 'dependency.json')));
-				var libraryFilenames = depMap.libraries.appcompat;
-				libraryFilenames = libraryFilenames.concat(
-					depMap.libraries.design || [],
-					depMap.libraries.compat || [],
-					depMap.libraries.cardview || []
-				);
-				libraryFilenames.forEach(function(libraryFilename) {
-					var libraryPathAndFilename = path.join(builder.platformPath, libraryFilename);
-					if (!afs.exists(libraryPathAndFilename)) {
-						return;
-					}
+		// Copy our Titanium template's gradle constants file.
+		// This provides the Google library versions we use and defines our custom "AndroidManifest.xml" placeholders.
+		const tiConstantsGradleFileName = 'ti.constants.gradle';
+		await fs.copyFile(
+			path.join(templatesDir, tiConstantsGradleFileName),
+			path.join(this.hyperloopBuildDir, tiConstantsGradleFileName));
 
-					if (builder.isExternalAndroidLibraryAvailable(libraryPathAndFilename)) {
-						return;
-					}
+		// Create a "settings.gradle" file referencing a "gradle-project" subdirectory.
+		await fs.writeFile(
+			path.join(this.hyperloopBuildDir, 'settings.gradle'),
+			"include ':gradle-project'\n");
 
-					jars.push(libraryPathAndFilename);
-				});
+		// Create a "gradle-project" subdirectory.
+		const gradleProjectDir = path.join(this.hyperloopBuildDir, 'gradle-project');
+		await fs.ensureDir(gradleProjectDir);
 
-				next();
-			},
-			/**
-			 * Manually adds JARs from module's lib directory, any JARs contained
-			 * in AARs and from the android platform folder.
-			 *
-			 * The dupe check is duplicate code as the AndroidBuilder does the same in
-			 * compileJavaClasses method, but that is too late in the build pipeline
-			 * so we can't use it. Once the AndroidBuilder gets an overhaul we can
-			 * consider removing this and simply require a pre filtered list directly
-			 * from the builder.
-			 *
-			 * @param {Function} next Callback function
-			 */
-			function (next) {
-				var jarRegExp = /\.jar$/;
-				var jarPaths = [];
-
-				async.series([
-					function scanModuleLibraries(done) {
-						async.each(builder.modules, function(module, cb) {
-							var libDir = path.join(module.modulePath, 'lib');
-							fs.readdir(libDir, function(err, libraryEntries) {
-								if (err) {
-									return cb();
-								}
-
-								libraryEntries.forEach(function(entryName) {
-									var jarFile = path.join(libDir, entryName);
-									if (jarRegExp.test(entryName)) {
-										jarPaths.push(jarFile);
-									}
-								});
-
-								cb();
-							});
-						}, done);
-					},
-					function scanAndroidLibraries(done) {
-						builder.androidLibraries.forEach(function (libraryInfo) {
-							libraryInfo.jars.forEach(function (libraryJarPathAndFilename) {
-								jarPaths.push(libraryJarPathAndFilename);
-							});
-						});
-
-						done();
-					},
-					function scanPlatformDirectory(done) {
-						if (!afs.exists(platformAndroid)) {
-							return done();
-						}
-						findit(platformAndroid)
-							.on('file', function (file) {
-								if (path.extname(file) === '.jar') {
-									jarPaths.push(file);
-									// Also add jars to the list of exclusive jars that are only
-									// available to Hyperloop so they get added to the dexer.
-									exclusiveJars.push(file);
-								}
-							})
-							.on('end', done);
-					},
-					function generateHashes(done) {
-						async.each(jarPaths, function(jarPathAndFilename, cb) {
-							fs.readFile(jarPathAndFilename, function(err, buffer) {
-								if (err) {
-									return cb();
-								}
-
-								var jarHash = builder.hash(buffer.toString());
-								jarHashes[jarHash] = jarHashes[jarHash] || [];
-								jarHashes[jarHash].push(jarPathAndFilename);
-
-								cb();
-							});
-						}, done);
-					},
-					function filterDuplicates(done) {
-						Object.keys(jarHashes).forEach(function (hash) {
-							jars.push(jarHashes[hash][0]);
-
-							if (jarHashes[hash].length > 1) {
-								logger.debug('Duplicate jar libraries detected, using only the first of the following libraries for metabase generation:');
-								jarHashes[hash].forEach(function (jarPathAndFilename) {
-									logger.debug('  ' + jarPathAndFilename.cyan);
-								});
-							}
-						});
-
-						done();
-					}
-				], next);
-			},
-			// Do metabase generation from JARs
-			function (next) {
-				// TODO It'd be good to split out some mapping between the JAR and the types inside it.
-				// Then we can know if a JAR file is "unused" and not copy/package it!
-				// Kind of similar to how Jeff detects system frameworks and maps includes by framework.
-				// we can map requires by containing JAR
-
-				// Simple way may be to generate a "metabase" per-JAR
-				var task = new GenerateMetabaseTask({
-					name: 'hyperloop:generateMetabase',
-					inputFiles: jars,
-					logger: logger
-				});
-				task.builder = builder;
-				task.run().then(() => {
-					metabaseJSON = task.metabase;
-					next();
-				}).catch(next);
-			},
-			function (next) {
-				// Need to generate the metabase first to know the full set of possible native requires as a filter when we look at requires in user's JS!
-				// look for any reference to hyperloop native libraries in our JS files
-				async.each(sourceFolders, function(folder, cb) {
-					findit(folder)
-						.on('file', function (file) {
-							// Only consider JS files.
-							if (path.extname(file) !== '.js') {
-								return;
-							}
-							sourceFiles.push(file);
-						})
-						.on('link', link => {
-							if (path.extname(link) !== '.js') {
-								return;
-							}
-							sourceFiles.push(link);
-						})
-						.on('end', function () {
-							cb();
-						});
-				}, function(err) {
-					if (err) {
-						return next(err);
-					}
-
-					var task = new ScanReferencesTask({
-						name: 'hyperloop:scanReferences',
-						incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'scanReferences'),
-						inputFiles: sourceFiles,
-						logger: logger
-					});
-					task.outputDirectory = path.join(hyperloopBuildDir, 'references');
-					task.metabase = metabaseJSON;
-					task.postTaskRun = () => {
-						task.references.forEach((fileInfo, pathAndFilename) => {
-							references.set(pathAndFilename, fileInfo);
-							files[pathAndFilename] = fileInfo.replacedContent;
-						});
-					};
-					task.run().then(next).catch(next);
-				});
-			},
-			function (next) {
-				var task = new GenerateSourcesTask({
-					name: 'hyperloop:generateSources',
-					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'generateSources'),
-					inputFiles: sourceFiles,
-					logger: logger
-				});
-				task.outputDirectory = path.join(hyperloopBuildDir, 'js');
-				task.metabase = metabaseJSON;
-				task.references = references;
-				task.run().then(next).catch(next);
-			},
-			function (next) {
-				var hyperloopSourcesPath = path.join(hyperloopBuildDir, 'js');
-				var task = new CopySourcesTask({
-					name: 'hyperloop:copySources',
-					incrementalDirectory: path.join(hyperloopBuildDir, 'incremental', 'copySources'),
-					logger: logger
-				});
-				task.sourceDirectory = hyperloopSourcesPath;
-				task.outputDirectory = path.join(builder.buildBinAssetsResourcesDir, 'hyperloop');
-				task.builder = builder;
-				task.postTaskRun = function () {
-					// Make sure our copied files won't be deleted by the builder since we
-					// process them outside the build pipeline's copy resources phase
-					task.outputFiles.forEach(function(pathAndFilename) {
-						if (builder.lastBuildFiles[pathAndFilename]) {
-							delete builder.lastBuildFiles[pathAndFilename];
-						}
-					});
-				};
-				task.run().then(next).catch(next);
-			}
-		], function (err) {
-			if (err) {
-				return callback(err);
-			}
-
-			callback();
+		// Generate a "build.gradle" file which provides hyperloop access to:
+		// - The main Titanium library.
+		// - The libraries under the Titanium project's "./platform/android" directory.
+		// - Dependencies referenced by optional "./platform/android/build.gradle" file.
+		let buildGradleContent = await fs.readFile(path.join(__dirname, 'build.gradle.ejs'));
+		buildGradleContent = ejs.render(buildGradleContent.toString(), {
+			compileSdkVersion: this.builder.targetSDK,
+			minSdkVersion: this.builder.minSDK,
+			targetSdkVersion: this.builder.targetSDK,
+			tiMavenUrl: encodeURI('file://' + path.join(this.builder.platformPath, 'm2repository').replace(/\\/g, '/')),
+			tiProjectPlatformAndroidDir: path.join(this.builder.projectDir, 'platform', 'android'),
+			tiSdkVersion: this.builder.titaniumSdkVersion
 		});
+		await fs.writeFile(path.join(gradleProjectDir, 'build.gradle'), buildGradleContent);
+
+		// Generate an "AndroidManifest.xml" file for the gradle project.
+		const gradleProjectSourceMainDir = path.join(gradleProjectDir, 'src', 'main');
+		const androidManifestXmlLines = [
+			'<?xml version="1.0" encoding="utf-8"?>',
+			'<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="hyperloop.stub"/>'
+		];
+		await fs.ensureDir(gradleProjectSourceMainDir);
+		await fs.writeFile(
+			path.join(gradleProjectSourceMainDir, 'AndroidManifest.xml'),
+			androidManifestXmlLines.join('\n'));
+
+		// Run gradle task "generateJarDependenciesFile" which fetches JAR paths to all dependencies.
+		// Results will be written to a "jar-dependencies.txt" file.
+		// Note: The "--quiet" option disables gradle's stdout, but will log stderr if an error occurs.
+		await gradlew.run(':gradle-project:generateJarDependenciesFile --quiet --console plain');
+
+		// Extract JAR paths from the text file generated by above gradle task.
+		const jarDependenciesFilePath = path.join(
+			gradleProjectDir, 'build', 'outputs', 'hyperloop', 'jar-dependencies.txt');
+		let jarDependenciesFileContent = await fs.readFile(jarDependenciesFilePath);
+		jarDependenciesFileContent = jarDependenciesFileContent.toString().replace(/\r/g, '');
+		const jarPaths = jarDependenciesFileContent.split('\n');
+
+		// Fetch all public Java APIs from all JARs hyperloop has access to.
+		metabase.util.setLog(this.logger);
+		const generateMetabaseTask = new GenerateMetabaseTask({
+			name: 'hyperloop:generateMetabase',
+			inputFiles: jarPaths,
+			logger: this.logger
+		});
+		generateMetabaseTask.builder = this.builder;
+		await generateMetabaseTask.run();
+
+		// Fetch all JavaScript file paths from the Titanium project.
+		const jsSourceFilePaths = [];
+		const traverseDirTree = async directoryPath => {
+			const fileNameArray = await fs.readdir(directoryPath);
+			for (const fileName of fileNameArray) {
+				const filePath = path.join(directoryPath, fileName);
+				if ((await fs.stat(filePath)).isDirectory()) {
+					await traverseDirTree(filePath);
+				} else if (path.extname(fileName).toLowerCase() === '.js') {
+					jsSourceFilePaths.push(filePath);
+				}
+			}
+		};
+		const projectResourcesDir = path.join(this.builder.projectDir, 'Resources');
+		if (await fs.exists(projectResourcesDir)) {
+			await traverseDirTree(projectResourcesDir);
+		}
+
+		// Scan all JavaScript files for require/import references to a Java class.
+		// The results will be stored to task's "references" property.
+		const scanReferencesTask = new ScanReferencesTask({
+			name: 'hyperloop:scanReferences',
+			incrementalDirectory: path.join(this.hyperloopBuildDir, 'incremental', 'scanReferences'),
+			inputFiles: jsSourceFilePaths,
+			logger: this.logger
+		});
+		scanReferencesTask.outputDirectory = path.join(this.hyperloopBuildDir, 'references');
+		scanReferencesTask.metabase = generateMetabaseTask.metabase;
+		await scanReferencesTask.run();
+
+		// Generate JS files which interops with every Java type/package referenced in app's JS code.
+		const generateSourcesTask = new GenerateSourcesTask({
+			name: 'hyperloop:generateSources',
+			incrementalDirectory: path.join(this.hyperloopBuildDir, 'incremental', 'generateSources'),
+			inputFiles: jsSourceFilePaths,
+			logger: this.logger
+		});
+		const hyperloopResourcesDir = path.join(this.hyperloopBuildDir, 'Resources');
+		generateSourcesTask.outputDirectory = hyperloopResourcesDir;
+		generateSourcesTask.metabase = generateMetabaseTask.metabase;
+		generateSourcesTask.references = scanReferencesTask.references;
+		await generateSourcesTask.run();
+
+		// This event is emitted when build system requests for additional "Resources" directory paths from plugins.
+		// "data.args[0]" is an array of paths. We must add hyperloop's "Resources" directory path to it.
+		this.cli.on('build.android.requestResourcesDirPaths', {
+			pre: async (data, finished) => {
+				// Have build system copy all files under hyperloop's "Resources" directory to app.
+				const dirPaths = data.args[0];
+				dirPaths.push(hyperloopResourcesDir);
+
+				// Tell build system to not "process" hyperloop's generated JS files, except for its bootstrap JS file.
+				// Prevents transpile, source-mapping, and encryption. (Huge improvement to build performance.)
+				for (const jsFilePath of await generateSourcesTask.fetchGeneratedJsProxyPaths()) {
+					this.builder.htmlJsFiles[jsFilePath] = 1;
+				}
+				finished();
+			}
+		})
 	}
 })();

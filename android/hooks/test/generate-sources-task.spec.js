@@ -174,7 +174,7 @@ describe('GenerateSourcesTask', () => {
 
 			let metabaseGenerateMock = sinon.mock(metabase.generate);
 			let generateExpectations = metabaseGenerateMock.expects('generateFromJSON');
-			generateExpectations.once().withArgs(task.outputDirectory, {}, expectedOptions);
+			generateExpectations.once().withArgs(task._hyperloopOutputDirectory, {}, expectedOptions);
 			generateExpectations.callsArgWith(3, null, classesToGenerate);
 
 			task.metabase = {};
@@ -187,20 +187,20 @@ describe('GenerateSourcesTask', () => {
 	});
 
 	describe('loadClassList', () => {
-		it('should return false if class list does not exist', () => {
+		it('should return false if class list does not exist', async () => {
 			task._classListPathAndFilename = path.join('incremental', '_classes.json');
-			expect(task.loadClassList()).to.be.false;
+			expect(await task.loadClassList()).to.be.false;
 			expect(task._generatedClasses.size).to.be.equal(0);
 		});
 
-		it('should return false if existing class list failed to load', () => {
+		it('should return false if existing class list failed to load', async () => {
 			task._classListPathAndFilename = path.join('incremental', 'bad_classes.json');
-			expect(task.loadClassList()).to.be.false;
+			expect(await task.loadClassList()).to.be.false;
 			expect(task._generatedClasses.size).to.be.equal(0);
 		});
 
-		it('should load and set existing class list', () => {
-			expect(task.loadClassList()).to.be.true;
+		it('should load and set existing class list', async () => {
+			expect(await task.loadClassList()).to.be.true;
 			expect(task._generatedClasses).to.be.a('set').that.has.all.keys(['android.app.Activity', 'android.content.Context']);
 		});
 	});
