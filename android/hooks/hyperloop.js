@@ -124,7 +124,8 @@ exports.cliVersion = '>=3.2';
 		await gradlew.installTemplate(path.join(this.builder.platformPath, 'templates', 'gradle'));
 
 		// Create a "local.properties" file providing a path to the Android SDK/NDK directories.
-		await gradlew.writeLocalPropertiesFile(this.builder.androidInfo.sdk.path, this.builder.androidInfo.ndk.path);
+		const androidNdkPath = this.androidInfo.ndk ? this.androidInfo.ndk.path : null;
+		await gradlew.writeLocalPropertiesFile(this.builder.androidInfo.sdk.path, androidNdkPath);
 
 		// Copy our root "build.gradle" template script to the root build directory.
 		const templatesDir = path.join(this.builder.platformPath, 'templates', 'build');
