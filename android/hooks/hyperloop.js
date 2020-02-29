@@ -118,11 +118,18 @@ exports.cliVersion = '>=3.2';
 		this.logger.info(`Starting ${HL} assembly`);
 
 		// Copy our SDK's gradle files to the build directory. (Includes "gradlew" scripts and "gradle" directory tree.)
-		// The below install method will also generate a "gradle.properties" file.
 		const gradlew = this.builder.createGradleWrapper(this.hyperloopBuildDir);
 		gradlew.logger = this.logger;
 		await gradlew.installTemplate(path.join(this.builder.platformPath, 'templates', 'gradle'));
 
+		// Create a "gradle.properties" file. Will add network proxy settings if needed.
+		const gradleProperties = await gradlew.fetchDefaultGradleProperties();
+		gradleProperties.push({ key: 'android.useAndroidX', value: 'true' });
+		if (this.builder.javacMaxMemory) {
+			gradleProperties.push({ key: 'org.gradle.jvmargs', value: `-Xmx${this.builder.javacMaxMemory}` });
+		}
+		await gradlew.writeGradlePropertiesFile(gradleProperties);
+	
 		// Create a "local.properties" file providing a path to the Android SDK/NDK directories.
 		const androidNdkPath = this.builder.androidInfo.ndk ? this.builder.androidInfo.ndk.path : null;
 		await gradlew.writeLocalPropertiesFile(this.builder.androidInfo.sdk.path, androidNdkPath);

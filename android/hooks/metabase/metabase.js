@@ -29,7 +29,6 @@ function compileIfNecessary(outdir, cp, callback) {
 		err = '';
 
 	if (fs.existsSync(classFile) && fs.existsSync(shaFile)) {
-		var oldSHA = fs.readFileSync(shaFile, 'utf8');
 		if (fs.readFileSync(shaFile, 'utf8') === newSHA) {
 			// don't re-compile
 			return callback(null);
@@ -38,7 +37,7 @@ function compileIfNecessary(outdir, cp, callback) {
 	}
 
 	// Compile
-	p = spawn('javac',['-source', '1.6', '-target', '1.6', '-cp', cp, srcFile, '-d', outdir],{env:process.env}),
+	p = spawn('javac',['-source', '1.8', '-target', '1.8', '-cp', cp, srcFile, '-d', outdir],{env:process.env}),
 	err = '';
 
 	p.stderr.on('data', function(buf) {
