@@ -29,10 +29,10 @@ namespace hyperloop {
 				break;
 			}
 			default: {
-				std::cerr << "not handled, union: " << displayName << " kind: " << kind << std::endl;
-				std::map<std::string, std::string> location;
-				hyperloop::getSourceLocation(cursor, unionDef->getContext(), location);
-				std::cout << "union: " << displayName << " kind: " << kind << ", " << hyperloop::toJSON(location) << std::endl;
+				// std::cerr << "not handled, union: " << displayName << " kind: " << kind << std::endl;
+				// std::map<std::string, std::string> location;
+				// hyperloop::getSourceLocation(cursor, unionDef->getContext(), location);
+				// std::cout << "union: " << displayName << " kind: " << kind << ", " << hyperloop::toJSON(location) << std::endl;
 				break;
 			}
 		}

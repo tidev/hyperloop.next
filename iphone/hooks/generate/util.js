@@ -82,6 +82,29 @@ function isPrimitive(type) {
 	return false;
 }
 
+/**
+ * Checks whether the given type is an unexpected unknown type.
+ *
+ * This can happen when a new version of Xcode/libclang adds new types that
+ * our metabase parser doesn't know about.
+ *
+ * @param {string} type
+ * @param {object} meta
+ */
+function isUnknown(type, meta) {
+	if (type.startsWith('unknown type:')) {
+		if (!isUnknown.warned[type]) {
+			console.warn(`Unexpected ${type}`, meta);
+			isUnknown.warned[type] = true;
+		}
+
+		return true;
+	}
+
+	return false;
+}
+isUnknown.warned = {};
+
 function addImport (state, name, obj) {
 	if (name === 'NSObject') {
 		obj = obj || {};
@@ -493,6 +516,9 @@ function getObjCReturnType (value) {
 			return 'SEL';
 		}
 	}
+	if (isUnknown(value.type, value)) {
+		return value.value || 'void *';
+	}
 	if (isPrimitive(value.type)) {
 		return value.value || getPrimitiveValue(value.type);
 	}
@@ -560,6 +586,9 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 		case 'block': {
 			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name +' encoding:"' + value.encoding + '"];';
 		}
+	}
+	if (isUnknown(value.type, value)) {
+		return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + asPointer + name + ' encoding:@encode(' + value.value + ')];';
 	}
 	if (isPrimitive(value.type)) {
 		switch (value.encoding) {
