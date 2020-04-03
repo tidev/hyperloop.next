@@ -33,7 +33,8 @@ namespace hyperloop {
 			case CXCursor_ConstAttr:
 			case CXCursor_PureAttr:
 			case CXCursor_VisibilityAttr:
-			case CXCursor_NSReturnsRetained: {
+			case CXCursor_NSReturnsRetained:
+			case CXCursor_WarnUnusedResultAttr: {
 				break;
 			}
 			default: {

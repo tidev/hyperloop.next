@@ -618,6 +618,11 @@ namespace hyperloop {
 			case CXType_MemberPointer: {
 				return "member_pointer";
 			}
+			case CXType_ExtVector: {
+				// fallback to unexposed since external vectors have no encoding yet
+				// @see http://llvm.org/viewvc/llvm-project?view=revision&revision=216301
+				return "unexposed";
+			}
 			default: {
 				std::stringstream ss;
 				ss << "unknown type: ";
