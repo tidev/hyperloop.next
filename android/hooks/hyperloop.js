@@ -95,8 +95,7 @@ exports.cliVersion = '>=3.2';
 
 			// Clean module's build directory if hyperloop version has changed.
 			if (hasModuleVersionChanged) {
-				logger.info(`Cleaning ${HL} build directory`);
-				await fs.emptyDir(this.hyperloopBuildDir);
+				await this.clean();
 			}
 
 			// Perform the hyperloop build.
@@ -113,6 +112,24 @@ exports.cliVersion = '>=3.2';
 		// Invoke given callback now that build has finished.
 		next();
 	};
+
+	HyperloopAndroidBuilder.prototype.clean = async function clean() {
+		this.logger.info(`Cleaning ${HL} build directory`);
+
+		// Run the gradle "clean" task if possible.
+		// This makes the gradle daemon release its file locks which prevents files from being deleted on Windows.
+		try {
+			const gradlew = this.builder.createGradleWrapper(this.hyperloopBuildDir);
+			if (await gradlew.hasWrapperFiles() && await gradlew.hasLocalPropertiesFile()) {
+				await gradlew.clean();
+			}
+		} catch (err) {
+			this.logger.debug(`${HL} failed to run gradle "clean" task. Reason:\n${err}`);
+		}
+
+		// Delete all files under the hyperloop build directory.
+		await fs.emptyDir(this.hyperloopBuildDir);
+	}
 
 	HyperloopAndroidBuilder.prototype.build = async function build() {
 		this.logger.info(`Starting ${HL} assembly`);
