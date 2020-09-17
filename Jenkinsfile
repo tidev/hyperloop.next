@@ -4,7 +4,7 @@ import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '10.17.0'
-def sdkVersion = '9.0.0.v20200130113429'
+def sdkVersion = '9.2.0.v20200915123928'
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
@@ -122,7 +122,7 @@ stage('Build') {
 			} // node
 		},
 		'iOS': {
-			node('osx && xcode-11') {
+			node('osx && xcode-12') {
 				try {
 					checkout scm
 
