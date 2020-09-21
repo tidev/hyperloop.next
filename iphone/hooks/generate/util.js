@@ -578,7 +578,7 @@ function getObjCReturnResult (value, name, returns, asPointer) {
 			break;
 		}
 		case 'SEL': {
-			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(__bridge void *)' + asPointer + name +' encoding:@encode(SEL)];';
+			return returns + ' (' + name + ' == nil) ? (id)[NSNull null] : (id)[HyperloopPointer pointer:(const void *)' + asPointer + name +' encoding:@encode(SEL)];';
 		}
 		case 'void': {
 			return returns + ' nil;';
