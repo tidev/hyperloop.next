@@ -212,7 +212,7 @@ HyperloopiOSBuilder.prototype.setup = function setup() {
  * Gets the system frameworks from the Hyperloop Metabase.
  */
 HyperloopiOSBuilder.prototype.getSystemFrameworks = function getSystemFrameworks(callback) {
-	hm.metabase.getSystemFrameworks(this.hyperloopBuildDir, this.builder.xcodeTargetOS, this.builder.minIosVer, function (err, systemFrameworks) {
+	hm.metabase.getSystemFrameworks(this.hyperloopBuildDir, (this.builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : this.builder.xcodeTargetOS), this.builder.minIosVer, function (err, systemFrameworks) {
 		if (!err) {
 			this.systemFrameworks = new Map(systemFrameworks);
 
@@ -259,7 +259,7 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 	var thirdparty = this.hyperloopConfig.ios.thirdparty || [];
 	var projectDir = this.builder.projectDir;
 	var xcodeAppDir = this.builder.xcodeAppDir;
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	var sdk = (this.builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : this.builder.xcodeTargetOS) + this.builder.iosSdkVersion;
 	var builder = this.builder;
 	var logger = this.logger;
 
@@ -678,7 +678,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 				this.sdkInfo.sdkType,
 				this.sdkInfo.sdkPath,
 				this.sdkInfo.minVersion,
-				this.builder.xcodeTargetOS,
+				(this.builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : this.builder.xcodeTargetOS),
 				this.metabase,
 				entry.framework,
 				entry.source,
@@ -703,7 +703,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			}
 
 			var cocoaPodsRoot = this.cocoaPodsBuildSettings.PODS_ROOT;
-			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + this.builder.xcodeTargetOS);
+			var cocoaPodsConfigurationBuildDir = path.join(this.builder.projectDir, 'build/iphone/build/Products', this.builder.xcodeTarget + '-' + (this.builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : this.builder.xcodeTargetOS));
 			var paths = source.split(' ');
 			paths.forEach(function (path) {
 				if (path === '$(inherited)') {
@@ -920,7 +920,7 @@ HyperloopiOSBuilder.prototype.generateSymbolReference = function generateSymbolR
  * Compiles the resources from the metabase.
  */
 HyperloopiOSBuilder.prototype.compileResources = function compileResources(callback) {
-	var sdk = this.builder.xcodeTargetOS + this.builder.iosSdkVersion;
+	var sdk = (this.builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : this.builder.xcodeTargetOS) + this.builder.iosSdkVersion;
 	hm.metabase.compileResources(this.resourcesDir, sdk, this.builder.xcodeAppDir, false, callback);
 };
 

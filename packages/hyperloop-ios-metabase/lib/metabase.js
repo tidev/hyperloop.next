@@ -697,7 +697,7 @@ function generateCocoaPodsMetadata (cacheDir, builder, settings, callback) {
 	}
 
 	// check for any frameworks under the CocoaPods FRAMEWORK_SEARCH_PATHS
-	var cocoaPodsConfigurationBuildDir = getBuiltProductsRootPath(builder.projectDir, builder.xcodeTarget, builder.xcodeTargetOS);
+	var cocoaPodsConfigurationBuildDir = getBuiltProductsRootPath(builder.projectDir, builder.xcodeTarget, builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : builder.xcodeTargetOS);
 	var frameworkSearchPaths = (settings.FRAMEWORK_SEARCH_PATHS || '').split(' ');
 	tasks.push(function(next) {
 		async.each(frameworkSearchPaths, function(frameworkSearchPath, done) {
@@ -1074,7 +1074,7 @@ function compileResources (dir, sdk, appDir, wildcard, callback) {
  * @param callback {Function}
  */
 function runCocoaPodsBuild (basedir, builder, callback) {
-	var sdkType = builder.xcodeTargetOS,
+	var sdkType = builder.xcodeTargetOS === 'maccatalyst' ? 'iphoneos' : builder.xcodeTargetOS,
 		sdkVersion = builder.iosSdkVersion,
 		minSDKVersion = builder.minIosVer,
 		xcodesettings = builder.xcodeEnv.executables,
