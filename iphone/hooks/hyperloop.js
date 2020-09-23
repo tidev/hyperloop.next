@@ -1589,6 +1589,7 @@ HyperloopiOSBuilder.prototype.hookXcodebuild = function hookXcodebuild(data) {
 	// speed up the build by only building the target architecture
 	if (this.builder.deployType === 'development' && this.builder.target === 'simulator') {
 		addParam('ONLY_ACTIVE_ARCH', 1);
+		addParam('EXCLUDED_ARCHS', 'arm64 i386'); // only build for x86_64!
 	}
 
 	// add any compiler specific flags
