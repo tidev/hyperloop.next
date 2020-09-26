@@ -282,7 +282,17 @@ HyperloopiOSBuilder.prototype.processThirdPartyFrameworks = function processThir
 			return next();
 		}
 
-		hm.metabase.generateUserFrameworksMetadata(builder.frameworks, hyperloopBuildDir, function (err, modules) {
+		// filter out native module libs
+		const filtered = {};
+		for (const name of Object.keys(builder.frameworks)) {
+			const framework = builder.frameworks[name];
+			const isNativeModule = builder.nativeLibModules.some(m => m.libFile === framework.path);
+			if (!isNativeModule) {
+				filtered[name] = framework;
+			}
+		}
+
+		hm.metabase.generateUserFrameworksMetadata(filtered, hyperloopBuildDir, function (err, modules) {
 			if (err) {
 				return next(err);
 			}
@@ -1278,16 +1288,6 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 					} else {
 						buildSettings.ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = 'YES';
 					}
-
-					// LD_RUNPATH_SEARCH_PATHS is a space separated string of paths
-					var searchPaths = (buildSettings.LD_RUNPATH_SEARCH_PATHS || '').replace(/^"/, '').replace(/"$/, '');
-					if (searchPaths.indexOf('$(inherited)') === -1) {
-						searchPaths += ' $(inherited)';
-					}
-					if (searchPaths.indexOf('@executable_path/Frameworks') === -1) {
-						searchPaths += ' @executable_path/Frameworks';
-					}
-					buildSettings.LD_RUNPATH_SEARCH_PATHS = '"' + searchPaths.trim() + '"';
 				}, this);
 			}
 		}, this);
