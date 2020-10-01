@@ -148,7 +148,7 @@ class ModuleMetadata {
 		this.name = name;
 		this.path = path;
 		this.type = type;
-		this.isFramework = this.path.endsWith('.framework');
+		this.isFramework = /.(xc)?framework$/.test(this.path);
 		this.introducedIn = null;
 		this.umbrellaHeader = null;
 		this.usesSwift = false;
@@ -587,9 +587,27 @@ function generateStaticLibrariesIncludeMap (staticLibrariesHeaderPath, includes,
  * @param {Function} callback Callback function
  */
 function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
-	var frameworkName = frameworkMetadata.name;
-	var frameworkPath = frameworkMetadata.path;
-	var frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+	const frameworkName = frameworkMetadata.name;
+	let basePath = frameworkMetadata.path;
+	let frameworkPath = basePath;
+	let frameworkHeadersPath;
+	if (basePath.endsWith('.xcframework')) {
+		const infoPlistPath = path.join(basePath, 'Info.plist');
+		const infoPlist = plist.parse(fs.readFileSync(infoPlistPath, 'utf-8'));
+		const {
+			LibraryPath: libPath,
+			LibraryIdentifier: libIdentifier,
+			HeadersPath: headersPath = 'Headers'
+		} = infoPlist.AvailableLibraries[0];
+		if (libPath.endsWith('.framework')) {
+			frameworkPath = path.join(basePath, libIdentifier, libPath);
+		} else {
+			frameworkPath = path.join(basePath, libIdentifier);
+		}
+		frameworkHeadersPath = path.join(frameworkPath, headersPath);
+	} else {
+		frameworkHeadersPath = path.join(frameworkPath, 'Headers');
+	}
 
 	// There are some rare frameworks (like FirebaseNanoPB) that do not have a Headers/ directory
 	if (!fs.existsSync(frameworkHeadersPath)) {
@@ -640,7 +658,7 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 			extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 		}
 	} else if (frameworkMetadata.type === 'static') {
-		frameworkMetadata.umbrellaHeader = path.join(frameworkMetadata.path, 'Headers', `${frameworkMetadata.name}.h`);
+		frameworkMetadata.umbrellaHeader = path.join(frameworkPath, 'Headers', `${frameworkMetadata.name}.h`);
 		util.logger.trace('Static framework, parsing all header files');
 		extractImplementationsFromFramework(frameworkName, frameworkPath, includes);
 	} else {
