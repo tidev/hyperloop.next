@@ -183,7 +183,7 @@ public class InstanceProxy extends BaseProxy {
         return super.invokeMethod(m, receiver, convertedArgs);
     }
 
-    @Kroll.getProperty @Kroll.method
+    @Kroll.getProperty
     public InstanceProxy getSuper() {
         if (!ProxyBuilder.isProxyClass(this.clazz)) {
             return this;
