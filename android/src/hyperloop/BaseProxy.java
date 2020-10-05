@@ -67,7 +67,6 @@ public abstract class BaseProxy extends TiViewProxy {
      */
     public abstract Object getReceiver();
 
-    @Kroll.method
     @Kroll.getProperty
     @Override
     public String getApiName() {

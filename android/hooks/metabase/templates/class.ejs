@@ -179,6 +179,10 @@ if (classDefinition.innerClasses) {
 	for (var ic = 0; ic < classDefinition.innerClasses.length; ic++) {
 		var innerClassName = classDefinition.innerClasses[ic];
 		var baseInnerClassName = innerClassName.slice(innerClassName.lastIndexOf('$') + 1);
+		if (classDefinition.properties[baseInnerClassName]) {
+			// Class has a field with same name as inner class.
+			continue;
+		}
 -%>
 Object.defineProperty(<%= sanitizedName %>, '<%= baseInnerClassName %>', {
 	get: function() {
