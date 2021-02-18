@@ -4,7 +4,7 @@ import com.axway.AppcCLI;
 
 // Tweak these if you want to test against different nodejs or environment
 def nodeVersion = '12.18.0'
-def sdkVersion = '9.2.1.v20201002104158'
+def sdkVersion = '9.3.2.GA'
 def androidAPILevel = '26'
 
 // gets assigned once we read the package.json file
