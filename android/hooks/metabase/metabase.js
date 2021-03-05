@@ -71,7 +71,7 @@ function generate(classPath, opts, callback) {
 	classPath = typeof(classPath)==='string' ? [classPath] : classPath;
 
 	var dest = opts.dest || opts.cacheDir || 'build',
-		cp = [path.join(__dirname, 'lib', 'bcel-5.2.jar'), path.join(__dirname, 'lib', 'json.jar'), dest];
+		cp = [path.join(__dirname, 'lib', 'bcel-6.5.0.jar'), path.join(__dirname, 'lib', 'json.jar'), dest];
 
 	compileIfNecessary(dest, cp.join(path.delimiter), function(err){
 		if (err) return callback(err);
