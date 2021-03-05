@@ -1,6 +1,6 @@
 {
   "name": "hyperloop",
-  "version": "7.0.0",
+  "version": "7.0.1",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
     "appcelerator",
@@ -52,7 +52,6 @@
     "temp": "^0.9.0",
     "titanium": "^5.2.0"
   },
-  "dependencies": {},
   "scripts": {
     "test": "echo 'Error: no test specified'"
   }
