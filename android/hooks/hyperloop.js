@@ -201,6 +201,7 @@ exports.cliVersion = '>=3.2';
 			inputFiles: jarPaths,
 			logger: this.logger
 		});
+		generateMetabaseTask.outputDirectory = path.join(this.hyperloopBuildDir, 'metabase');
 		generateMetabaseTask.builder = this.builder;
 		await generateMetabaseTask.run();
 

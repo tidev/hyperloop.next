@@ -1,6 +1,7 @@
 'use strict';
 
 const BaseFileTask = require('appc-tasks').BaseFileTask;
+const fs =  require('fs-extra');
 const metabase = require('../metabase');
 
 /**
@@ -21,6 +22,24 @@ class GenerateMetabaseTask extends BaseFileTask {
 
 		this._builder = null;
 		this._metabase = null;
+	}
+
+	/**
+	 * Gets the output directory where the metabase JSON will be written to.
+	 *
+	 * @return {String} Full path to the output directory.
+	 */
+	 get outputDirectory() {
+		return this._outputDirectory;
+	}
+
+	/**
+	 * Sets the output directory where the metabase JSON file will be written to.
+	 *
+	 * @param {String} outputPath Full path to the output directory.
+	 */
+	set outputDirectory(outputPath) {
+		this._outputDirectory = outputPath;
 	}
 
 	/**
@@ -49,8 +68,17 @@ class GenerateMetabaseTask extends BaseFileTask {
 	async runTaskAction() {
 		const inputFiles = Array.from(this.inputFiles);
 		this.logger.trace('Generating metabase for JARs: ' + inputFiles);
+
+		const options = {
+			platform: 'android-' + this._builder.realTargetSDK
+		};
+		if (this._outputDirectory) {
+			await fs.ensureDir(this._outputDirectory);
+			options.cacheDir = this._outputDirectory;
+		}
+
 		return new Promise((resolve, reject) => {
-			metabase.metabase.loadMetabase(inputFiles, {platform: 'android-' + this._builder.realTargetSDK}, (err, json) => {
+			metabase.metabase.loadMetabase(inputFiles, options, (err, json) => {
 				if (err) {
 					this.logger.error('Failed to generated metabase: ' + err);
 					return reject(err);
