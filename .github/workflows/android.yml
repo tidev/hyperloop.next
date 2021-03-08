@@ -15,8 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Android
     env:
-      CCACHE_DIR: ${{ github.workspace }}/.ccache
-      USE_CCACHE: 1
+      SDK_VERSION: 9.3.2.GA
     steps:
     - uses: actions/checkout@v2
 
@@ -43,20 +42,18 @@ jobs:
     - run: npm i -g titanium
       name: Install Titanium CLI
 
-# TODO: Cache sdk install
-    - run: ti sdk install 9.3.2.GA --force
-      name: Install SDK 9.3.2.GA
-
-    - name: Install ccache
-      run: brew install ccache
-
-    - name: Retrieve ccache
+    - name: Cache SDK
+      id: titanium-cache
       uses: actions/cache@v2
       with:
-        path: ${{ env.CCACHE_DIR }}
-        key: ${{ runner.os }}-ccache-${{ github.sha }}
+        path: ~/.titanium/mobilesdk/linux/${{ env.SDK_VERSION }}
+        key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
         restore-keys: |
-          ${{ runner.os }}-ccache-
+          ${{ runner.os }}-titanium-sdk-
+
+    - run: ti sdk install ${{ env.SDK_VERSION }} --force
+      name: Install SDK
+      if: steps.titanium-cache.outputs.cache-hit != 'true'
 
     - name: Build and Test Hook
       working-directory: ./android/hooks
@@ -79,20 +76,6 @@ jobs:
         rm -rf ../example
         rm -rf ../documentation
         ti build -p android --build-only
-
-    - name: Show summary of ccache configuration and statistics counters
-      run: ccache --show-stats
-
-# FIXME: delete teh folders before building so we don't need to unzip/zip again
-    # - name: Prepare distribution
-    #   working-directory: ./android/dist
-    #   run: |
-    #     rm -f hyperloop-android.jar
-    #     unzip hyperloop-android-${{ env.packageVersion }}.zip
-    #     rm -rf hyperloop-android-${{ env.packageVersion }}.zip
-    #     rm -rf modules/android/hyperloop/${{ env.packageVersion }}/example
-    #     rm -rf modules/android/hyperloop/${{ env.packageVersion }}/documentation
-    #     zip -r hyperloop-android-${{ env.packageVersion }}.zip .
 
     - name: Archive Android zip
       uses: actions/upload-artifact@v2
