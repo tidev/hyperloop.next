@@ -43,7 +43,9 @@ jobs:
     - name: Prepare hook
       working-directory: ./iphone/hooks
       run: |
-        npm i --production
+        sed -i.bak 's/0.0.0-PLACEHOLDER/${{ env.packageVersion }}/g' ./package.json
+        rm -rf package.json.bak
+        npm ci --production
         npm i ../../packages/hyperloop-ios-metabase/hyperloop-metabase-${{ env.METABASE_VERSION }}.tgz
         rm -rf node_modules/findit/test
         rm -rf package-lock.json
@@ -64,12 +66,12 @@ jobs:
       name: Install SDK
       if: steps.titanium-cache.outputs.cache-hit != 'true'
 
-    - run: sed -i .bak 's/TITANIUM_SDK_VERSION = .*/TITANIUM_SDK_VERSION = ${{ env.SDK_VERSION }}/' iphone/titanium.xcconfig
-      name: Set to Build with ${{ env.SDK_VERSION }} SDK
-
     - name: Build
       working-directory: ./iphone
-      run: ti build -p ios --build-only
+      run: |
+        sed -i.bak 's/VERSION/${{ env.packageVersion }}/g' ./manifest
+        sed -i .bak 's/TITANIUM_SDK_VERSION = .*/TITANIUM_SDK_VERSION = ${{ env.SDK_VERSION }}/' titanium.xcconfig
+        ti build -p ios --build-only
 
     - name: Archive iOS artifact
       uses: actions/upload-artifact@v2
