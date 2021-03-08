@@ -24,7 +24,7 @@ jobs:
 
     - name: Test Native Code
       working-directory: ./iphone
-      run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
+      run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 12' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
 
     - name: Use Node.js 12.x
       uses: actions/setup-node@v1
