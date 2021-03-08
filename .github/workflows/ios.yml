@@ -35,7 +35,7 @@ jobs:
       working-directory: ./packages/hyperloop-ios-metabase
       run: |
         npm pack
-        METABASE_VERSION=$(grep "\"version\":" ./package.json | cut -d \" -f 4`)
+        METABASE_VERSION=$(sed -n 's/^ *"version": *"//p' package.json | tr -d '"' | tr -d ',' | tr -d '[[:space:]]')
         echo "METABASE_VERSION=${METABASE_VERSION}" >> $GITHUB_ENV
 
     - name: Prepare hook
