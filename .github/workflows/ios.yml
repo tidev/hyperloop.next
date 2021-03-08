@@ -54,7 +54,7 @@ jobs:
     - run: ti sdk install 9.3.2.GA --force
       name: Install SDK 9.3.2.GA
 
-    - run: sed -i .bak 's/TITANIUM_SDK_VERSION = .*/TITANIUM_SDK_VERSION = 9.3.2.GA/' ios/titanium.xcconfig
+    - run: sed -i .bak 's/TITANIUM_SDK_VERSION = .*/TITANIUM_SDK_VERSION = 9.3.2.GA/' iphone/titanium.xcconfig
       name: Set to Build with 9.3.2.GA SDK
 
     - name: Build
