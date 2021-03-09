@@ -79,4 +79,4 @@ jobs:
         name: hyperloop-iphone-${{ env.packageVersion }}
         if-no-files-found: error
         path: |
-          ios/dist/hyperloop-iphone-*.zip
+          iphone/dist/hyperloop-iphone-*.zip
