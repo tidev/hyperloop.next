@@ -57,7 +57,7 @@ jobs:
       id: titanium-cache
       uses: actions/cache@v2
       with:
-        path: ~/Library Application Support/Titanium/mobilesdk/osx/${{ env.SDK_VERSION }}
+        path: ~/Library/Application Support/Titanium/mobilesdk/osx/${{ env.SDK_VERSION }}
         key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
         restore-keys: |
           ${{ runner.os }}-titanium-sdk-
