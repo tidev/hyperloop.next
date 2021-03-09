@@ -77,5 +77,6 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: hyperloop-iphone-${{ env.packageVersion }}
+        if-no-files-found: error
         path: |
           ios/dist/hyperloop-iphone-*.zip
