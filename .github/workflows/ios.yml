@@ -1,0 +1,82 @@
+name: iOS Build
+on: 
+  push:
+    paths-ignore:
+    - 'android/**'
+    - 'apidoc/**'
+  pull_request:
+    paths-ignore:
+    - 'android/**'
+    - 'apidoc/**'
+  workflow_dispatch:
+  
+jobs:
+  ios:
+    runs-on: macos-latest
+    name: iOS
+    env:
+      SDK_VERSION: 9.3.2.GA
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Retrieve package version
+      run: |
+        PACKAGE_VERSION=$(sed -n 's/^ *"version": *"//p' package.json | tr -d '"' | tr -d ',' | tr -d '[[:space:]]')
+        echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
+
+    - name: Test Native Code
+      working-directory: ./iphone
+      run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 12' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
+
+    - name: Use Node.js 12.x
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12.x'
+
+    - name: Package metabase
+      working-directory: ./packages/hyperloop-ios-metabase
+      run: |
+        npm pack
+        METABASE_VERSION=$(sed -n 's/^ *"version": *"//p' package.json | tr -d '"' | tr -d ',' | tr -d '[[:space:]]')
+        echo "METABASE_VERSION=${METABASE_VERSION}" >> $GITHUB_ENV
+
+    - name: Prepare hook
+      working-directory: ./iphone/hooks
+      run: |
+        sed -i.bak 's/0.0.0-PLACEHOLDER/${{ env.packageVersion }}/g' ./package.json
+        rm -rf package.json.bak
+        npm ci --production
+        npm i ../../packages/hyperloop-ios-metabase/hyperloop-metabase-${{ env.METABASE_VERSION }}.tgz
+        rm -rf node_modules/findit/test
+        rm -rf package-lock.json
+
+    - run: npm i -g titanium
+      name: Install Titanium CLI
+
+    - name: Cache SDK
+      id: titanium-cache
+      uses: actions/cache@v2
+      with:
+        path: ~/Library/Application Support/Titanium/mobilesdk/osx/${{ env.SDK_VERSION }}
+        key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
+        restore-keys: |
+          ${{ runner.os }}-titanium-sdk-
+
+    - run: ti sdk install ${{ env.SDK_VERSION }} --force
+      name: Install SDK
+      if: steps.titanium-cache.outputs.cache-hit != 'true'
+
+    - name: Build
+      working-directory: ./iphone
+      run: |
+        sed -i.bak 's/VERSION/${{ env.packageVersion }}/g' ./manifest
+        sed -i .bak 's/TITANIUM_SDK_VERSION = .*/TITANIUM_SDK_VERSION = ${{ env.SDK_VERSION }}/' titanium.xcconfig
+        ti build -p ios --build-only
+
+    - name: Archive iOS artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: hyperloop-iphone-${{ env.packageVersion }}
+        if-no-files-found: error
+        path: |
+          iphone/dist/hyperloop-iphone-*.zip
