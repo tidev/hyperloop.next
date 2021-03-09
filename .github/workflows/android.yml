@@ -81,6 +81,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: hyperloop-android-${{ env.packageVersion }}
+        if-no-files-found: error
         path: |
           android/dist/hyperloop-android-*.zip
 
