@@ -13,4 +13,8 @@ You must have the following on your machine to build it using `build.sh`, howeve
 
 ## License
 
-This code is closed source and Confidential and Proprietary to Appcelerator, Inc. All Rights Reserved.  This code MUST not be modified, copied or otherwise redistributed without express written permission of Appcelerator. This file is licensed as part of the Appcelerator Platform and governed under the terms of the Appcelerator license agreement.  Your right to use this software terminates when you terminate your Appcelerator subscription.
+Hyperloop is licensed under the OSI approved Apache Public License (version 2). Please see the LICENSE file for specific details.
+
+## Legal Stuff
+
+Appcelerator is a registered trademark of Appcelerator, Inc. Titanium is a registered trademark of Appcelerator, Inc. Please see the LEGAL information about using our trademarks, privacy policy, terms of usage and other legal information at http://www.appcelerator.com/legal.
