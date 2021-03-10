@@ -1,4 +1,6 @@
-# Hyperloop [![Build Status](https://jenkins.appcelerator.org/buildStatus/icon?job=titanium-sdk/hyperloop.next/master)](https://jenkins.appcelerator.org/job/titanium-sdk/job/hyperloop.next/job/master/)
+<img src="./hyperloop-logo.png" height="100" alt="Hyperloop Builds" />
+
+# Hyperloop
 
 This repo contains source code for the Hyperloop&reg; product.
 
