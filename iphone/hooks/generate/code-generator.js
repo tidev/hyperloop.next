@@ -45,6 +45,7 @@ class CodeGenerator {
 		this.generateStructs(outputPath);
 		this.generateModules(outputPath);
 		this.generateCustoms(outputPath);
+		this.generateBootstrap(outputPath);
 	}
 
 	/**
@@ -231,6 +232,40 @@ class CodeGenerator {
 			}
 		});
 		util.generateFile(outputPath, 'custom', {framework:'Hyperloop', name:'Custom'}, code, '.m');
+	}
+
+	/**
+	 * Generate a hyperloop bootstrap script to be loaded on app startup, but before the "app.js" gets loaded.
+	 * Provides JS require/import alias names matching native class names to their equivalent JS files.
+	 * @param {String} outputPath Path of directory to write bootstrap file to.
+	 */
+	generateBootstrap(outputPath) {
+		const fileLines = [];
+		const fetchBindingsFrom = (sourceTypes) => {
+			if (!sourceTypes) {
+				return;
+			}
+			const isModule = (sourceTypes == this.sourceSet.modules);
+			for (const typeName in sourceTypes) {
+				const frameworkName = sourceTypes[typeName].framework;
+				if (!frameworkName) {
+					continue;
+				}
+				const requireName = `/hyperloop/${frameworkName.toLowerCase()}/${typeName.toLowerCase()}`;
+				if (frameworkName !== typeName) {
+					fileLines.push(`binding.redirect('${frameworkName}/${typeName}', '${requireName}');`);
+				}
+				if (isModule) {
+					fileLines.push(`binding.redirect('${frameworkName}', '${requireName}');`);
+				}
+			}
+		};
+		fetchBindingsFrom(this.sourceSet.classes);
+		fetchBindingsFrom(this.sourceSet.structs);
+		fetchBindingsFrom(this.sourceSet.modules);
+
+		const filePath = path.join(outputPath, 'hyperloop.bootstrap.js');
+		fs.writeFileSync(filePath, fileLines.join('\n') + '\n');
 	}
 
 	/**

@@ -75,6 +75,27 @@ keys.forEach(function (k, index) { %>
 });
 <% } -%>
 
+<% if (data.class.nested_types && Object.keys(data.class.nested_types).length) { -%>
+// framework classes and structs
+Object.defineProperties(<%= data.class.name %>, {
+<% var keys = Object.keys(data.class.nested_types);
+keys.forEach(function (nestedTypeName, index) { %>
+	<%=nestedTypeName%>: {
+		get: function() {
+			return require('/hyperloop/<%= data.framework.toLowerCase() %>/<%= nestedTypeName.toLowerCase() %>');
+		},
+		enumerable: true
+	}<%=index + 1 < keys.length ? ',':''%>
+<% }) %>
+});
+<% } -%>
+
 <% if (!data.excludeHeader) { -%>
+Object.defineProperty(<%= data.class.name %>, '<%= data.class.name %>', {
+	value: <%= data.class.name %>,
+	enumerable: false,
+	writable: false
+});
+
 module.exports = <%= data.class.name %>;
 <% } -%>

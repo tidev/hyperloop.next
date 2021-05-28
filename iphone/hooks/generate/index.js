@@ -213,6 +213,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 
 		processProtocolInheritance(json.protocols);
 
+		var modules = {};
 		var sourceSet = {
 			classes: {},
 			structs: {},
@@ -242,6 +243,7 @@ function generateFromJSON(name, json, state, callback, includes) {
 				});
 			}
 			sourceSet.classes[k] = genclass.generate(json, cls, state);
+			makeModule(modules, cls, state);
 		});
 
 		// structs
@@ -254,8 +256,6 @@ function generateFromJSON(name, json, state, callback, includes) {
 			sourceSet.structs[k] = genstruct.generate(json, struct);
 		});
 
-		// modules
-		var modules = {};
 		// define module based functions
 		json.functions && Object.keys(json.functions).forEach(function (k) {
 			var func = json.functions[k];

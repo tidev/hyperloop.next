@@ -4,8 +4,6 @@
  */
 'use strict';
 const util = require('./util');
-const path = require('path');
-const fs = require('fs');
 
 function makeModule(json, module, state) {
 	var entry = {
@@ -15,7 +13,8 @@ function makeModule(json, module, state) {
 			class_methods: [],
 			obj_class_method: [],
 			static_variables: {},
-			blocks: module.blocks
+			blocks: module.blocks,
+			nested_types: {}
 		},
 		framework: module.framework,
 		filename: module.filename,
@@ -57,6 +56,20 @@ function makeModule(json, module, state) {
 			entry.class.obj_class_method.push(code);
 		}
 	});
+
+	// Make framework's classes and structs available via the JS module's properties.
+	const copyNestedTypes = (sourceTypes) => {
+		if (sourceTypes) {
+			for (const typeName in sourceTypes) {
+				const typeInfo = sourceTypes[typeName];
+				if ((typeInfo.framework === module.framework) && (typeName !== module.name)) {
+					entry.class.nested_types[typeName] = typeInfo;
+				}
+			}
+		}
+	};
+	copyNestedTypes(json.classes);
+	copyNestedTypes(json.structs);
 
 	entry.renderedImports = util.makeImports(json, entry.imports);
 	return entry;
