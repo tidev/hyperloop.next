@@ -57,4 +57,10 @@ function $initialize () {
 	$init = true;
 }
 
+Object.defineProperty(<%= data.class.name %>, '<%= data.class.name %>', {
+	value: <%= data.class.name %>,
+	enumerable: false,
+	writable: false
+});
+
 module.exports = <%= data.class.name %>;

@@ -62,6 +62,27 @@ static void HyperloopRegisterWrapper(id pointer, JSValueRef thisObject);
 static JSObjectRef HLObjectMake(JSContextRef ctx, JSClassRef cls, id obj);
 JSObjectRef HyperloopGetWrapperForId(id obj);
 
+static void HyperloopRelease () {
+	if (context) {
+		[callbacks removeAllObjects];
+		[modules removeAllObjects];
+		ARCRelease(callbacks);
+		ARCRelease(modules);
+		classClassRef = NULL;
+		pointerClassRef = NULL;
+		constructorClassRef = NULL;
+		objectClassRef = NULL;
+		bridge = nil;
+		context = nil;
+		callbacks = nil;
+		modules = nil;
+	}
+	if (javaScriptWrappers) {
+		CFRelease(javaScriptWrappers);
+		javaScriptWrappers = NULL;
+	}
+}
+
 /**
  * gets the memory address of an Objective-C object as a string
  */
@@ -987,6 +1008,10 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  */
 +(void)willStartNewContext:(KrollContext *)kroll bridge:(KrollBridge *)krollbridge {
 // NSLog(@"[TRACE][HYPERLOOP] willStartNewContext %@", kroll);
+
+	// Release objects belonging to last context. (Will only happen if LiveView restarts app's JS runtime.)
+	HyperloopRelease();
+
 	context = kroll;
 	bridge = krollbridge;
 	JSGlobalContextRef ctx = (JSGlobalContextRef)[kroll context];
@@ -1107,30 +1132,7 @@ extern NSString * const TI_APPLICATION_DEPLOYTYPE;
  */
 +(void)willStopNewContext:(KrollContext *)kroll bridge:(KrollBridge *)bridge{
 // NSLog(@"[TRACE][HYPERLOOP] willStopNewContext %@", kroll);
-	if (context) {
-		[callbacks removeAllObjects];
-		[modules removeAllObjects];
-		JSGlobalContextRef ctx = (JSGlobalContextRef)[kroll context];
-		JSStringRef prop = JSStringCreateWithUTF8CString("Hyperloop");
-		JSObjectRef globalObjectRef = JSContextGetGlobalObject(ctx);
-		JSValueRef objectRef = JSObjectGetProperty(ctx, globalObjectRef, prop, NULL);
-		JSValueUnprotect(ctx, objectRef);
-		JSObjectDeleteProperty(ctx, globalObjectRef, prop, NULL);
-		JSStringRelease(prop);
-		JSClassRelease(classClassRef);
-		JSClassRelease(pointerClassRef);
-		JSClassRelease(constructorClassRef);
-		JSClassRelease(objectClassRef);
-		JSGlobalContextRelease(ctx);
-		ARCRelease(callbacks);
-		ARCRelease(modules);
-		classClassRef = nil;
-		pointerClassRef = nil;
-		constructorClassRef = nil;
-		context = nil;
-		callbacks = nil;
-		modules = nil;
-	}
+	HyperloopRelease();
 }
 
 /**

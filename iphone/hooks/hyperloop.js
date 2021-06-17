@@ -15,9 +15,6 @@ const IOS_MIN = '9.0';
 // Set this to enforce a minimum Titanium SDK
 const TI_MIN = '8.0.0';
 
-// Minimum SDK to use the newer build.ios.compileJsFile hook
-const COMPILE_JS_FILE_HOOK_SDK_MIN = '7.1.0';
-
 // Set the iOS SDK minium
 const IOS_SDK_MIN = '9.0';
 
@@ -27,7 +24,6 @@ const hm = require('hyperloop-metabase');
 const metabase = hm.metabase;
 const ModuleMetadata = metabase.ModuleMetadata;
 const fs = require('fs-extra');
-const crypto = require('crypto');
 const chalk = require('chalk');
 const async = require('async');
 const HL = chalk.magenta.inverse('Hyperloop');
@@ -35,7 +31,6 @@ const semver = require('semver');
 
 const babelParser = require('@babel/parser');
 const t = require('@babel/types');
-const generate = require('@babel/generator').default;
 const traverse = require('@babel/traverse').default;
 const generator = require('./generate');
 
@@ -82,7 +77,6 @@ function HyperloopiOSBuilder(logger, config, cli, appc, hyperloopConfig, builder
 	this.cocoaPodsBuildSettings = {};
 	this.cocoaPodsProducts = [];
 	this.headers = null;
-	this.needMigration = {};
 
 	// set our CLI logger
 	hm.util.setLog(builder.logger);
@@ -97,7 +91,7 @@ HyperloopiOSBuilder.prototype.compileJsFile = function (builder, callback) {
 		const from = builder.args[1];
 		const to = builder.args[2];
 
-		this.patchJSFile(obj, from, to, callback);
+		this.processJSFile(obj, from, to, callback);
 	} catch (e) {
 		callback(e);
 	}
@@ -406,7 +400,7 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
 };
 
 /**
- * Re-write generated JS source
+ * Parses the given JS source for native framework usage.
  * @param {Object} obj - JS object holding data about the file
  * @param {String} obj.contents - current source code for the file
  * @param {String} obj.original - original source of the file
@@ -414,7 +408,7 @@ HyperloopiOSBuilder.prototype.detectSwiftVersion = function detectSwiftVersion(c
  * @param {String} destinationFilename - path to destination JS file
  * @param {Function} cb - callback function
  */
-HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFilename, destinationFilename, cb) {
+HyperloopiOSBuilder.prototype.processJSFile = function processJSFile(obj, sourceFilename, destinationFilename, cb) {
 	const contents = obj.contents;
 	// skip empty content
 	if (!contents.length) {
@@ -439,7 +433,6 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 	// require() calls with the Hyperloop layer
 	const requireRegexp = /[\w_/\-\\.]+/ig;
 	const self = this;
-	let changedAST = false;
 	const HyperloopVisitor = {
 		// ES5-style require calls
 		CallExpression: function (p) {
@@ -511,18 +504,11 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 					// record our includes in which case we found a match
 					self.includes[include] = 1;
 				}
-
-				// replace the require to point to our generated file path
-				p.replaceWith(
-					t.callExpression(p.node.callee, [ t.stringLiteral('/' + ref) ])
-				);
-				changedAST = true;
 			}
 		},
 		// ES6+-style imports
 		ImportDeclaration: function (p) {
 			const theString = p.node.source;
-			const replacements = [];
 			let requireMatch;
 			if (theString && t.isStringLiteral(theString)   // module name is a string literal
 				&& (requireMatch = theString.value.match(requireRegexp)) !== null // Is it a hyperloop require?
@@ -593,49 +579,14 @@ HyperloopiOSBuilder.prototype.patchJSFile = function patchJSFile(obj, sourceFile
 						// record our includes in which case we found a match
 						self.includes[include] = 1;
 					}
-
-					// replace the import to point to our generated file path
-					replacements.push(t.importDeclaration([ t.importDefaultSpecifier(spec.local) ], t.stringLiteral('/' + ref)));
 				});
-
-				// Apply replacements
-				const replaceCount = replacements.length;
-				if (replaceCount === 1) {
-					p.replaceWith(replacements[0]);
-					changedAST = true;
-				} else if (replaceCount > 1) {
-					p.replaceWithMultiple(replacements);
-					changedAST = true;
-				}
 			}
 		}
 	};
 
 	const ast = babelParser.parse(contents, { sourceFilename: sourceFilename, sourceType: 'unambiguous' });
 	traverse(ast, HyperloopVisitor);
-	// if we didn't change the AST, no need to generate new source!
-	// If we *do* generate new source, try to retain the lines and comments to retain source map
-	let newContents = changedAST ? generate(ast, { retainLines: true, comments: true }, contents).code : contents;
 
-	// TODO: Remove once we combine the custom acorn-based parser and the babelParser parser above!
-	// Or maybe it can go now? The migration stuff is noted that it could be removed in 3.0.0...
-	var needMigration = this.parserState.state.needMigration;
-	if (needMigration.length > 0) {
-		this.needMigration[sourceFilename] = needMigration;
-
-		needMigration.forEach(function (token) {
-			newContents = newContents.replace(token.objectName + '.' + token.methodName + '()', token.objectName + '.' + token.methodName);
-		});
-	}
-
-	if (contents === newContents) {
-		this.logger.debug('No change, skipping ' + chalk.cyan(destinationFilename));
-	} else {
-		this.logger.debug('Writing ' + chalk.cyan(destinationFilename));
-		// modify the contents stored in the state object passed through the hook,
-		// so that SDK CLI can use new contents for minification/transpilation
-		obj.contents = newContents;
-	}
 	cb();
 };
 
@@ -1070,10 +1021,6 @@ HyperloopiOSBuilder.prototype.wireupBuildHooks = function wireupBuildHooks() {
 	this.cli.on('build.ios.xcodebuild', {
 		pre: this.hookXcodebuild.bind(this)
 	});
-
-	this.cli.on('build.post.build', {
-		post: this.displayMigrationInstructions.bind(this)
-	});
 };
 
 /**
@@ -1472,48 +1419,6 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCustomShellScriptBuildPhases() {
 	var config = this.hyperloopConfig;
 	return config.ios && config.ios.xcodebuild && config.ios.xcodebuild.scripts;
-};
-
-/**
- * Displays migration instructions for certain methods that changed with iOS 10
- * and Hyperloop 2.0.0
- *
- * Can be removed in a later version of Hyperloop
- */
-HyperloopiOSBuilder.prototype.displayMigrationInstructions = function displayMigrationInstructions() {
-	var that = this;
-
-	if (Object.keys(this.needMigration).length === 0) {
-		return;
-	}
-
-	that.logger.error('');
-	that.logger.error('!!! CODE MIGRATION REQUIRED !!!');
-	that.logger.error('');
-	that.logger.error('Due to changes introduced in iOS 10 and Hyperloop 2.0.0 some method calls need');
-	that.logger.error('to be changed to property access. It seems like you used some of the affected');
-	that.logger.error('methods.');
-	that.logger.error('');
-	that.logger.error('We tried to fix most of these automatically during compile time. However, we did');
-	that.logger.error('not touch your original source files. Please see the list below to help you');
-	that.logger.error('migrate your code.');
-	that.logger.error('');
-	that.logger.error('NOTE: Some line numbers and file names shown here are from your compiled Alloy');
-	that.logger.error('source code and may differ from your original source code.');
-
-	Object.keys(this.needMigration).forEach(function (pathAndFilename) {
-		var tokens = that.needMigration[pathAndFilename];
-		var relativePathAndFilename = pathAndFilename.replace(that.resourcesDir, 'Resources').replace(/^Resources\/iphone\/alloy\//, 'app/');
-		that.logger.error('');
-		that.logger.error('  File: ' + relativePathAndFilename);
-		tokens.forEach(function (token) {
-			var memberExpression = token.objectName + '.' + token.methodName;
-			var callExpression = memberExpression + '()';
-			that.logger.error('    Line ' + token.line + ': ' + callExpression + ' -> ' + memberExpression);
-		});
-	});
-
-	that.logger.error('');
 };
 
 /**

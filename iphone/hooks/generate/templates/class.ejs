@@ -195,4 +195,10 @@ Object.setPrototypeOf = Object.setPrototypeOf || function(obj, proto) {
 	return obj;
 }
 
+Object.defineProperty(<%= data.class.name %>, '<%= data.class.name %>', {
+	value: <%= data.class.name %>,
+	enumerable: false,
+	writable: false
+});
+
 module.exports = <%= data.class.name %>;
