@@ -264,7 +264,7 @@ class CodeGenerator {
 		fetchBindingsFrom(this.sourceSet.structs);
 		fetchBindingsFrom(this.sourceSet.modules);
 
-		const filePath = path.join(outputPath, 'hyperloop.bootstrap.js');
+		const filePath = path.join(outputPath, 'hyperloop.bindings.js');
 		fs.writeFileSync(filePath, fileLines.join('\n') + '\n');
 	}
 
