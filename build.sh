@@ -19,7 +19,7 @@ onexit () {
 
 trap onexit 0 1 2 3 6 9 15
 
-TISDK_SEMVER=">=7.0.0"
+TISDK_SEMVER=">=9.2.0"
 CHECK="✓ "
 
 # Make sure the Android SDK is installed
@@ -30,17 +30,17 @@ then
 		export ANDROID_SDK=~/Library/Android/sdk
 	else
 		echo "Please set ANDROID_SDK environment variable and try again"
-		echo "Download Android SDK from http://developer.android.com/sdk/index.html"
+		echo "Download Android Studio from https://developer.android.com/studio"
 		exit 1
 	fi
 	echo "$CHECK Android SDK is $ANDROID_SDK"
 fi
 
 # Make sure we have at least the Android 7.1 (SDK 25) installed
-if [ ! -d "$ANDROID_SDK/platforms/android-25" ];
+if [ ! -d "$ANDROID_SDK/platforms/android-33" ];
 then
-	echo "Android 7.1 (Lollipop) / (android-25) not installed"
-	echo "Download Android 7.1 using Android Studio"
+	echo "Android 13 (Tiramisu) / (android-33) not installed"
+	echo "Download the Android 13 SDK using Android Studio"
 	exit 1
 fi
 

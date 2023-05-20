@@ -617,9 +617,11 @@ function generateFrameworkIncludeMap (frameworkMetadata, includes, callback) {
 
 	util.logger.trace('Generating includes for ' + frameworkMetadata.type + ' framework ' + frameworkName.green + ' (' + frameworkPath + ')');
 	if (frameworkMetadata.type === 'dynamic') {
+		// Skip if we don't have a "Modules" folder
 		var modulesPath = path.join(frameworkPath, 'Modules');
 		if (!fs.existsSync(modulesPath)) {
-			return callback(new Error(`Modules directory for ${frameworkName} not found at expected path ${modulesPath}.`));
+			includes[frameworkName] = {};
+			return callback();
 		}
 
 		var moduleMapPathAndFilename = path.join(modulesPath, 'module.modulemap');
