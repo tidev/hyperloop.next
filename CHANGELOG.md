@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ---
 
+## [7.0.6] - 2023-11-18
+
+### Fixed
+
+- iOS: Fix compatibility with Xcode 15+ and iOS 17+
+
 ## [7.0.5] - 2023-05-20
 
 ### Fixed
