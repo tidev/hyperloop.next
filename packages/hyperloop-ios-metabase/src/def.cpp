@@ -81,6 +81,10 @@ namespace hyperloop {
 		if (type.kind == CXType_Typedef) {
 			type = clang_getCanonicalType(type);
 		}
+		// resolve elaborated to named type
+		if (type.kind == CXType_Elaborated) {
+			type = clang_Type_getNamedType(type);
+		}
 		typeSpelling = CXStringToString(clang_getTypeSpelling(type));
 		setType(hyperloop::CXTypeToType(type));
 		if (this->type != "block") {
@@ -105,7 +109,7 @@ namespace hyperloop {
 	}
 
 	Type::Type (CXCursor cursor, ParserContext *context) : Type(resolveCursorType(cursor), context) {
-		auto type = clang_getCursorType(cursor);
+		auto type = resolveCursorType(cursor);
 		if (type.kind == CXType_Typedef && this->getType() == "record") {
 			auto tree = this->context->getParserTree();
 			// we blindly assume that all structs have a typedef name without underscore prefix
