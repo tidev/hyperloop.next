@@ -78,7 +78,7 @@ jobs:
         ti build -p android --build-only
 
     - name: Archive Android zip
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: hyperloop-android-${{ env.packageVersion }}
         if-no-files-found: error
