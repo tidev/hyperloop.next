@@ -15,9 +15,9 @@ jobs:
     runs-on: macos-latest
     name: iOS
     env:
-      SDK_VERSION: 11.0.0.GA
+      SDK_VERSION: 12.4.0.GA
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Retrieve package version
       run: |
@@ -28,10 +28,10 @@ jobs:
       working-directory: ./iphone
       run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 12' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '14.x'
+        node-version: '18.x'
 
     - name: Package metabase
       working-directory: ./packages/hyperloop-ios-metabase
@@ -55,7 +55,7 @@ jobs:
 
     - name: Cache SDK
       id: titanium-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/Library/Application Support/Titanium/mobilesdk/osx/${{ env.SDK_VERSION }}
         key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
