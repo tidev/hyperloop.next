@@ -12,7 +12,7 @@ on:
 3
 jobs:
   ios:
-    runs-on: macos-13
+    runs-on: macos-latests
     name: iOS
     env:
       SDK_VERSION: 12.4.0.GA
@@ -21,7 +21,6 @@ jobs:
 
     - name: Display Swift Version
       run: swift --version
-
 
     - name: Retrieve package version
       run: |
