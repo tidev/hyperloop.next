@@ -2,12 +2,12 @@ name: Android Build
 on:
   push:
     paths-ignore:
-    - 'ios/**'
-    - 'apidoc/**'
+      - 'ios/**'
+      - 'apidoc/**'
   pull_request:
     paths-ignore:
-    - 'ios/**'
-    - 'apidoc/**'
+      - 'ios/**'
+      - 'apidoc/**'
   workflow_dispatch:
 
 jobs:
@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     name: Android
     env:
-      SDK_VERSION: 12.4.GA
+      SDK_VERSION: 12.4.0.GA
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Android SDK
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
@@ -85,13 +85,18 @@ jobs:
           rm -rf ../example
           rm -rf ../documentation
           ti build -p android --build-only
-          - uses: actions/checkout@v4
-  
-          - name: Setup Android SDK
-            uses: android-actions/setup-android@v3
-  
-          - name: Setup Android SDK
-            uses: actions/setup-java@v3
-            with:
-              java-version: '17'
-              distribution: 'temurin'
+
+      - name: Archive Android zip
+        uses: actions/upload-artifact@v4
+        with:
+          name: hyperloop-android-${{ env.packageVersion }}
+          if-no-files-found: error
+          path: |
+            android/dist/hyperloop-android-*.zip
+
+      - name: Cleanup Gradle Cache
+        # Remove some files from the Gradle cache, so they aren't cached by GitHub Actions.
+        # Restoring these files from a GitHub Actions cache might cause problems for future builds.
+        run: |
+          rm -f ~/.gradle/caches/modules-2/modules-2.lock
+          rm -f ~/.gradle/caches/modules-2/gc.properties
