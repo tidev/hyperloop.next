@@ -15,9 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     name: Android
     env:
-      SDK_VERSION: 11.0.0.GA
+      SDK_VERSION: 12.4.GA
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
 
     - name: Retrieve package version
       run: |
@@ -30,7 +36,7 @@ jobs:
         node-version: '14.x'
 
     - name: Cache Gradle packages
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: |
           ~/.gradle/caches
@@ -44,7 +50,7 @@ jobs:
 
     - name: Cache SDK
       id: titanium-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.titanium/mobilesdk/linux/${{ env.SDK_VERSION }}
         key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
@@ -78,7 +84,7 @@ jobs:
         ti build -p android --build-only
 
     - name: Archive Android zip
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: hyperloop-android-${{ env.packageVersion }}
         if-no-files-found: error
