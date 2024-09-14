@@ -1,6 +1,6 @@
 {
   "name": "hyperloop",
-  "version": "7.0.7",
+  "version": "7.0.6",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
     "appcelerator",
@@ -35,9 +35,6 @@
     },
     {
       "name": "Kota Iguchi"
-    },
-    {
-      "name": "Abdullah Al-Faqeir"
     }
   ],
   "license": "UNLICENSED",
