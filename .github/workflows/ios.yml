@@ -7,9 +7,9 @@ on:
   pull_request:
     paths-ignore:
     - 'android/**'
-    - 'apidoc/**'
+    - 'apidoc/**'3
   workflow_dispatch:
-
+3
 jobs:
   ios:
     runs-on: macos-13
