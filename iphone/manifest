@@ -15,4 +15,4 @@ name: hyperloop
 moduleid: hyperloop
 guid: bdaca69f-b316-4ce6-9065-7a61e1dafa39
 platform: iphone
-minsdk: 9.2.0
+minsdk: 12.4.0.GA
