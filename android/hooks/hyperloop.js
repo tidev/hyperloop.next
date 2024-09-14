@@ -163,6 +163,7 @@ exports.cliVersion = '>=3.2';
 		let buildGradleContent = await fs.readFile(path.join(__dirname, 'build.gradle.ejs'));
 		buildGradleContent = ejs.render(buildGradleContent.toString(), {
 			compileSdkVersion: this.builder.targetSDK,
+			moduleId: this.builder.moduleId,
 			minSdkVersion: this.builder.minSDK,
 			targetSdkVersion: this.builder.targetSDK,
 			tiMavenUrl: encodeURI('file://' + path.join(this.builder.platformPath, 'm2repository').replace(/\\/g, '/')),
