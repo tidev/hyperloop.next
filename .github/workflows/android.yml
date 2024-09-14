@@ -17,83 +17,81 @@ jobs:
     env:
       SDK_VERSION: 12.4.GA
     steps:
-    - uses: actions/checkout@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
+      - uses: actions/checkout@v4
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
 
-    - name: Retrieve package version
-      run: |
-        PACKAGE_VERSION=$(sed -n 's/^ *"version": *"//p' package.json | tr -d '"' | tr -d ',' | tr -d '[[:space:]]')
-        echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
+      - name: Setup Android SDK
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
 
-    - name: Use Node.js 14.x
-      uses: actions/setup-node@v2
-      with:
-        node-version: '14.x'
+      - name: Retrieve package version
+        run: |
+          PACKAGE_VERSION=$(sed -n 's/^ *"version": *"//p' package.json | tr -d '"' | tr -d ',' | tr -d '[[:space:]]')
+          echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
 
-    - name: Cache Gradle packages
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.gradle/caches
-          ~/.gradle/wrapper
-        key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-        restore-keys: |
-          ${{ runner.os }}-gradle-
+      - name: Use Node.js 18.x
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18.x'
 
-    - run: npm i -g titanium
-      name: Install Titanium CLI
+      - name: Cache Gradle packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-    - name: Cache SDK
-      id: titanium-cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.titanium/mobilesdk/linux/${{ env.SDK_VERSION }}
-        key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
-        restore-keys: |
-          ${{ runner.os }}-titanium-sdk-
+      - run: npm i -g titanium
+        name: Install Titanium CLI
 
-    - run: ti sdk install ${{ env.SDK_VERSION }} --force
-      name: Install SDK
-      if: steps.titanium-cache.outputs.cache-hit != 'true'
+      - name: Cache SDK
+        id: titanium-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.titanium/mobilesdk/linux/${{ env.SDK_VERSION }}
+          key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
+          restore-keys: |
+            ${{ runner.os }}-titanium-sdk-
 
-    - name: Build and Test Hook
-      working-directory: ./android/hooks
-      run: |
-        sed -i.bak 's/0.0.0-PLACEHOLDER/${{ env.packageVersion }}/g' ./package.json
-        rm -rf package.json.bak
-        npm ci
-        npm test
-        rm -rf node_modules
-        rm -rf coverage
-        rm -f junit_report.xml
-        rm -rf test
-        npm ci --production
-        rm -f package-lock.json
+      - run: ti sdk install ${{ env.SDK_VERSION }} --force
+        name: Install SDK
+        if: steps.titanium-cache.outputs.cache-hit != 'true'
 
-    - name: Build Module
-      working-directory: ./android
-      run: |
-        sed -i.bak 's/VERSION/${{ env.packageVersion }}/g' ./manifest
-        rm -rf ../example
-        rm -rf ../documentation
-        ti build -p android --build-only
+      - name: Build and Test Hook
+        working-directory: ./android/hooks
+        run: |
+          sed -i.bak 's/0.0.0-PLACEHOLDER/${{ env.packageVersion }}/g' ./package.json
+          rm -rf package.json.bak
+          npm ci
+          npm test
+          rm -rf node_modules
+          rm -rf coverage
+          rm -f junit_report.xml
+          rm -rf test
+          npm ci --production
+          rm -f package-lock.json
 
-    - name: Archive Android zip
-      uses: actions/upload-artifact@v4
-      with:
-        name: hyperloop-android-${{ env.packageVersion }}
-        if-no-files-found: error
-        path: |
-          android/dist/hyperloop-android-*.zip
-
-    - name: Cleanup Gradle Cache
-      # Remove some files from the Gradle cache, so they aren't cached by GitHub Actions.
-      # Restoring these files from a GitHub Actions cache might cause problems for future builds.
-      run: |
-        rm -f ~/.gradle/caches/modules-2/modules-2.lock
-        rm -f ~/.gradle/caches/modules-2/gc.properties
+      - name: Build Module
+        working-directory: ./android
+        run: |
+          sed -i.bak 's/VERSION/${{ env.packageVersion }}/g' ./manifest
+          rm -rf ../example
+          rm -rf ../documentation
+          ti build -p android --build-only
+          - uses: actions/checkout@v4
+  
+          - name: Setup Android SDK
+            uses: android-actions/setup-android@v3
+  
+          - name: Setup Android SDK
+            uses: actions/setup-java@v3
+            with:
+              java-version: '17'
+              distribution: 'temurin'

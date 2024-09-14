@@ -7,7 +7,7 @@ on:
   pull_request:
     paths-ignore:
     - 'android/**'
-    - 'apidoc/**'3
+    - 'apidoc/**'
   workflow_dispatch:
 3
 jobs:
@@ -15,9 +15,13 @@ jobs:
     runs-on: macos-13
     name: iOS
     env:
-      SDK_VERSION: 12.6.0.GA
+      SDK_VERSION: 12.4.0.GA
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
+    - name: Display Swift Version
+      run: swift --version
+
 
     - name: Retrieve package version
       run: |
@@ -28,7 +32,7 @@ jobs:
       working-directory: ./iphone
       run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 12' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js
       uses: actions/setup-node@v2
       with:
         node-version: '18.x'
