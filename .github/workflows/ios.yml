@@ -12,12 +12,21 @@ on:
 
 jobs:
   ios:
-    runs-on: macos-latest
+    runs-on: macos-13
     name: iOS
     env:
-      SDK_VERSION: 11.0.0.GA
+      SDK_VERSION: 12.4.0.GA
+      # This one uses Swift 3.8.1. If you're running into the "Unsupported Swift architecture", verify which
+      # Swift version is used for the specified Ti SDK version, e.g. by looking into:
+      # ~/Library/Application Support/Titanium/mobilesdk/osx/<version>/iphone/Frameworks/TitaniumKit.xcframework/ios-arm64/TitaniumKit.framework/Headers/TitaniumKit-Swift.h 
+      #
+      # An overview of macOS <> Xcode <> Swift versions can be found here: https://developer.apple.com/support/xcode/
+      DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
+
+    - name: Display Swift Version
+      run: swift --version
 
     - name: Retrieve package version
       run: |
@@ -28,10 +37,10 @@ jobs:
       working-directory: ./iphone
       run: xcodebuild -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 12' -scheme hyperloop -target Tests -configuration Debug GCC_PREPROCESSOR_DEFINITIONS='USE_JSCORE_FRAMEWORK=1' test | xcpretty -r junit
 
-    - name: Use Node.js 14.x
+    - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '14.x'
+        node-version: '18.x'
 
     - name: Package metabase
       working-directory: ./packages/hyperloop-ios-metabase
@@ -55,7 +64,7 @@ jobs:
 
     - name: Cache SDK
       id: titanium-cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/Library/Application Support/Titanium/mobilesdk/osx/${{ env.SDK_VERSION }}
         key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
@@ -74,7 +83,7 @@ jobs:
         ti build -p ios --build-only
 
     - name: Archive iOS artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v4
       with:
         name: hyperloop-iphone-${{ env.packageVersion }}
         if-no-files-found: error
