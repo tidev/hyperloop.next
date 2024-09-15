@@ -80,6 +80,7 @@
 		24B0352E1BC4858500F3D9E5 /* HyperloopViewProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HyperloopViewProxy.h; path = titanium/HyperloopViewProxy.h; sourceTree = "<group>"; };
 		24B0355C1BC7233000F3D9E5 /* TestJS.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = TestJS.m; sourceTree = "<group>"; };
 		24B0355F1BC726E000F3D9E5 /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		5DE940252C962758002AFC1D /* TiHyperloopModule_Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = TiHyperloopModule_Prefix.pch; sourceTree = "<group>"; };
 		B68D53D31CAEED6600EBFE65 /* define.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = define.m; path = src/define.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -106,6 +107,7 @@
 		2461FD7E1BB08963006D4D9E = {
 			isa = PBXGroup;
 			children = (
+				5DE940252C962758002AFC1D /* TiHyperloopModule_Prefix.pch */,
 				247077771BB3057C00150B9F /* titanium.xcconfig */,
 				247077701BB304CF00150B9F /* Titanium */,
 				2461FDA61BB0C3D9006D4D9E /* Source */,
@@ -395,28 +397,52 @@
 		2461FD911BB08963006D4D9E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"TIMODULE=1",
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_MISSING_PROPERTY_SYNTHESIS = NO;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				GCC_MODEL_TUNING = G5;
+				GCC_PREFIX_HEADER = TiHyperloopModule_Prefix.pch;
+				GCC_PREPROCESSOR_DEFINITIONS = "TI_VERSION=$(TI_VERSION)";
+				MTL_ENABLE_DEBUG_INFO = "";
+				OTHER_CFLAGS = (
+					"-DDEBUG",
+					"-DTI_POST_1_2",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET= 12.0;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				WARNING_CFLAGS = "-Wno-arc-performSelector-leaks";
 			};
 			name = Debug;
 		};
 		2461FD921BB08963006D4D9E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"TIMODULE=1",
-				);
-				IPHONEOS_DEPLOYMENT_TARGET= 12.0;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_MISSING_PROPERTY_SYNTHESIS = NO;
+				GCC_MODEL_TUNING = "";
+				GCC_PREFIX_HEADER = TiHyperloopModule_Prefix.pch;
+				GCC_PREPROCESSOR_DEFINITIONS = "TI_VERSION=$(TI_VERSION)";
+				MTL_ENABLE_DEBUG_INFO = "";
+				OTHER_CFLAGS = "-DTI_POST_1_2";
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
+				WARNING_CFLAGS = "-Wno-arc-performSelector-leaks";
 			};
 			name = Release;
 		};

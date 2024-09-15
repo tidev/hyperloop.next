@@ -18,7 +18,7 @@ jobs:
       SDK_VERSION: 12.4.0.GA
       # This one uses Swift 3.8.1. If you're running into the "Unsupported Swift architecture", verify which
       # Swift version is used for the specified Ti SDK version, e.g. by looking into:
-      # ~/Library/Application Support/Titanium/mobilesdk/osx/<version>/iphone/Frameworks/TitaniumKit.xcframework/ios-arm64/TitaniumKit.framework/Headers/TitaniumKit-Swift.h 
+      # ~/Library/Application Support/Titanium/mobilesdk/osx/<version>/iphone/Frameworks/TitaniumKit.xcframework/ios-arm64/TitaniumKit.framework/Headers/TitaniumKit-Swift.h
       #
       # An overview of macOS <> Xcode <> Swift versions can be found here: https://developer.apple.com/support/xcode/
       DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
