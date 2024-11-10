@@ -136,9 +136,11 @@ exports.cliVersion = '>=3.2';
 
 		// Copy our root "build.gradle" template script to the root build directory.
 		const templatesDir = path.join(this.builder.platformPath, 'templates', 'build');
-		await fs.copyFile(
-			path.join(templatesDir, 'root.build.gradle'),
-			path.join(this.hyperloopBuildDir, 'build.gradle'));
+		let rootBuildGradleContent = await fs.readFile(path.join(templatesDir, 'root.build.gradle'));
+		rootBuildGradleContent = ejs.render(rootBuildGradleContent.toString(), {
+			classpaths: [],
+		});
+		await fs.writeFile(path.join(this.hyperloopBuildDir, 'build.gradle'), rootBuildGradleContent);
 
 		// Copy our Titanium template's gradle constants file.
 		// This provides the Google library versions we use and defines our custom "AndroidManifest.xml" placeholders.
