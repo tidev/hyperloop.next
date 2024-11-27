@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Android
     env:
-      SDK_VERSION: 12.4.0.GA
+      SDK_VERSION: 12.5.1.GA
     steps:
     - uses: actions/checkout@v4
 
