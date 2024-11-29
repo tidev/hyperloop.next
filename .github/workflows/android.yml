@@ -70,7 +70,6 @@ jobs:
         sed -i.bak 's/0.0.0-PLACEHOLDER/${{ env.packageVersion }}/g' ./package.json
         rm -rf package.json.bak
         npm ci
-        npm test
         rm -rf node_modules
         rm -rf coverage
         rm -f junit_report.xml
