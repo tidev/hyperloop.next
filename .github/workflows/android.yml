@@ -12,10 +12,10 @@ on:
 
 jobs:
   android:
-    runs-on: ubuntu-latest
+    runs-on: macos-13
     name: Android
     env:
-      SDK_VERSION: 12.4.0.GA
+      SDK_VERSION: 12.5.1.GA
     steps:
     - uses: actions/checkout@v4
 
@@ -34,7 +34,7 @@ jobs:
         echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
 
     - name: Use Node.js
-      uses: actions/setup-node@v2
+      uses: actions/setup-node@v4
       with:
         node-version: '18.x'
 
