@@ -30,7 +30,7 @@
     "cross-env": "^5.2.1",
     "mocha": "^5.2.0",
     "mocha-jenkins-reporter": "^0.4.2",
-    "mock-fs": "^4.10.4",
+    "mock-fs": "^5.5.0",
     "nyc": "^13.3.0",
     "sinon": "^7.5.0",
     "tmp": "^0.0.33"
