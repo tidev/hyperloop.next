@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-13
     name: Android
     env:
-      SDK_VERSION: 13.0.0.RC
+      SDK_VERSION: 13.0.0.GA
     steps:
     - uses: actions/checkout@v4
 
