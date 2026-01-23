@@ -12,7 +12,7 @@ on:
 
 jobs:
   android:
-    runs-on: macos-13
+    runs-on: macos-15
     name: Android
     env:
       SDK_VERSION: 13.0.0.GA

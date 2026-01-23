@@ -245,6 +245,7 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 
 			next();
 		} else {
+			util.logger.debug('No framework umbrella header found for ' + frameworkName + '. Skipping ...');
 			return next();
 		}
 	}, function (err) {
