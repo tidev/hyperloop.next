@@ -361,7 +361,7 @@ function writeAndroidManifest(next) {
 }
 
 /**
- * write the updated ios manifest if necessary
+ * write the updated iOS manifest if necessary
  */
 function writeiOSManifest(next) {
 	var fn = path.join(__dirname, '..', 'iphone', 'manifest'),
@@ -378,7 +378,7 @@ function writeiOSManifest(next) {
 }
 
 /**
- * write the updated android plugin package.json if neccesary
+ * write the updated android plugin package.json if necessary
  */
 function writeAndroidPluginPackage (next) {
 	var fn = path.join(__dirname, '..', 'android', 'plugins', 'hyperloop', 'hooks', 'android', 'package.json'),
@@ -440,8 +440,7 @@ function build(branch, callback) {
 				next();
 			});
 		},
-		// TODO Do we need to install xcode or something?
-		// TODO Install python if it's not installed?
+		// TODO Do we need to install Xcode or something?
 
 		// Grab the paths to Android NDK and SDK
 		function (next) {

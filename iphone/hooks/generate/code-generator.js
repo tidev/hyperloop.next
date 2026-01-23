@@ -17,7 +17,7 @@ class CodeGenerator {
 	 *
 	 * @param {Object} sourceSet Set of source info objects passed to template files
 	 * @param {Object} modules Map of module info objects
-	 * @param {Object} iosBuilder iOS bulder instance
+	 * @param {Object} iosBuilder iOS builder instance
 	 */
 	constructor(sourceSet, modules, iosBuilder) {
 		this.sourceSet = sourceSet;
@@ -285,7 +285,7 @@ class CodeGenerator {
 	/**
 	 * Fixes custom module imports to use the correct framework header.
 	 *
-	 * Prior to dynamic framework support framework includes were simply genrated
+	 * Prior to dynamic framework support framework includes were simply generated
 	 * by assuming their umbrella header name. Dynamic frameworks that are written
 	 * in Swift provide an ObjC interface header which requires a different header
 	 * resolution. It is easier to fix this here afterwards than to do it in the
@@ -321,7 +321,7 @@ class CodeGenerator {
 	 * header imports.
 	 *
 	 * Prior to this we would simply assume umbrella headers as Framework/Framework.h,
-	 * which is a best practive though, but not every framework sticks to this.
+	 * which is a best practice though, but not every framework sticks to this.
 	 *
 	 * Utilizes the frameworks metadata to read the umbrella header from a framework's
 	 * module map or falls back to the old naming scheme.

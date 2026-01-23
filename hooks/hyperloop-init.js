@@ -73,14 +73,14 @@ class HyperloopBuilderFactory {
 	 * @return {Object} Object with loaded config values
 	 */
 	loadConfiguration() {
-		const possibleConfigurtionFiles = [
+		const possibleConfigurationFiles = [
 			path.join(this.builder.projectDir, 'appc.js'),
 			path.join(this.builder.projectDir, '.appc.js'),
 			path.join(process.env.HOME || process.env.USERPROFILE, '.appc.js')
 		];
 		let config = {};
 
-		for (let configurationFile of possibleConfigurtionFiles) {
+		for (let configurationFile of possibleConfigurationFiles) {
 			if (fs.existsSync(configurationFile)) {
 				this.mergeObjectProperties(config, require(configurationFile));
 			}

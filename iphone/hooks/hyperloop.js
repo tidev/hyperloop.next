@@ -173,7 +173,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		process.exit(1);
 	}
 
-	// check for min ios version
+	// check for min iOS version
 	if (this.appc.version.lt(this.builder.minIosVer, IOS_MIN)) {
 		this.logger.error('Hyperloop compiler works best with iOS ' + IOS_MIN + ' or greater.');
 		this.logger.error('Your setting is currently set to: ' + (this.builder.tiapp.ios['min-ios-ver'] || this.builder.minIosVer));
@@ -460,7 +460,7 @@ HyperloopiOSBuilder.prototype.processJSFile = function processJSFile(obj, source
 
 				self.logger.trace('Checking require for: ' + pkg.toLowerCase() + '/' + className.toLowerCase());
 
-				// if the framework is not found, then check if it was possibly mispelled
+				// if the framework is not found, then check if it was possibly misspelled
 				if (!framework && !isBuiltin) {
 					const pkgSoundEx = soundEx(pkg);
 					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
@@ -524,7 +524,7 @@ HyperloopiOSBuilder.prototype.processJSFile = function processJSFile(obj, source
 				const isBuiltin = pkg === 'Titanium';
 				const framework = self.frameworks.get(pkg);
 
-				// if the framework is not found, then check if it was possibly mispelled
+				// if the framework is not found, then check if it was possibly misspelled
 				if (!framework && !isBuiltin) {
 					const pkgSoundEx = soundEx(pkg);
 					const maybes = Array.from(self.frameworks.keys()).filter(function (frameworkName) {
@@ -621,7 +621,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 			this.normalizeFrameworks(outfile);
 			this.determineFrameworkAvailability();
 		} else {
-			this.populateFrameworkAvailabiltyFromCache();
+			this.populateFrameworkAvailabilityFromCache();
 		}
 
 		if (cached && this.swiftSources.length === 0 && !this.forceMetabase) {
@@ -705,7 +705,7 @@ HyperloopiOSBuilder.prototype.generateSourceFiles = function generateSourceFiles
 		}, this);
 	}
 
-	// Framwork umbrella headers are required to propery resolve forward declarations
+	// Framework umbrella headers are required to properly resolve forward declarations
 	this.frameworks.forEach(frameworkMeta => {
 		if (!frameworkMeta.umbrellaHeader || !fs.existsSync(frameworkMeta.umbrellaHeader)) {
 			this.logger.warn(`Unable to detect framework umbrella header for ${frameworkMeta.name}.`);
@@ -843,7 +843,7 @@ HyperloopiOSBuilder.prototype.determineFrameworkAvailability = function determin
  * This only needs to be done in the main frameworks property since all other
  * Maps reference the same metadata objects.
  */
-HyperloopiOSBuilder.prototype.populateFrameworkAvailabiltyFromCache = function populateFrameworkAvailabiltyFromCache() {
+HyperloopiOSBuilder.prototype.populateFrameworkAvailabilityFromCache = function populateFrameworkAvailabilityFromCache() {
 	const cachePathAndFilename = path.join(this.hyperloopBuildDir, 'metadata-framework-availability.json');
 	let availabilityMap = {};
 	try {
@@ -1098,7 +1098,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 			if (this.systemFrameworks.has(frameworkName)) {
 				frameworksToAdd.push(this.systemFrameworks.get(frameworkName));
 			} else {
-				this.logger.error(`Unable to link against non-existing system framework "${frameworkName}". Please check your appc.js configurtion.`);
+				this.logger.error(`Unable to link against non-existing system framework "${frameworkName}". Please check your appc.js configuration.`);
 				process.exit(1);
 			}
 		}, this);
@@ -1240,7 +1240,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		}, this);
 	}
 
-	// add the source files to xcode to compile
+	// add the source files to Xcode to compile
 	if (nativeModules.length) {
 		groups['Native'] || (groups['Native'] = {});
 		nativeModules.forEach(function (mod) {
@@ -1426,7 +1426,7 @@ HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCust
  * @param {Object} data - The hook payload.
  */
 HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
-	// remove empty Framework directory that might have been created by cocoapods
+	// remove empty Framework directory that might have been created by CocoaPods
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
 		fs.removeSync(frameworksDir);

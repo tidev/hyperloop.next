@@ -8,7 +8,7 @@ const metabase = require('../metabase');
  * A task that will generate the Android metabase
  *
  * This is implemented as a simple base task because the metabase generation
- * itself has a caching machanisim, so we just delegate and return the result.
+ * itself has a caching mechanism, so we just delegate and return the result.
  */
 class GenerateMetabaseTask extends BaseFileTask {
 
@@ -52,7 +52,7 @@ class GenerateMetabaseTask extends BaseFileTask {
 	}
 
 	/**
-	 * Gets the generated metabse
+	 * Gets the generated metabase
 	 *
 	 * @return {Object} Metabase object
 	 */

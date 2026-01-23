@@ -353,7 +353,7 @@ module.exports = {
 };
 ```
 
-Any `flags` added to the `xcodebuild` property will be passed to `xcodebuild`. Any `frameworks` in the array provided will be automatically added to the xcode project.  _Note: any referenced frameworks in your Hyperloop code are automatically added for you. However, this gives you even more control to custom your compile environment._
+Any `flags` added to the `xcodebuild` property will be passed to `xcodebuild`. Any `frameworks` in the array provided will be automatically added to the Xcode project.  _Note: any referenced frameworks in your Hyperloop code are automatically added for you. However, this gives you even more control to custom your compile environment._
 
 ### Adding a third-party framework
 

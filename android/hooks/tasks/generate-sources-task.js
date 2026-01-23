@@ -41,7 +41,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	}
 
 	/**
-	 * Metabase that will be used to genrate the warpper files
+	 * Metabase that will be used to generate the wrapper files
 	 *
 	 * @return {Object} Metabase object
 	 */
@@ -84,7 +84,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	}
 
 	/**
-	 * Does a full task run, wich will generate the Hyperloop wrapper for every
+	 * Does a full task run, which will generate the Hyperloop wrapper for every
 	 * referenced Java class
 	 *
 	 * @return {Promise}
@@ -149,7 +149,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	}
 
 	/**
-	 * Removes any unused class wrappers from the output directoy
+	 * Removes any unused class wrappers from the output directory
 	 *
 	 * @param {Array.<String>} classesToRemove Array of class names
 	 * @return {Promise}
@@ -259,7 +259,7 @@ class GenerateSourcesTask extends IncrementalFileTask {
 	/**
 	 * Loads the class list used in incremental task runs
 	 *
-	 * @return {Promise<Boolean>} True if the files was loaded succesfully, false if not
+	 * @return {Promise<Boolean>} True if the files was loaded successfully, false if not
 	 */
 	async loadClassList() {
 		try {

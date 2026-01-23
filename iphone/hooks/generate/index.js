@@ -79,37 +79,37 @@ function processProtocolInheritance(protocols) {
 	 * Recursively merges a protocol with all it's inherited protocols
 	 *
 	 * @param {Object} protocol A protocol
-	 * @param {Number} logIntendationLevel Intendation level for debugging messages
+	 * @param {Number} logIndentationLevel Indentation level for debugging messages
 	 */
-	function mergeWithParentProtocols(protocol, logIntendationLevel) {
-		var logIntendationCharacter = '  ';
-		var logIntendation = logIntendationCharacter.repeat(logIntendationLevel++);
+	function mergeWithParentProtocols(protocol, logIndentationLevel) {
+		var logIndentationCharacter = '  ';
+		var logIndentation = logIndentationCharacter.repeat(logIndentationLevel++);
 		var parentProtocols = protocol.protocols;
 		var protocolSignature = parentProtocols ? protocol.name + ' <' + parentProtocols.join(', ') + '>' : protocol.name;
-		util.logger.trace(logIntendation + 'Processing inherited protocols of ' + protocolSignature);
-		logIntendation = logIntendationCharacter.repeat(logIntendationLevel);
+		util.logger.trace(logIndentation + 'Processing inherited protocols of ' + protocolSignature);
+		logIndentation = logIndentationCharacter.repeat(logIndentationLevel);
 
 		if (mergedProtocols.indexOf(protocol.name) !== -1) {
-			util.logger.trace(logIntendation + protocol.name + ' was already merged with all protocols it inherits from.');
+			util.logger.trace(logIndentation + protocol.name + ' was already merged with all protocols it inherits from.');
 			return;
 		}
 		if (!parentProtocols) {
-			util.logger.trace(logIntendation + protocol.name + ' does not inherit from any other protocols.');
+			util.logger.trace(logIndentation + protocol.name + ' does not inherit from any other protocols.');
 			mergedProtocols.push(protocol.name);
 			return;
 		}
 
-		util.logger.trace(logIntendation + 'Iterating over inherited protocols of ' + protocol.name);
-		logIntendationLevel++;
+		util.logger.trace(logIndentation + 'Iterating over inherited protocols of ' + protocol.name);
+		logIndentationLevel++;
 		protocol.protocols.forEach(function (parentProtocolName) {
 			if (protocol.name === parentProtocolName) {
-				util.logger.trace(logIntendation + 'Invalid protocol meta information. ' + protocol.name.red + ' cannot have itself as parent, skipping.');
+				util.logger.trace(logIndentation + 'Invalid protocol meta information. ' + protocol.name.red + ' cannot have itself as parent, skipping.');
 				return;
 			}
 			var parentProtocol = protocols[parentProtocolName];
-			mergeWithParentProtocols(parentProtocol, logIntendationLevel);
+			mergeWithParentProtocols(parentProtocol, logIndentationLevel);
 
-			util.logger.trace(logIntendation + 'Merging ' + parentProtocol.name.cyan + ' => ' + protocol.name.cyan);
+			util.logger.trace(logIndentation + 'Merging ' + parentProtocol.name.cyan + ' => ' + protocol.name.cyan);
 			protocol.properties = protocol.properties || {};
 			protocol.methods = protocol.methods || {};
 			merge(parentProtocol.properties, protocol.properties);
@@ -121,8 +121,8 @@ function processProtocolInheritance(protocols) {
 
 	Object.keys(protocols).forEach(function (protocolName) {
 		var protocol = protocols[protocolName];
-		var logIntendationLevel = 0;
-		mergeWithParentProtocols(protocol, logIntendationLevel);
+		var logIndentationLevel = 0;
+		mergeWithParentProtocols(protocol, logIndentationLevel);
 	});
 }
 
