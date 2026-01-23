@@ -173,7 +173,7 @@ HyperloopiOSBuilder.prototype.validate = function validate() {
 		process.exit(1);
 	}
 
-	// check for min ios version
+	// check for min iOS version
 	if (this.appc.version.lt(this.builder.minIosVer, IOS_MIN)) {
 		this.logger.error('Hyperloop compiler works best with iOS ' + IOS_MIN + ' or greater.');
 		this.logger.error('Your setting is currently set to: ' + (this.builder.tiapp.ios['min-ios-ver'] || this.builder.minIosVer));
@@ -1240,7 +1240,7 @@ HyperloopiOSBuilder.prototype.updateXcodeProject = function updateXcodeProject()
 		}, this);
 	}
 
-	// add the source files to xcode to compile
+	// add the source files to Xcode to compile
 	if (nativeModules.length) {
 		groups['Native'] || (groups['Native'] = {});
 		nativeModules.forEach(function (mod) {
@@ -1426,7 +1426,7 @@ HyperloopiOSBuilder.prototype.hasCustomShellScriptBuildPhases = function hasCust
  * @param {Object} data - The hook payload.
  */
 HyperloopiOSBuilder.prototype.hookRemoveFiles = function hookRemoveFiles(data) {
-	// remove empty Framework directory that might have been created by cocoapods
+	// remove empty Framework directory that might have been created by CocoaPods
 	var frameworksDir = path.join(this.builder.xcodeAppDir, 'Frameworks');
 	if (fs.existsSync(frameworksDir) && fs.readdirSync(frameworksDir).length === 0) {
 		fs.removeSync(frameworksDir);

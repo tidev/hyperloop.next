@@ -19,7 +19,7 @@ var spawn = require('child_process').spawn,
 
 
 /**
- * return the configured SDK path
+ * Returns the configured SDK path
  */
 function getSDKPath (sdkType, callback) {
 	exec('/usr/bin/xcrun --sdk ' + sdkType + ' --show-sdk-path', function (err, stdout) {
@@ -29,7 +29,7 @@ function getSDKPath (sdkType, callback) {
 }
 
 /**
- * convert an apple style version (9.0) to a semver compatible version
+ * Converts an Apple style version (9.0) to a semver compatible version
  */
 function appleVersionToSemver (ver) {
 	var v = String(ver).split('.');
@@ -43,7 +43,7 @@ function appleVersionToSemver (ver) {
 }
 
 /**
- * return a parsed plist for a given framework
+ * Returns a parsed plist for a given framework
  */
 function getPlistForFramework (info, callback) {
 	if (fs.existsSync(info)) {
@@ -203,7 +203,7 @@ class ModuleMetadata {
 	}
 
 	/**
-	 * Prases a plain object received from JSON data and converts it back to a
+	 * Parses a plain object received from JSON data and converts it back to a
 	 * module metadata instance.
 	 *
 	 * @param {Object} json Object containing data from JSON
@@ -221,7 +221,7 @@ class ModuleMetadata {
 }
 
 /**
- * generate system framework includes mapping
+ * Generates system framework includes mapping
  */
 function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
 	const frameworksPath = path.resolve(path.join(sdkPath, 'System/Library/Frameworks'));
@@ -260,7 +260,7 @@ function generateSystemFrameworks (sdkPath, iosMinVersion, callback) {
  * mapped to the parent framework.
  *
  * @param {String} frameworkName Name of the framework
- * @param {String} frameworkPath Full path to the framwork
+ * @param {String} frameworkPath Full path to the framework
  * @param {Object} includes Object with all include mappings
  */
 function extractImplementationsFromFramework(frameworkName, frameworkPath, includes) {
@@ -276,7 +276,7 @@ function extractImplementationsFromFramework(frameworkName, frameworkPath, inclu
  * Iterates over a framework's Headers directory and any nested frameworks to
  * collect the paths to all available header files of a framework.
  *
- * @param {String} frameworkPath Full path to the framwork
+ * @param {String} frameworkPath Full path to the framework
  * @return {Array} List with paths to all found header files
  */
 function collectFrameworkHeaders(frameworkPath) {
@@ -300,11 +300,11 @@ function collectFrameworkHeaders(frameworkPath) {
 }
 
 /**
- * generate a metabase
+ * Generates a metabase
  *
  * @param {String} buildDir cache directory to write the files
- * @param {String} sdk the sdk type such as iphonesimulator
- * @param {String} sdk path the path to the SDK
+ * @param {String} sdk the SDK type such as iphonesimulator
+ * @param {String} sdkPath the path to the SDK
  * @param {String} iosMinVersion the min version such as 9.0
  * @param {Array} includes array of header paths (should be absolute paths)
  * @param {Boolean} excludeSystem if true, will exclude any system libraries in the generated output
@@ -413,7 +413,7 @@ function generateMetabase (buildDir, sdk, sdkPath, iosMinVersion, includes, excl
 }
 
 /**
- * return the system frameworks mappings as JSON for a given sdkType and minVersion
+ * Returns the system frameworks mappings as JSON for a given sdkType and minVersion
  */
 function getSystemFrameworks (cacheDir, sdkType, minVersion, callback) {
 	var fn = 'metabase-mappings-' + sdkType + '-' + minVersion + '.json';
@@ -456,7 +456,7 @@ function recursiveReadDir (dir, result) {
 }
 
 /**
- * for an array of directories, return all validate header files
+ * For an array of directories, returns all validate header files
  */
 function getAllHeaderFiles (directories) {
 	var files = [];
@@ -861,7 +861,7 @@ function getBuiltProductsRootPath (basePath, configurationName, sdkType) {
  * Gets JSON encoded data from a cache file.
  *
  * @param {String} cacheDir Path to the cache directory
- * @param {String} cacheToken Hash to identifiy the required cache file
+ * @param {String} cacheToken Hash to identify the required cache file
  * @return {Object} The CocoaPods metabase mappings
  */
 function readFromCache (cachePathAndFilename) {
@@ -939,7 +939,7 @@ function readModulesMetadataFromCache(cachePathAndFilename) {
 
 
 /**
- * handle buffer output
+ * Handles buffer output
  */
 function createLogger (obj, fn) {
 	return (function () {
@@ -965,7 +965,7 @@ function createLogger (obj, fn) {
 }
 
 /**
- * run the ibtool
+ * Runs the ibtool
  */
 function runIBTool (runDir, args, callback) {
 	var spawn = require('child_process').spawn,
@@ -1132,7 +1132,7 @@ function runCocoaPodsBuild (basedir, builder, callback) {
 }
 
 /**
- * parse the xcconfig file
+ * Parses the xcconfig file
  */
 function parseCocoaPodXCConfig (fn) {
 	var config = {};
@@ -1148,7 +1148,7 @@ function parseCocoaPodXCConfig (fn) {
 }
 
 /**
- * generate a map of xcode settings for CocoaPods
+ * Generates a map of Xcode settings for CocoaPods
  */
 function getCocoaPodsXCodeSettings (basedir) {
 	var podDir = path.join(basedir, 'Pods');
