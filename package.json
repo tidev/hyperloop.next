@@ -3,12 +3,10 @@
   "version": "8.0.0",
   "description": "Access native APIs from within Titanium.",
   "keywords": [
-    "appcelerator",
     "titanium",
     "hyperloop",
     "android",
-    "ios",
-    "windows"
+    "ios"
   ],
   "author": "Jeff Haynie",
   "contributors": [

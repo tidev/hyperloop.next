@@ -688,13 +688,13 @@ function generateProp (state, json, prop, readonly, name) {
 }
 
 /**
- * Generates a view model used in the class template to generate soure
+ * Generates a view model used in the class template to generate source
  * code for class level properties
  *
  * @param {Object} templateVariables Holds all variable later used in the template
  * @param {Object} metabase The complete metabase object
  * @param {Object} propertyMeta Meta info for the current property
- * @return {Object} View model used inside the class tempalte
+ * @return {Object} View model used inside the class template
  */
 function generateClassProperty(templateVariables, metabase, propertyMeta) {
 	var viewModel = {name: propertyMeta.name};

@@ -78,7 +78,7 @@ function makeClass(json, cls, state) {
  *  - The default Objective-C class name
  *  - The mangled class name for Swift classes
  *  - A combination of FrameworkName.ClassName for Objective-C classes that were
- *    impported from the Objective-C interface header of a Swift module.
+ *    imported from the Objective-C interface header of a Swift module.
  *
  * @param {Object} cls Class metadata object
  * @param {Object} state Parser state
