@@ -167,6 +167,7 @@ exports.cliVersion = '>=3.2';
 			compileSdkVersion: this.builder.targetSDK,
 			moduleId: this.builder.moduleId,
 			minSdkVersion: this.builder.minSDK,
+			sdkDir: this.builder.androidInfo.sdk.path.replace(/\\/g, '\\\\'),
 			targetSdkVersion: this.builder.targetSDK,
 			tiMavenUrl: encodeURI('file://' + path.join(this.builder.platformPath, 'm2repository').replace(/\\/g, '/')),
 			tiProjectPlatformAndroidDir: path.join(this.builder.projectDir, 'platform', 'android'),

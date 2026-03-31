@@ -15,12 +15,12 @@ repositories {
 // Android build settings for this library project.
 android {
 	namespace '<%- moduleId %>'
-	compileSdkVersion <%- compileSdkVersion %>
+	compileSdk <%- compileSdkVersion %>
 	defaultConfig {
-		minSdkVersion <%- minSdkVersion %>
-		targetSdkVersion <%- targetSdkVersion %>
+		minSdk <%- minSdkVersion %>
+		targetSdk <%- targetSdkVersion %>
 	}
-	lintOptions {
+	lint {
 		checkReleaseBuilds false
 	}
 }
@@ -53,12 +53,12 @@ task generateJarDependenciesFile() {
 
 		// Add the main Android framework JAR to the collection.
 		jarPathCollection.add(
-			file("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar").toString())
+			file('<%- sdkDir %>/platforms/android-<%- compileSdkVersion %>/android.jar').toString())
 
 		// Fetch JAR paths to all dependencies referenced by this gradle script and "./platform/android/build.gradle".
-		project.android.libraryVariants.all { variant ->
-			variant.getCompileClasspath(null).each {
-				def fileObject = it
+		def compileClasspath = configurations.findByName('compileClasspath')
+		if (compileClasspath != null) {
+			compileClasspath.files.each { fileObject ->
 				def filePath = fileObject.toString()
 				if (!filePath.startsWith(buildDir.toString()) && fileObject.exists()) {
 					jarPathCollection.add(filePath)
