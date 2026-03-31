@@ -21,7 +21,7 @@ jobs:
       # ~/Library/Application Support/Titanium/mobilesdk/osx/<version>/iphone/Frameworks/TitaniumKit.xcframework/ios-arm64/TitaniumKit.framework/Headers/TitaniumKit-Swift.h
       #
       # An overview of macOS <> Xcode <> Swift versions can be found here: https://developer.apple.com/support/xcode/
-      DEVELOPER_DIR: /Applications/Xcode_14.3.1.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
     steps:
     - uses: actions/checkout@v4
 
