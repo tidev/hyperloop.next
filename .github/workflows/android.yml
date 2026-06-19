@@ -12,15 +12,15 @@ on:
 
 jobs:
   android:
-    runs-on: macos-15
+    runs-on: macos-26
     name: Android
     env:
-      SDK_VERSION: 13.1.1.GA
+      SDK_VERSION: 13.2.0.GA
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Set up JDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v5
       with:
         java-version: '22'
         distribution: 'temurin'
@@ -34,12 +34,12 @@ jobs:
         echo "packageVersion=${PACKAGE_VERSION}" >> $GITHUB_ENV
 
     - name: Use Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
         node-version: '22.x'
 
     - name: Cache Gradle packages
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: |
           ~/.gradle/caches
@@ -53,7 +53,7 @@ jobs:
 
     - name: Cache SDK
       id: titanium-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.titanium/mobilesdk/linux/${{ env.SDK_VERSION }}
         key: ${{ runner.os }}-titanium-sdk-${{ env.SDK_VERSION }}
@@ -87,7 +87,7 @@ jobs:
         ti build -p android --build-only
 
     - name: Archive Android zip
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: hyperloop-android-${{ env.packageVersion }}
         if-no-files-found: error
