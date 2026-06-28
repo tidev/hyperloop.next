@@ -6,7 +6,7 @@ CWD=`pwd`
 CURVERSION=`grep "^version:" manifest`
 VERSION=`grep "^version:" manifest | cut -c 10-`
 METABASE_VERSION=`grep "\"version\":" ../packages/hyperloop-ios-metabase/package.json | cut -d \" -f 4`
-export TITANIUM_SDK="`node ../tools/tiver.js`"
+export TITANIUM_SDK="13.2.0.GA"
 
 echo "Titanium SDK version: "
 echo $TITANIUM_SDK

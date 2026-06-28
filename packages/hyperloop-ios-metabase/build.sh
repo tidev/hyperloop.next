@@ -8,7 +8,7 @@ echo "Building Hyperloop Metabase Generator"
 
 xcodebuild clean
 rm -rf build
-xcodebuild -configuration Release | xcpretty
+xcodebuild -configuration Release ARCHS=$(uname -m) | xcpretty
 rm -rf bin
 mkdir bin
 cp build/Release/hyperloop-metabase bin/metabase
