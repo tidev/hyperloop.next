@@ -15,12 +15,12 @@ repositories {
 // Android build settings for this library project.
 android {
 	namespace '<%- moduleId %>'
-	compileSdkVersion <%- compileSdkVersion %>
+	compileSdk <%- compileSdkVersion %>
 	defaultConfig {
-		minSdkVersion <%- minSdkVersion %>
-		targetSdkVersion <%- targetSdkVersion %>
+		minSdk <%- minSdkVersion %>
+		targetSdk <%- targetSdkVersion %>
 	}
-	lintOptions {
+	lint {
 		checkReleaseBuilds false
 	}
 }
@@ -53,16 +53,47 @@ task generateJarDependenciesFile() {
 
 		// Add the main Android framework JAR to the collection.
 		jarPathCollection.add(
-			file("${android.sdkDirectory}/platforms/${android.compileSdkVersion}/android.jar").toString())
+			file('<%- sdkDir %>/platforms/android-<%- compileSdkVersion %>/android.jar').toString())
 
 		// Fetch JAR paths to all dependencies referenced by this gradle script and "./platform/android/build.gradle".
-		project.android.libraryVariants.all { variant ->
-			variant.getCompileClasspath(null).each {
-				def fileObject = it
-				def filePath = fileObject.toString()
-				if (!filePath.startsWith(buildDir.toString()) && fileObject.exists()) {
-					jarPathCollection.add(filePath)
+		// Note: The generic "compileClasspath" configuration was removed in AGP 8+ for library projects.
+		// Use variant-specific compile classpath configurations instead.
+		def variantCompileConfigs = ['debugCompileClasspath', 'releaseCompileClasspath']
+		variantCompileConfigs.each { configName ->
+			def config = configurations.findByName(configName)
+			if (config != null) {
+				config.files.each { fileObject ->
+					def filePath = fileObject.toString()
+					if (!filePath.startsWith(buildDir.toString()) && fileObject.exists()) {
+						jarPathCollection.add(filePath)
+					}
 				}
+			}
+		}
+
+		// Extract classes.jar from AAR files so the metabase generator (BCEL) can load them.
+		// BCEL requires .jar files on the classpath; it cannot read .aar files directly.
+		def extractedAarDir = file("${buildDir}/hyperloop/extracted-aars")
+		extractedAarDir.mkdirs()
+		def aarPaths = jarPathCollection.findAll { it.endsWith('.aar') }
+		aarPaths.each { aarPath ->
+			def aarFile = file(aarPath)
+			def extractedFile = file("${extractedAarDir}/${aarFile.name}.jar")
+			if (!extractedFile.exists() || extractedFile.lastModified() < aarFile.lastModified()) {
+				try {
+					def zip = new java.util.zip.ZipFile(aarFile)
+					def entry = zip.getEntry('classes.jar')
+					if (entry != null) {
+						extractedFile.bytes = zip.getInputStream(entry).bytes
+					}
+					zip.close()
+				} catch (Exception e) {
+					// Log but continue if AAR extraction fails
+					println "Warning: Failed to extract classes.jar from ${aarFile.name}: ${e.message}"
+				}
+			}
+			if (extractedFile.exists()) {
+				jarPathCollection.add(extractedFile.toString())
 			}
 		}
 
