@@ -10,7 +10,6 @@ onexit () {
 
 	# Reset the generated version of the manifest to VERSION
 	git checkout HEAD -- android/manifest
-	git checkout HEAD -- android/build.properties
 	git checkout HEAD -- iphone/manifest
 	git checkout HEAD -- iphone/titanium.xcconfig
 	rm -rf $SCRIPT_PATH/iphone/*.bak
@@ -19,7 +18,6 @@ onexit () {
 
 trap onexit 0 1 2 3 6 9 15
 
-TISDK_SEMVER=">=9.2.0"
 CHECK="✓ "
 
 # Make sure the Android SDK is installed
@@ -37,25 +35,27 @@ then
 fi
 
 # Make sure we have at least the Android 7.1 (SDK 25) installed
-if [ ! -d "$ANDROID_SDK/platforms/android-33" ];
+if [ ! -d "$ANDROID_SDK/platforms/android-35" ];
 then
-	echo "Android 13 (Tiramisu) / (android-33) not installed"
-	echo "Download the Android 13 SDK using Android Studio"
+	echo "Android 15 / (android-35) not installed"
+	echo "Download the Android 15 SDK using Android Studio"
 	exit 1
 fi
 
-# Use the default NDK-bundle if no one is specified
+# Use the default NDK if none is specified
 if [ "$ANDROID_NDK" = "" ];
 then
-	export ANDROID_NDK=$ANDROID_SDK/ndk-bundle
-fi
-
-# Make sure the Android NDK is installed
-if [ ! -f "$ANDROID_NDK/ndk-build" ];
-then
-	echo "Android NDK not installed"
-	echo "Download Android NDK Tools using Android Studio"
-	exit 1
+	if [ -d "$ANDROID_SDK/ndk" ];
+	then
+		export ANDROID_NDK=$(ls -d $ANDROID_SDK/ndk/*/ 2>/dev/null | sort -V | tail -1)
+		if [ -z "$ANDROID_NDK" ] || [ ! -f "$ANDROID_NDK/ndk-build" ];
+		then
+			echo "Android NDK not found under $ANDROID_SDK/ndk/"
+			exit 1
+		fi
+	else
+		export ANDROID_NDK=$ANDROID_SDK/ndk-bundle
+	fi
 fi
 
 # Make sure xcpretty is installed
@@ -70,17 +70,6 @@ fi
 
 # Update our node-dependencies
 npm install
-
-# Receive the current Titanium SDK version
-TISDK=$(node ./tools/tiver.js -minsdk "$TISDK_SEMVER")
-
-if [ $? -eq 1 ];
-then
-	echo "Minimum Titanium SDK not found. Must be $TISDK_SEMVER, current active SDK is: $TISDK"
-	exit 1
-else
-	echo "$CHECK Current Titanium SDK is $TISDK"
-fi
 
 # Flush dist/ directory
 rm -rf dist
@@ -97,6 +86,10 @@ sed -i.bak 's/VERSION/'"$VERSION"'/g' ./iphone/manifest
 echo "Building Android module..."
 cd android
 
+cd hooks
+npm install
+cd ..
+
 # These dirs need to exist for TRAVIS CI. Only create if doesn't exist
 mkdir -p ./lib
 rm -rf build/*
@@ -104,7 +97,7 @@ rm -rf libs/*
 mkdir -p ./build
 mkdir -p ./build/docs
 rm -rf dist
-appc run -p android --build-only
+ti build -p android --build-only
 if [ $? -ne 0 ];
 then
 	exit $?
@@ -121,6 +114,11 @@ cd ..
 # Builds iOS module
 echo "Building iOS module..."
 cd iphone
+
+cd hooks
+npm install
+cd ..
+
 rm -rf build
 rm -rf hyperloop-iphone-*.zip
 ./build.sh
