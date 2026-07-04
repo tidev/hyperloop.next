@@ -12,7 +12,7 @@ on:
 
 jobs:
   ios:
-    runs-on: macos-26
+    runs-on: macos-26-intel
     name: iOS
     env:
       SDK_VERSION: 13.2.0.GA
