@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     runs-on: macos-26
-    name: iOS
+    name: full build
     env:
       SDK_VERSION: 13.2.0.GA
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
