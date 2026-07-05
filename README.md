@@ -8,10 +8,11 @@ This repo contains the source code for Hyperloop, which lets you extend your Tit
 
 You must have the following on your machine to build it using `build.sh`, however, you can use `./tools/build.sh` to bootstrap your environment with the necessary build tools if you do not:
 
-- Titanium SDK 12.4.0+ (iOS) / 12.7.0+ (Android)
-- iOS 13.0+ / Android 5.0+
-- grunt
-- Ant
+- Titanium SDK 13.3.0+
+
+## Release
+
+The "build" workflow generates a ZIP file `hyperloop-module.zip` that contains the final release ZIP (e.g. `hyperloop-8.0.1.zip`). If you want to release a new hyperloop version wait for the "build" workflow to finish, grab the `hyperloop-module.zip` artifact, get the file `hyperloop-x.x.x.zip` out of that ZIP and use that for the release.
 
 ## License
 

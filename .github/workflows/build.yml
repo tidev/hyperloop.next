@@ -1,0 +1,49 @@
+name: Build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-26
+    name: full build
+    env:
+      SDK_VERSION: 13.3.0.GA
+      DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24.x'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - run: npm i -g titanium
+        name: Install Titanium CLI
+
+      - run: ti sdk install ${{ env.SDK_VERSION }} --force
+        name: Install SDK
+        if: steps.titanium-cache.outputs.cache-hit != 'true'
+
+      - name: Run build script
+        run: ./build.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: hyperloop-module
+          path: dist/hyperloop-*.zip
