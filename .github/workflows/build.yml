@@ -23,6 +23,15 @@ jobs:
         with:
           node-version: '22.x'
 
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '22'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - run: npm i -g titanium
         name: Install Titanium CLI
 
