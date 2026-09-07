@@ -15,7 +15,7 @@ jobs:
     runs-on: macos-26
     name: Android
     env:
-      SDK_VERSION: 13.2.0.GA
+      SDK_VERSION: 13.3.1.GA
     steps:
     - uses: actions/checkout@v7
 
@@ -36,7 +36,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: '22.x'
+        node-version: '24.x'
 
     - name: Cache Gradle packages
       uses: actions/cache@v5

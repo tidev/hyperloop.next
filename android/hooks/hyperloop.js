@@ -14,6 +14,7 @@ exports.cliVersion = '>=3.2';
 
 (function () {
 	const path = require('path');
+	const { pathToFileURL } = require('url');
 	const ejs = require('ejs');
 	const fs = require('fs-extra');
 	const chalk = require('chalk');
@@ -169,7 +170,7 @@ exports.cliVersion = '>=3.2';
 			minSdkVersion: this.builder.minSDK,
 			sdkDir: this.builder.androidInfo.sdk.path.replace(/\\/g, '\\\\'),
 			targetSdkVersion: this.builder.targetSDK,
-			tiMavenUrl: encodeURI('file://' + path.join(this.builder.platformPath, 'm2repository').replace(/\\/g, '/')),
+			tiMavenUrl: pathToFileURL(path.join(this.builder.platformPath, 'm2repository')).href,
 			tiProjectPlatformAndroidDir: path.join(this.builder.projectDir, 'platform', 'android'),
 			tiSdkVersion: this.builder.titaniumSdkVersion
 		});
